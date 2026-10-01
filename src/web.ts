@@ -1,6 +1,8 @@
 import { Router } from "express";
-import { BASE_URL, BRAND, LIMITS, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
+import { readFileSync } from "node:fs";
+import { BASE_URL, BRAND, DOCS_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
 import { pool } from "./db.ts";
+import { landing } from "./landing.ts";
 import { page } from "./layout.ts";
 import { getOrder, publicOrder } from "./orders.ts";
 import { checkoutUrlFor, confirmFromRedirect } from "./payments.ts";
@@ -9,16 +11,6 @@ import { addressBlock, esc, printSheet } from "./render.ts";
 export const web = Router();
 const MCP_URL = `${BASE_URL}/mcp`;
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
-
-const productCards = () =>
-  Object.entries(PRODUCTS)
-    .map(
-      ([id, p]) => `<div class="card"><span class="eyebrow">${esc(p.size)}</span><h3>${esc(p.name)}</h3>
-      <div class="price">${usd(p.cents)}</div><p class="soft">${esc(p.blurb)}</p>
-      <p class="soft" style="font-size:.85rem">Printing, envelope and First-Class postage included.</p>
-      <a class="btn alt" href="/send?product=${id}" style="justify-self:start">Send a ${id === "letter" ? "letter" : "postcard"}</a></div>`,
-    )
-    .join("");
 
 const installSnippets = () => `
 <div class="grid">
@@ -35,25 +27,7 @@ const installSnippets = () => `
 </div>`;
 
 web.get("/", (_req, res) => {
-  res.send(
-    page(
-      `${BRAND} — print and mail from your AI agent`,
-      `<section style="padding-block:48px 24px">
-        <span class="eyebrow">Postcards & letters · US First-Class</span>
-        <h1>Real mail, sent by you or your agent.</h1>
-        <p class="soft" style="font-size:1.15rem">Write a postcard or a letter here, or ask Codex, Muse or Claude to send one. We print it, stamp it and drop it in the mail, usually within one business day.</p>
-        <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="/send">Send something now</a><a class="btn alt" href="/agents">Connect your agent</a></div>
-      </section>
-      <section><h2>Prices</h2><div class="grid">${productCards()}</div></section>
-      <section><h2>How it works</h2>
-        <div class="grid">
-          <div class="card"><h3>1. Write it</h3><p class="soft">On this site, through the API, or by asking your agent: “Mail my grandma a postcard of this photo.”</p></div>
-          <div class="card"><h3>2. Check and pay</h3><p class="soft">You see exactly what will print, then pay with Stripe. Nothing is mailed until you pay.</p></div>
-          <div class="card"><h3>3. We mail it</h3><p class="soft">A person checks every piece, prints it and mails it via USPS. You get a tracking page for the order.</p></div>
-        </div></section>
-      <section><h2>Use it from your agent</h2><p class="soft">One MCP server works in Codex, Muse Code, Claude and ChatGPT. Your agent drafts the mail and hands you a checkout link.</p>${installSnippets()}</section>`,
-    ),
-  );
+  res.send(landing());
 });
 
 web.get("/agents", (_req, res) => {
@@ -205,15 +179,35 @@ web.get("/images/:id", async (req, res) => {
   res.set("Cache-Control", "public, max-age=31536000, immutable").type(rows[0].mime).send(rows[0].bytes);
 });
 
+// One spec for the Mintlify API reference and for agents that read OpenAPI; servers[] is rewritten to this deployment.
+const OPENAPI = JSON.parse(readFileSync(new URL("../docs/openapi.json", import.meta.url), "utf8"));
+OPENAPI.servers = [{ url: `${BASE_URL}/v1` }];
+web.get("/openapi.json", (_req, res) => {
+  res.set("Access-Control-Allow-Origin", "*").json(OPENAPI);
+});
+
 web.get("/llms.txt", (_req, res) => {
+  const docs = DOCS_URL || `${BASE_URL}/docs`;
   res.type("text/plain").send(`# ${BRAND}
 
-> Print and mail real postcards and letters to US addresses (USPS First-Class). Usable by AI agents via MCP or REST, no API key: every order returns a checkout link a human pays.
+> Physical mail for AI agents. ${BRAND} prints and mails real postcards and letters to US addresses via USPS First-Class. Agents call an MCP server or REST API with no API key; every order returns a checkout_url that a person pays, plus a preview_url of the exact print. Nothing is printed until paid, and a person reviews every piece.
 
-- MCP endpoint (Streamable HTTP): ${MCP_URL}
-- REST API docs: ${BASE_URL}/docs
-- Agent setup (Codex, Muse Code, Claude): ${BASE_URL}/agents
-- Prices: ${Object.values(PRODUCTS).map((p) => `${p.name} ${usd(p.cents)}`).join("; ")}
-- Content policy: ${BASE_URL}/content-policy
+## Connect
+- MCP endpoint (Streamable HTTP, no auth): ${MCP_URL}
+- Tools: get_pricing, create_postcard, create_letter, get_order, cancel_order
+- Setup for Codex, Muse Code, Claude and other clients: ${BASE_URL}/#connect
+
+## Docs
+- Documentation: ${docs}${DOCS_URL ? `\n- Full docs for LLMs: ${DOCS_URL}/llms-full.txt` : ""}
+- OpenAPI spec: ${BASE_URL}/openapi.json
+- REST base URL: ${BASE_URL}/v1
+
+## Products
+${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}, ${p.blurb}`).join("\n")}
+
+## Rules
+- US addresses only; a return address is required.
+- Confirm addresses and wording with the user before creating an order; show them the preview and checkout links.
+- Content policy (no threats, harassment, fraud, obscenity or bulk marketing): ${BASE_URL}/content-policy
 `);
 });

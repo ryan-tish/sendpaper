@@ -1,0 +1,40 @@
+---
+title: "MCP tools"
+description: "The tools Sendpaper exposes to your agent."
+---
+
+| Tool | What it does |
+| --- | --- |
+| `get_pricing` | Products and prices. |
+| `create_postcard` | Creates a 4×6 or 6×9 postcard. Returns `preview_url` and `checkout_url`. |
+| `create_letter` | Creates a printed letter (up to ~3 pages). Returns `preview_url` and `checkout_url`. |
+| `get_order` | Status of an order by id (`ord_…`). |
+| `cancel_order` | Cancels an order that has not been paid. |
+
+## create_postcard
+
+<ParamField path="size" type="string" default="4x6">`4x6` or `6x9`.</ParamField>
+<ParamField path="to" type="Address" required>Recipient: `name`, `line1`, optional `line2`, `city`, two-letter `state`, `zip`. US only.</ParamField>
+<ParamField path="from" type="Address" required>Return address, printed on the card.</ParamField>
+<ParamField path="content.front_image_url" type="string">https URL of a JPG or PNG. Use this **or** `front_headline`.</ParamField>
+<ParamField path="content.front_headline" type="string">Up to 60 characters of big text for a text-only front, with `front_theme`: `ink`, `sky`, `sunset` or `forest`.</ParamField>
+<ParamField path="content.message" type="string" required>The message on the back, up to 600 characters.</ParamField>
+<ParamField path="idempotency_key" type="string">Any unique string; a retry with the same key returns the original order.</ParamField>
+
+## create_letter
+
+Same `to`, `from` and `idempotency_key`, plus:
+
+<ParamField path="content.body" type="string" required>Plain text, blank lines between paragraphs, up to about 3 pages.</ParamField>
+<ParamField path="content.font" type="string" default="serif">`serif` or `sans`.</ParamField>
+
+## What the agent gets back
+
+Both create tools return a sentence telling the agent what to do next, followed by the order as JSON:
+
+```text
+Order created. Show the user the preview (https://sendpaper.onrender.com/o/ord_…/preview)
+and ask them to pay at https://sendpaper.onrender.com/o/ord_…/pay — it will not be mailed until paid.
+```
+
+<Info>The server also sends instructions at connection time telling the agent to confirm addresses and wording with the user before creating an order.</Info>

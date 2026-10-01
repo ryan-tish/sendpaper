@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { BASE_URL, BRAND, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
+import { BASE_URL, BRAND, DOCS_URL, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
 import { page } from "./layout.ts";
 import { esc } from "./render.ts";
 
@@ -32,6 +32,8 @@ const response = `{
 }`;
 
 docs.get("/docs", (_req, res) => {
+  // Once the Mintlify site is live, send people (and search engines) there so there is one canonical copy.
+  if (DOCS_URL) return res.redirect(301, DOCS_URL);
   res.send(
     page(
       `API — ${BRAND}`,

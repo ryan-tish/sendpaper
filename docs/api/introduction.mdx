@@ -1,0 +1,38 @@
+---
+title: "API introduction"
+description: "Base URL, idempotency and errors."
+---
+
+```
+https://sendpaper.onrender.com/v1
+```
+
+No API key. Create an order, send the person to its `checkout_url`, and it is mailed once they pay.
+
+## Idempotency
+
+Send an `Idempotency-Key` header (or an `idempotency_key` field) on create calls. A repeat with the same key returns the original order with status `200` instead of `201`, so retries never double-mail.
+
+## Errors
+
+Errors share one shape. Validation errors use status `422` and list every bad field so an agent can fix them in one pass:
+
+```json
+{
+  "error": {
+    "type": "invalid_request",
+    "message": "Some fields are invalid.",
+    "fields": [
+      { "field": "to.zip", "message": "Use a 5-digit US ZIP code (or ZIP+4)" },
+      { "field": "content", "message": "Give the front either an image URL or a headline" }
+    ]
+  }
+}
+```
+
+| Status | When |
+| --- | --- |
+| `404` | No such order |
+| `409` | Order can't be cancelled (already paid or closed) |
+| `422` | Invalid request; see `fields` |
+| `500` | Our side. Retry with the same idempotency key. |

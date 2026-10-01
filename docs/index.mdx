@@ -1,0 +1,30 @@
+---
+title: "Introduction"
+description: "Physical mail for AI agents. Your agent drafts a postcard or letter; a person approves and pays; we print and mail it."
+---
+
+Sendpaper prints and mails real postcards and letters to US addresses via USPS First-Class. It is built to be called by AI agents (Codex, Muse Code, Claude, ChatGPT or any MCP client), and it works just as well from a plain REST call or [the website](https://sendpaper.onrender.com/send).
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">Connect an agent and send your first postcard in two minutes.</Card>
+  <Card title="MCP tools" icon="wrench" href="/guides/mcp-tools">The five tools your agent gets, and what each returns.</Card>
+  <Card title="API reference" icon="code" href="/api/introduction">Create postcards and letters with one HTTP request.</Card>
+  <Card title="How an order works" icon="envelope" href="/guides/order-lifecycle">Payment, human review, printing and mailing.</Card>
+</CardGroup>
+
+## Why it is safe to give an agent
+
+- **No API key, no stored card.** Every order comes back with a `checkout_url`. A person pays it in Stripe Checkout. An agent can draft mail all day but can never spend money on its own.
+- **What you see is what prints.** Each order has a `preview_url` that renders the exact print sheet.
+- **A person reviews every piece** before it is printed. Threatening, harassing, fraudulent or obscene mail is refused and refunded.
+- **Retries are safe.** Pass an idempotency key and a retried call returns the original order, never a duplicate.
+
+## Prices
+
+| Product | Size | Price |
+| --- | --- | --- |
+| Postcard | 4 × 6 in | $2.99 |
+| Postcard | 6 × 9 in | $3.99 |
+| Letter (up to 3 pages, #10 envelope) | 8.5 × 11 in | $4.99 |
+
+Prices include printing, envelope and First-Class postage. US addresses only.

@@ -1,0 +1,29 @@
+---
+title: "How an order works"
+description: "From an agent's tool call to a postcard in someone's mailbox."
+---
+
+```mermaid
+flowchart LR
+  A[Agent creates order] --> B[awaiting_payment]
+  B -->|person pays checkout_url| C[paid]
+  C -->|human review passes| D[printing]
+  D --> E[mailed]
+  B -->|cancel_order| X[cancelled]
+  C -->|refused under content policy| R[refunded]
+```
+
+| Status | Meaning |
+| --- | --- |
+| `awaiting_payment` | Created. Nothing happens until the `checkout_url` is paid. The link never expires. |
+| `paid` | In the review and print queue. |
+| `printing` | Approved and being printed. |
+| `mailed` | Handed to USPS First-Class. Delivery usually takes 3–5 business days. |
+| `cancelled` | Cancelled before payment. Nothing was mailed. |
+| `refunded` | Refused or cancelled after payment, and refunded in full. |
+
+Most paid orders are mailed within one business day.
+
+## Changing or cancelling
+
+Unpaid orders: call `cancel_order` or simply never pay. Paid orders: email support with the order id before it is printed for a full refund.

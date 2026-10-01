@@ -1,0 +1,25 @@
+---
+title: "Other MCP clients"
+description: "ChatGPT, Cursor, VS Code and anything that speaks MCP."
+---
+
+Sendpaper is a remote MCP server using **Streamable HTTP** with no authentication:
+
+```
+https://sendpaper.onrender.com/mcp
+```
+
+<AccordionGroup>
+  <Accordion title="ChatGPT">In developer mode, add a connector with the URL above.</Accordion>
+  <Accordion title="Cursor">
+```json ~/.cursor/mcp.json
+{ "mcpServers": { "sendpaper": { "url": "https://sendpaper.onrender.com/mcp" } } }
+```
+  </Accordion>
+  <Accordion title="VS Code">
+```json .vscode/mcp.json
+{ "servers": { "sendpaper": { "type": "http", "url": "https://sendpaper.onrender.com/mcp" } } }
+```
+  </Accordion>
+</AccordionGroup>
+

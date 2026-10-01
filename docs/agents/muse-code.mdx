@@ -1,0 +1,21 @@
+---
+title: "Muse Code"
+description: "Use Sendpaper from Meta's Muse Code."
+---
+
+Muse Code supports remote MCP servers. Add Sendpaper to your Muse Code settings:
+
+```json
+"mcp_servers": {
+  "sendpaper": {
+    "transport": "streamable_http",
+    "url": "https://sendpaper.onrender.com/mcp"
+  }
+}
+```
+
+Restart the session and ask Muse to send something:
+
+> Write a short letter to my landlord saying I'm renewing the lease for another year, and mail it to 77 Elm St, Unit 2, Portland OR 97205.
+
+<Note>A Sendpaper connector for everyday Muse (the consumer app) is coming. Until then, Muse Code is the way to use it with Muse.</Note>

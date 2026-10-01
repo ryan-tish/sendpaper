@@ -1,4 +1,4 @@
-import { BRAND, SUPPORT_EMAIL } from "./config.ts";
+import { BRAND, DOCS_URL, SUPPORT_EMAIL } from "./config.ts";
 import { esc } from "./render.ts";
 
 // Airmail stationery: white paper, ink-navy type, and one loud detail — the red/blue airmail stripe.
@@ -68,7 +68,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 <div class="stripe"></div>
 <div class="wrap">
 <nav><a class="logo" href="/">${esc(BRAND)}</a>
-<div class="links"><a href="/send">Send mail</a><a href="/agents">For agents</a><a href="/docs">API</a></div></nav>
+<div class="links"><a href="/#connect">Connect an agent</a><a href="${DOCS_URL || "/docs"}">Docs</a><a href="/send">Send mail</a></div></nav>
 ${body}
 <footer><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a><span>Support: ${esc(SUPPORT_EMAIL)}</span></footer>
 </div></body></html>`;

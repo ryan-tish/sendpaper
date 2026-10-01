@@ -10,7 +10,9 @@ Stack: Node 24 running TypeScript natively (no build step), Express 5, Postgres,
 - **LIVE at https://sendpaper.onrender.com** since 2026-10-01: web service `srv-dav7cfs1nsns7390mqk0` and Postgres `sendpaper-db` (`dpg-dav76djtqb8s739fvgsg-a`), both on FREE plans by Ryan's choice until the first order, with auto-deploy from `main`. Checked in prod: health, all pages, admin auth, a postcard created via the API and a letter via MCP (both test orders cancelled).
 - The admin password is in `~/.sendpaper.admin` (chmod 600) and in Render's environment variables. It is not in the repo.
 - **No Stripe key on Render yet**, so `/o/:id/pay` returns 503 "Checkout unavailable". Ryan is getting the keys and will put them in `~/.sendpaper.env`, never in chat.
-- Domain `sendpaper.co` was unregistered as of 2026-10-01; Ryan is to buy it.
+- **Agent-first landing page** at `/` (`src/landing.ts`), shipped 2026-10-01. `/openapi.json` serves `docs/openapi.json` with `servers` rewritten to BASE_URL. `/llms.txt` is hand-written in `web.ts`.
+- **Mintlify docs are written in `docs/`** (`docs.json`, MDX pages, `openapi.json`) and pass `mint validate` and `mint broken-links`, but they are **NOT HOSTED yet**. Ryan has to sign up for Mintlify (free Starter plan) and connect this repo with `/docs` as the docs directory. Then set `DOCS_URL` on Render, which makes `/docs` 301 to Mintlify and adds `llms-full.txt` to `/llms.txt`.
+- Domain was unregistered as of 2026-10-01; Ryan is to buy it.
 - The Codex plugin has not been test-installed (Codex CLI isn't on this machine).
 
 ## Design decisions
@@ -22,6 +24,9 @@ Stack: Node 24 running TypeScript natively (no build step), Express 5, Postgres,
 - Competitors already exist (PostAgent, MailStream, mailsnail at $1–1.50, Letter IRL). We compete on being consumer-friendly and getting into the Codex and Muse channels first, not on price.
 
 ## Traps
+- **The Mintlify CLI refuses Node 25.** Run it under Node 22: `cd docs && npx -y -p node@22 -p mint@latest -- mint validate` (and `mint broken-links`, `mint dev`).
+- **Keep one canonical copy of the docs.** Once `DOCS_URL` is set, the built-in `/docs` page redirects. Point Mintlify's custom domain at `docs.<our domain>`, never leave it on `*.mintlify.site` long-term (that subdomain accrues the search credit instead of us). Keep `/llms.txt` on the main domain, because agents look there first.
+- **The docs must not claim registry listings or submissions that haven't happened.** Two premature claims were caught and removed on 2026-10-01.
 - **The free Postgres EXPIRES 2026-10-31** and its data is deleted. Upgrade `sendpaper-db` to basic-256mb before then; this is the Breadkin trap again. Free web services also sleep when idle (cold start around 30–60s). Stripe retries webhooks and the success redirect confirms payment itself, so payment still lands, just slowly.
 - **Imports must use the `.ts` extension**, and only erasable TypeScript syntax is allowed (no enums or namespaces), because Node strips types at runtime.
 - The Stripe webhook route must stay **before** any JSON body parser in `server.ts`.
@@ -32,6 +37,7 @@ Stack: Node 24 running TypeScript natively (no build step), Express 5, Postgres,
 ## Verify
 ```
 npm run typecheck && npm test
+(cd docs && npx -y -p node@22 -p mint@latest -- mint validate)
 DATABASE_URL=postgres://postgres@localhost:54330/sendpaper ADMIN_TOKEN=local-admin-token-123 PORT=3077 BASE_URL=http://localhost:3077 npm start
 ```
 Then create an order with POST `/v1/postcards` (see `/docs`) and check that `/o/<id>` renders the preview.

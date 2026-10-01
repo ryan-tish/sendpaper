@@ -1,0 +1,36 @@
+---
+title: "Quickstart"
+description: "Connect your agent to Sendpaper and send a postcard."
+---
+
+<Steps>
+  <Step title="Add the MCP server">
+    <CodeGroup>
+```bash Codex
+codex mcp add sendpaper --url https://sendpaper.onrender.com/mcp
+```
+```bash Claude Code
+claude mcp add --transport http sendpaper https://sendpaper.onrender.com/mcp
+```
+```json Muse Code
+"mcp_servers": {
+  "sendpaper": { "transport": "streamable_http", "url": "https://sendpaper.onrender.com/mcp" }
+}
+```
+    </CodeGroup>
+    No sign-up or API key. See [Connect your agent](/agents/codex) for plugin installs and other clients.
+  </Step>
+  <Step title="Ask for mail in plain words">
+    > Send a 4×6 postcard to my mom, Dana Kim, 12 Oak St, Austin TX 78701. Big text on the front: "Happy birthday, Mom!". On the back say I'll call on Sunday. My return address is 88 Pine Ave, Denver CO 80202.
+
+    The agent confirms the addresses and wording with you, then calls `create_postcard`.
+  </Step>
+  <Step title="Check the preview and pay">
+    The agent hands you two links: a **preview** of exactly what will print, and a **checkout** link. Nothing is printed until you pay.
+  </Step>
+  <Step title="We mail it">
+    A person reviews the piece, prints it and hands it to USPS, usually within one business day. Ask your agent “what's the status of my postcard?” to have it call `get_order`.
+  </Step>
+</Steps>
+
+<Tip>Prefer HTTP? The same thing is one request: see the [API introduction](/api/introduction) and the endpoint pages under **API reference**.</Tip>
