@@ -62,12 +62,13 @@ export function page(title: string, body: string, opts: { description?: string; 
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(opts.description ?? `${BRAND} prints and mails real postcards and letters — from the web, a REST API, or your AI agent (Codex, Muse Code, Claude).`)}">
 ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>${CSS}</style></head><body>
 <div class="stripe"></div>
 <div class="wrap">
-<nav><a class="logo" href="/">${esc(BRAND)}</a>
+<nav><a class="logo" href="/"><svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true" style="vertical-align:-6px;margin-right:8px"><rect width="64" height="64" rx="14" fill="#14213d"/><rect x="12" y="18" width="40" height="28" rx="3" fill="#fbfcfe"/><path d="M12 21l20 14 20-14" fill="none" stroke="#2a4fa8" stroke-width="3.5" stroke-linejoin="round"/><path d="M12 46l6-6M20 46l6-6M38 46l6-6M46 46l6-6" stroke="#d6403a" stroke-width="3"/></svg>${esc(BRAND)}</a>
 <div class="links"><a href="/#connect">Connect an agent</a><a href="${DOCS_URL || "/docs"}">Docs</a><a href="/send">Send mail</a></div></nav>
 ${body}
 <footer><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a><span>Support: ${esc(SUPPORT_EMAIL)}</span></footer>

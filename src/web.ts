@@ -186,6 +186,10 @@ web.get("/openapi.json", (_req, res) => {
   res.set("Access-Control-Allow-Origin", "*").json(OPENAPI);
 });
 
+web.get("/favicon.svg", (_req, res) => {
+  res.type("image/svg+xml").set("Cache-Control", "public, max-age=86400").send(readFileSync(new URL("../docs/logo/favicon.svg", import.meta.url)));
+});
+
 web.get("/llms.txt", (_req, res) => {
   const docs = DOCS_URL || `${BASE_URL}/docs`;
   res.type("text/plain").send(`# ${BRAND}

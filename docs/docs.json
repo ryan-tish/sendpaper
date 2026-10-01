@@ -2,34 +2,207 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Sendpaper",
-  "description": "Physical mail for AI agents: print and mail postcards and letters from Codex, Muse Code, Claude or any MCP client.",
-  "colors": { "primary": "#2A4FA8", "light": "#7B9CF0", "dark": "#1D3A82" },
-  "logo": { "light": "/logo/light.svg", "dark": "/logo/dark.svg", "href": "https://sendpaper.onrender.com" },
+  "description": "Physical mail for AI agents. Codex, Muse Code, Claude or any MCP client can send real postcards and letters; a person approves and pays, and Sendpaper prints and mails them via USPS.",
+  "colors": {
+    "primary": "#2A4FA8",
+    "light": "#7B9CF0",
+    "dark": "#1D3A82"
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://sendpaper.onrender.com"
+  },
   "favicon": "/logo/favicon.svg",
   "navbar": {
-    "links": [{ "label": "Send mail", "href": "https://sendpaper.onrender.com/send" }],
-    "primary": { "type": "button", "label": "Connect your agent", "href": "https://sendpaper.onrender.com/#connect" }
+    "links": [
+      {
+        "label": "Home",
+        "href": "https://sendpaper.onrender.com"
+      },
+      {
+        "label": "Send mail",
+        "href": "https://sendpaper.onrender.com/send"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Connect your agent",
+      "href": "https://sendpaper.onrender.com/#connect"
+    }
   },
   "navigation": {
     "tabs": [
       {
         "tab": "Guides",
         "groups": [
-          { "group": "Get started", "pages": ["index", "quickstart"] },
-          { "group": "Connect your agent", "pages": ["agents/codex", "agents/muse-code", "agents/claude", "agents/other-clients"] },
-          { "group": "MCP server", "pages": ["guides/mcp-tools"] },
-          { "group": "How it works", "pages": ["guides/order-lifecycle", "guides/products", "guides/content-policy"] }
+          {
+            "group": "Get started",
+            "pages": [
+              "index",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Connect your agent",
+            "pages": [
+              "agents/codex",
+              "agents/muse-code",
+              "agents/claude",
+              "agents/other-clients"
+            ]
+          },
+          {
+            "group": "MCP server",
+            "pages": [
+              "guides/mcp-tools"
+            ]
+          },
+          {
+            "group": "How it works",
+            "pages": [
+              "guides/order-lifecycle",
+              "guides/products",
+              "guides/content-policy"
+            ]
+          }
         ]
       },
       {
         "tab": "API reference",
         "groups": [
-          { "group": "Overview", "pages": ["api/introduction"] },
-          { "group": "Endpoints", "openapi": "openapi.json" }
+          {
+            "group": "Overview",
+            "pages": [
+              "api/introduction"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "openapi": "openapi.json"
+          }
         ]
       }
     ]
   },
-  "api": { "playground": { "display": "interactive" } },
-  "footer": { "socials": { "github": "https://github.com/ryan-fern/sendpaper-plugin" } }
+  "api": {
+    "playground": {
+      "display": "interactive"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/ryan-fern/sendpaper-plugin",
+      "website": "https://sendpaper.onrender.com"
+    },
+    "links": [
+      {
+        "header": "Product",
+        "items": [
+          {
+            "label": "Home",
+            "href": "https://sendpaper.onrender.com"
+          },
+          {
+            "label": "Send mail",
+            "href": "https://sendpaper.onrender.com/send"
+          },
+          {
+            "label": "Pricing",
+            "href": "https://sendpaper.onrender.com/#pricing"
+          }
+        ]
+      },
+      {
+        "header": "For agents",
+        "items": [
+          {
+            "label": "MCP endpoint",
+            "href": "/agents/other-clients"
+          },
+          {
+            "label": "OpenAPI spec",
+            "href": "https://sendpaper.onrender.com/openapi.json"
+          },
+          {
+            "label": "llms.txt",
+            "href": "https://sendpaper.onrender.com/llms.txt"
+          }
+        ]
+      },
+      {
+        "header": "Legal",
+        "items": [
+          {
+            "label": "Terms",
+            "href": "https://sendpaper.onrender.com/terms"
+          },
+          {
+            "label": "Privacy",
+            "href": "https://sendpaper.onrender.com/privacy"
+          },
+          {
+            "label": "Content policy",
+            "href": "https://sendpaper.onrender.com/content-policy"
+          }
+        ]
+      }
+    ]
+  },
+  "fonts": {
+    "heading": {
+      "family": "Bricolage Grotesque",
+      "weight": 800
+    },
+    "body": {
+      "family": "Public Sans",
+      "weight": 400
+    }
+  },
+  "background": {
+    "color": {
+      "light": "#FBFCFE",
+      "dark": "#0E1422"
+    }
+  },
+  "appearance": {
+    "default": "system"
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs",
+    "codeblocks": "system"
+  },
+  "banner": {
+    "content": "Sendpaper is live: physical mail for AI agents. [Connect your agent \u2192](https://sendpaper.onrender.com/#connect)",
+    "dismissible": true,
+    "color": {
+      "light": "#14213D",
+      "dark": "#1D3A82"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "cursor",
+      "vscode",
+      "mcp"
+    ]
+  },
+  "thumbnails": {
+    "appearance": "dark",
+    "fonts": {
+      "family": "Bricolage Grotesque"
+    }
+  },
+  "seo": {
+    "metatags": {
+      "og:site_name": "Sendpaper"
+    }
+  }
 }

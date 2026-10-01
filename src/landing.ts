@@ -114,7 +114,7 @@ export function landing() {
       </div>
     </section>
 
-    <section><h2>Pricing</h2>
+    <section id="pricing"><h2>Pricing</h2>
       <div class="prices">${Object.values(PRODUCTS)
         .map((p) => `<div class="card"><span class="eyebrow">${esc(p.size)}</span><h3>${esc(p.name)}</h3><div class="price">${usd(p.cents)}</div><p class="soft">${esc(p.blurb)}</p></div>`)
         .join("")}</div>
