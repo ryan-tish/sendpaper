@@ -79,7 +79,14 @@
           },
           {
             "group": "Endpoints",
-            "openapi": "openapi.json"
+            "openapi": "openapi.json",
+            "pages": [
+              "GET /products",
+              "POST /postcards",
+              "POST /letters",
+              "GET /orders/{id}",
+              "POST /orders/{id}/cancel"
+            ]
           }
         ]
       }
