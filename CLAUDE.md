@@ -7,6 +7,7 @@ Stack: Node 24 running TypeScript natively (no build step), Express 5, Postgres,
 ## State (2026-10-01, launch day)
 - Built and run locally. The REST API, MCP (initialize, tools/list, create_letter) and every page were checked against a local Postgres; 3 schema tests pass.
 - **Stripe is UNTESTED**: no key was available. The checkout redirect, webhook and success-redirect confirmation have never run.
+- Render (personal workspace, FREE plans by Ryan's choice until the first order): Postgres `sendpaper-db` (`dpg-dav76djtqb8s739fvgsg-a`) created 2026-10-01; web service blocked until Render's GitHub app is granted access to this repo.
 - Not deployed yet. Domain `sendpaper.co` was unregistered as of 2026-10-01; Ryan is to buy it.
 - The Codex plugin has not been test-installed (Codex CLI isn't on this machine).
 
@@ -19,6 +20,7 @@ Stack: Node 24 running TypeScript natively (no build step), Express 5, Postgres,
 - Competitors already exist (PostAgent, MailStream, mailsnail at $1–1.50, Letter IRL). We compete on being consumer-friendly and getting into the Codex and Muse channels first, not on price.
 
 ## Traps
+- **The free Postgres EXPIRES 2026-10-31** and its data is deleted. Upgrade `sendpaper-db` to basic-256mb before then; this is the Breadkin trap again. Free web services also sleep when idle (cold start around 30–60s). Stripe retries webhooks and the success redirect confirms payment itself, so payment still lands, just slowly.
 - **Imports must use the `.ts` extension**, and only erasable TypeScript syntax is allowed (no enums or namespaces), because Node strips types at runtime.
 - The Stripe webhook route must stay **before** any JSON body parser in `server.ts`.
 - The Render CLI default config is the WORK account. For personal deploys use `RENDER_CLI_CONFIG_PATH=~/.render/cli-personal.yaml`.

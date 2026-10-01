@@ -2,7 +2,7 @@ services:
   - type: web
     name: sendpaper
     runtime: node
-    plan: starter
+    plan: free  # upgrade to starter after the first real order (free sleeps when idle)
     region: oregon
     buildCommand: npm ci --omit=dev
     startCommand: npm start
@@ -29,6 +29,6 @@ services:
 
 databases:
   - name: sendpaper-db
-    plan: basic-256mb
+    plan: free  # EXPIRES 2026-10-31 — upgrade to basic-256mb before then or lose all orders
     region: oregon
     databaseName: sendpaper
