@@ -24,6 +24,7 @@ Stack: Node 24 running TypeScript natively (no build step), Express 5, Postgres,
 - Competitors already exist (PostAgent, MailStream, mailsnail at $1–1.50, Letter IRL). We compete on being consumer-friendly and getting into the Codex and Muse channels first, not on price.
 
 ## Traps
+- **The GitHub account was renamed `ryan-fern` → `ryan-tish` (noticed 2026-10-01), and this repo is now PUBLIC** (it was created private; it went public around the time Mintlify was set up). Never commit secrets: keys live in Render's environment variables and `~/.sendpaper.env`. The full history was scanned clean on 2026-10-01.
 - **Mintlify uses `"icons": {"library": "lucide"}`**, so card icons must be Lucide names (`mail`, not Font Awesome's `envelope`). An unknown name renders no icon, with no error.
 - **The Mintlify CLI refuses Node 25.** Run it under Node 22: `cd docs && npx -y -p node@22 -p mint@latest -- mint validate` (and `mint broken-links`, `mint dev`).
 - **Keep one canonical copy of the docs.** Once `DOCS_URL` is set, the built-in `/docs` page redirects. Point Mintlify's custom domain at `docs.<our domain>`, never leave it on `*.mintlify.site` long-term (that subdomain accrues the search credit instead of us). Keep `/llms.txt` on the main domain, because agents look there first.

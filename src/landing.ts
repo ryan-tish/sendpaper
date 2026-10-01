@@ -7,7 +7,7 @@ const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 const slug = BRAND.toLowerCase();
 
 const INSTALL: [string, string, string][] = [
-  ["Codex", `codex plugin marketplace add ryan-fern/${slug}-plugin\n# or just the MCP server:\ncodex mcp add ${slug} --url ${MCP_URL}`, "The plugin adds a skill that teaches Codex to confirm addresses and hand you the preview."],
+  ["Codex", `codex plugin marketplace add ryan-tish/${slug}-plugin\n# or just the MCP server:\ncodex mcp add ${slug} --url ${MCP_URL}`, "The plugin adds a skill that teaches Codex to confirm addresses and hand you the preview."],
   ["Muse Code", `"mcp_servers": {\n  "${slug}": {\n    "transport": "streamable_http",\n    "url": "${MCP_URL}"\n  }\n}`, "Add to your Muse Code settings, then restart the session."],
   ["Claude", `claude mcp add --transport http ${slug} ${MCP_URL}`, "Claude Desktop and claude.ai: Settings → Connectors → Add custom connector, and paste the URL."],
   ["Any MCP client", MCP_URL, "Streamable HTTP, no authentication. Works in ChatGPT developer mode, Cursor, VS Code and others."],

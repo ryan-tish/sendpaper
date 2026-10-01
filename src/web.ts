@@ -15,7 +15,7 @@ const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 const installSnippets = () => `
 <div class="grid">
   <div class="card"><h3>Codex</h3><pre><code>codex mcp add ${esc(BRAND.toLowerCase())} --url ${esc(MCP_URL)}</code></pre>
-    <p class="soft">Or install the plugin: <code>codex plugin marketplace add ryan-fern/sendpaper-plugin</code></p></div>
+    <p class="soft">Or install the plugin: <code>codex plugin marketplace add ryan-tish/sendpaper-plugin</code></p></div>
   <div class="card"><h3>Muse Code</h3><pre><code>"mcp_servers": {
   "${esc(BRAND.toLowerCase())}": {
     "transport": "streamable_http",
