@@ -7,8 +7,10 @@ Stack: Node 24 running TypeScript natively (no build step), Express 5, Postgres,
 ## State (2026-10-01, launch day)
 - Built and run locally. The REST API, MCP (initialize, tools/list, create_letter) and every page were checked against a local Postgres; 3 schema tests pass.
 - **Stripe is UNTESTED**: no key was available. The checkout redirect, webhook and success-redirect confirmation have never run.
-- Render (personal workspace, FREE plans by Ryan's choice until the first order): Postgres `sendpaper-db` (`dpg-dav76djtqb8s739fvgsg-a`) created 2026-10-01; web service blocked until Render's GitHub app is granted access to this repo.
-- Not deployed yet. Domain `sendpaper.co` was unregistered as of 2026-10-01; Ryan is to buy it.
+- **LIVE at https://sendpaper.onrender.com** since 2026-10-01: web service `srv-dav7cfs1nsns7390mqk0` and Postgres `sendpaper-db` (`dpg-dav76djtqb8s739fvgsg-a`), both on FREE plans by Ryan's choice until the first order, with auto-deploy from `main`. Checked in prod: health, all pages, admin auth, a postcard created via the API and a letter via MCP (both test orders cancelled).
+- The admin password is in `~/.sendpaper.admin` (chmod 600) and in Render's environment variables. It is not in the repo.
+- **No Stripe key on Render yet**, so `/o/:id/pay` returns 503 "Checkout unavailable". Ryan is getting the keys and will put them in `~/.sendpaper.env`, never in chat.
+- Domain `sendpaper.co` was unregistered as of 2026-10-01; Ryan is to buy it.
 - The Codex plugin has not been test-installed (Codex CLI isn't on this machine).
 
 ## Design decisions
