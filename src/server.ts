@@ -71,5 +71,13 @@ app.get("/.well-known/openai-apps-challenge", (_req, res) => {
 app.use(docs);
 app.use(web);
 
+// Last-resort handler: log the error, but never forward an upstream error's status or headers (Stripe errors carry both).
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("unhandled", req.method, req.path, err);
+  if (res.headersSent) return;
+  if (req.path.startsWith("/v1")) return apiError(res, 500, "server_error", "Something went wrong on our side.");
+  res.status(500).type("text/plain").send("Something went wrong on our side. Please try again.");
+});
+
 await migrate();
 app.listen(env.port, () => console.log(`listening on ${env.port} (${BASE_URL})`));

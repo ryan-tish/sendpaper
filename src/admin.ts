@@ -85,7 +85,24 @@ admin.post("/orders/:id/status", async (req, res) => {
   if (!o || !STATUSES.includes(status)) return res.status(400).send("Bad request");
   if (status === "refunded") {
     if (!stripe || !o.stripe_payment) return res.status(400).send("No Stripe payment on this order to refund.");
-    await stripe.refunds.create({ payment_intent: o.stripe_payment, metadata: { order_id: o.id } });
+    try {
+      // A refund approved in the Stripe dashboard (or a retry) already exists: just record it.
+      const prior = await stripe.refunds.list({ payment_intent: o.stripe_payment, limit: 10 });
+      const done = prior.data.some((r) => r.status === "succeeded" || r.status === "pending");
+      // Same key per order, so a double-click or retry can never refund twice.
+      if (!done) await stripe.refunds.create(
+        { payment_intent: o.stripe_payment, metadata: { order_id: o.id } },
+        { idempotencyKey: `refund-${o.id}` },
+      );
+    } catch (e) {
+      // Stripe can hold API refunds for dashboard approval; show its reason and leave the order unchanged.
+      const message = e instanceof Error ? e.message : String(e);
+      return res.status(409).send(
+        page(`Refund not done · ${o.id}`, `<section><h1>Refund not done</h1><p>Stripe said: <b>${esc(message)}</b></p>
+        <p>The order is unchanged. If Stripe is waiting for approval, approve the refund in the Stripe dashboard, then mark this order refunded again.</p>
+        <p><a href="/admin/orders/${o.id}">Back to order</a></p></section>`, { noindex: true }),
+      );
+    }
   }
   await setStatus(o.id, status, req.body.note || undefined);
   res.redirect(303, `/admin/orders/${o.id}`);
