@@ -31,6 +31,8 @@ web.get("/", (_req, res) => {
 });
 
 web.get("/agents", (_req, res) => {
+  // Setup instructions live in the docs now; keep this URL working for links already out there (plugin supportURL).
+  if (DOCS_URL) return res.redirect(301, `${DOCS_URL}/quickstart`);
   res.send(
     page(
       `Connect your agent — ${BRAND}`,

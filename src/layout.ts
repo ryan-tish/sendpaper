@@ -1,76 +1,101 @@
 import { BRAND, DOCS_URL, SUPPORT_EMAIL } from "./config.ts";
 import { esc } from "./render.ts";
 
-// Airmail stationery: white paper, ink-navy type, and one loud detail — the red/blue airmail stripe.
+// "Meadow" (chosen 2026-10-02, after Mintlify + Cal.com): white space, one near-black primary button,
+// green reserved for accents and success, Geist throughout with Geist Mono for anything an agent would type.
 const CSS = `
 :root {
-  --paper: #fbfcfe; --card: #ffffff; --ink: #14213d; --soft: #55617a; --rule: #dde3ee;
-  --air-red: #d6403a; --air-blue: #2a4fa8; --ok: #1d7a55; --ok-bg: #e3f3eb; --warn-bg: #fdf1dc; --warn: #8a5a0e;
-  --f-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
-  --f-body: "Public Sans", system-ui, -apple-system, sans-serif;
-  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --paper: #ffffff; --tint: #f6f9f7; --card: #ffffff; --ink: #0d1512; --soft: #56625c; --faint: #8a958f; --rule: #e6ebe8;
+  --green: #0f7a52; --green-soft: #edf8f2; --green-line: #d6efe2; --lime: #8fd16a;
+  --ok: #0f7a52; --ok-bg: #edf8f2; --warn: #8a5a0e; --warn-bg: #fdf3e1; --bad: #b3261e;
+  --btn-bg: #0d1512; --btn-fg: #ffffff;
+  --f-ui: "Geist", system-ui, -apple-system, sans-serif;
+  --f-mono: "Geist Mono", ui-monospace, Menlo, monospace;
 }
-@media (prefers-color-scheme: dark) { :root { --paper:#0e1422; --card:#151d2f; --ink:#e7ecf6; --soft:#9aa6bd; --rule:#27324a;
-  --air-red:#ef6a60; --air-blue:#7b9cf0; --ok:#6fd3a6; --ok-bg:#12332a; --warn-bg:#3a2b10; --warn:#f0c071; color-scheme: dark } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #0b100e; --tint: #101714; --card: #121a16; --ink: #e6ede9; --soft: #a1aea7; --faint: #6f7c75; --rule: #222c27;
+  --green: #4fd1a1; --green-soft: #12291f; --green-line: #1d3d2f; --lime: #a6e07e;
+  --ok: #4fd1a1; --ok-bg: #12291f; --warn: #f0c071; --warn-bg: #33270f; --bad: #f2a097;
+  --btn-bg: #e6ede9; --btn-fg: #0b100e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #0b100e; --tint: #101714; --card: #121a16; --ink: #e6ede9; --soft: #a1aea7; --faint: #6f7c75; --rule: #222c27;
+  --green: #4fd1a1; --green-soft: #12291f; --green-line: #1d3d2f; --lime: #a6e07e;
+  --ok: #4fd1a1; --ok-bg: #12291f; --warn: #f0c071; --warn-bg: #33270f; --bad: #f2a097;
+  --btn-bg: #e6ede9; --btn-fg: #0b100e; color-scheme: dark }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.6 var(--f-body); }
-.stripe { height:8px; background: repeating-linear-gradient(-45deg, var(--air-red) 0 16px, var(--paper) 16px 24px, var(--air-blue) 24px 40px, var(--paper) 40px 48px); }
-.wrap { max-width:1040px; margin:0 auto; padding-inline:20px; }
-nav { display:flex; justify-content:space-between; align-items:center; padding-block:18px; gap:16px; flex-wrap:wrap; }
-nav a { color:var(--ink); text-decoration:none; font-weight:600; }
-nav .links { display:flex; gap:20px; font-size:.95rem; }
-.logo { font:800 1.35rem var(--f-display); letter-spacing:-.02em; }
-h1, h2, h3 { font-family:var(--f-display); letter-spacing:-.02em; text-wrap:balance; line-height:1.1; margin:0; }
-h1 { font-size:clamp(2.2rem, 5vw, 3.6rem); font-weight:800; }
-h2 { font-size:1.7rem; font-weight:700; }
-h3 { font-size:1.1rem; font-weight:700; }
-p { margin:0; max-width:64ch; }
-a { color:var(--air-blue); }
-.soft { color:var(--soft); }
-.mono, code, pre { font-family:var(--f-mono); font-size:.88em; }
-pre { background:var(--card); border:1px solid var(--rule); border-radius:8px; padding:14px 16px; overflow-x:auto; line-height:1.5; margin:0; }
-code { background:var(--card); border:1px solid var(--rule); border-radius:4px; padding:1px 5px; }
-pre code { border:0; padding:0; background:none; }
-.btn { display:inline-flex; align-items:center; gap:8px; background:var(--ink); color:var(--paper); border:0; border-radius:8px; padding:12px 20px; font:700 1rem var(--f-body); text-decoration:none; cursor:pointer; }
-.btn.alt { background:transparent; color:var(--ink); border:1.5px solid var(--ink); }
-.btn:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline:3px solid var(--air-blue); outline-offset:2px; }
-section { padding-block:40px; display:grid; gap:20px; }
-.grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
-.card { background:var(--card); border:1px solid var(--rule); border-radius:10px; padding:20px; display:grid; gap:8px; align-content:start; min-width:0; }
-.price { font:800 1.8rem var(--f-display); }
-.eyebrow { font:600 .75rem var(--f-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--air-red); }
-.pill { display:inline-block; font:600 .78rem var(--f-mono); padding:4px 10px; border-radius:999px; background:var(--warn-bg); color:var(--warn); }
-.pill.ok { background:var(--ok-bg); color:var(--ok); }
-label { display:grid; gap:4px; font-weight:600; font-size:.92rem; }
-input, textarea, select { font:inherit; font-weight:400; color:var(--ink); background:var(--card); border:1px solid var(--rule); border-radius:7px; padding:10px 12px; width:100%; }
-textarea { resize:vertical; min-height:120px; }
-fieldset { border:1px solid var(--rule); border-radius:10px; padding:16px; display:grid; gap:12px; margin:0; min-width:0; }
-legend { font:700 1rem var(--f-display); padding:0 6px; }
-.row { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; }
-footer { border-top:1px solid var(--rule); margin-top:40px; padding-block:24px 40px; font-size:.88rem; color:var(--soft); display:flex; gap:18px; flex-wrap:wrap; }
-footer a { color:var(--soft); }
-.err { color:var(--air-red); font-weight:600; }
-table { border-collapse:collapse; width:100%; font-size:.9rem; }
-th, td { text-align:left; padding:8px 10px 8px 0; border-bottom:1px solid var(--rule); vertical-align:top; }
-.scroll { overflow-x:auto; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 var(--f-ui); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 24px; }
+header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--rule); }
+header.site nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-block: 14px; flex-wrap: wrap; }
+.logo { display: inline-flex; align-items: center; gap: 9px; font: 700 1.12rem var(--f-ui); letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
+nav .links { display: flex; gap: 26px; align-items: center; font-size: .93rem; }
+nav .links a { color: var(--soft); text-decoration: none; font-weight: 500; }
+nav .links a:hover { color: var(--ink); }
+nav .links a.btn { color: var(--btn-fg); padding: 8px 14px; font-size: .9rem; }
+h1, h2, h3 { font-family: var(--f-ui); text-wrap: balance; margin: 0; color: var(--ink); }
+h1 { font-size: clamp(2.3rem, 5vw, 3.6rem); font-weight: 600; letter-spacing: -0.035em; line-height: 1.04; }
+h2 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: 600; letter-spacing: -0.025em; line-height: 1.15; }
+h3 { font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+p { margin: 0; max-width: 64ch; }
+a { color: var(--green); }
+.soft { color: var(--soft); }
+.mono, code, pre { font-family: var(--f-mono); font-size: .87em; }
+pre { background: var(--tint); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; overflow-x: auto; line-height: 1.55; margin: 0; }
+code { background: var(--tint); border: 1px solid var(--rule); border-radius: 5px; padding: 1px 6px; }
+pre code { border: 0; padding: 0; background: none; }
+.btn { display: inline-flex; align-items: center; gap: 8px; background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--btn-bg); border-radius: 8px; padding: 11px 18px; font: 600 .95rem var(--f-ui); text-decoration: none; cursor: pointer; white-space: nowrap; }
+.btn:hover { opacity: .9; }
+.btn.alt { background: var(--card); color: var(--ink); border-color: var(--rule); }
+.btn.alt:hover { border-color: var(--faint); opacity: 1; }
+.btn:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+section { padding-block: 48px; display: grid; gap: 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 20px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.price { font: 600 1.9rem var(--f-ui); letter-spacing: -0.03em; }
+.eyebrow { font: 500 .74rem var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--green); }
+.pill { display: inline-block; font: 500 .78rem var(--f-mono); padding: 4px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+label { display: grid; gap: 6px; font-weight: 500; font-size: .92rem; }
+input, textarea, select { font: inherit; font-weight: 400; color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; width: 100%; }
+input:focus, textarea:focus, select:focus { border-color: var(--green); }
+textarea { resize: vertical; min-height: 120px; }
+fieldset { border: 1px solid var(--rule); border-radius: 12px; padding: 18px; display: grid; gap: 12px; margin: 0; min-width: 0; background: var(--card); }
+legend { font: 600 .98rem var(--f-ui); padding: 0 6px; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+footer.site { border-top: 1px solid var(--rule); margin-top: 48px; padding-block: 28px 44px; font-size: .88rem; color: var(--soft); display: flex; gap: 10px 22px; flex-wrap: wrap; align-items: center; }
+footer.site a { color: var(--soft); text-decoration: none; }
+footer.site a:hover { color: var(--ink); }
+.err { color: var(--bad); font-weight: 600; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 500; color: var(--soft); }
+.scroll { overflow-x: auto; }
+@media (max-width: 720px) { nav .links a:not(.btn) { display: none; } }
 `;
+
+export const LOGO_MARK = `<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3.2" fill="var(--green)"/><path d="M3 7l9 6 9-6" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+
+export function docsUrl(path = "") {
+  return DOCS_URL ? `${DOCS_URL}${path}` : "/docs";
+}
 
 export function page(title: string, body: string, opts: { description?: string; noindex?: boolean } = {}) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(title)}</title>
-<meta name="description" content="${esc(opts.description ?? `${BRAND} prints and mails real postcards and letters — from the web, a REST API, or your AI agent (Codex, Muse Code, Claude).`)}">
+<meta name="description" content="${esc(opts.description ?? `${BRAND} prints and mails real postcards and letters, from the web, a REST API, or your AI agent (Codex, Muse Code, Claude).`)}">
 ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
 <style>${CSS}</style></head><body>
-<div class="stripe"></div>
+<header class="site"><div class="wrap"><nav>
+  <a class="logo" href="/">${LOGO_MARK}${esc(BRAND.toLowerCase())}</a>
+  <div class="links"><a href="${docsUrl()}">Docs</a><a href="/#pricing">Pricing</a><a href="/send">Send from the web</a><a class="btn" href="${docsUrl("/quickstart")}">Connect your agent</a></div>
+</nav></div></header>
 <div class="wrap">
-<nav><a class="logo" href="/"><svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true" style="vertical-align:-6px;margin-right:8px"><rect width="64" height="64" rx="14" fill="#14213d"/><rect x="12" y="18" width="40" height="28" rx="3" fill="#fbfcfe"/><path d="M12 21l20 14 20-14" fill="none" stroke="#2a4fa8" stroke-width="3.5" stroke-linejoin="round"/><path d="M12 46l6-6M20 46l6-6M38 46l6-6M46 46l6-6" stroke="#d6403a" stroke-width="3"/></svg>${esc(BRAND)}</a>
-<div class="links"><a href="/#connect">Connect an agent</a><a href="${DOCS_URL || "/docs"}">Docs</a><a href="/send">Send mail</a></div></nav>
 ${body}
-<footer><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a><span>Support: ${esc(SUPPORT_EMAIL)}</span></footer>
+<footer class="site"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="${docsUrl()}">Docs</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a><span>Support: ${esc(SUPPORT_EMAIL)}</span></footer>
 </div></body></html>`;
 }

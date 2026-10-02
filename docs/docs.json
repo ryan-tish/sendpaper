@@ -4,9 +4,9 @@
   "name": "Sendpaper",
   "description": "Physical mail for AI agents. Codex, Muse Code, Claude or any MCP client can send real postcards and letters; a person approves and pays, and Sendpaper prints and mails them via USPS.",
   "colors": {
-    "primary": "#2A4FA8",
-    "light": "#7B9CF0",
-    "dark": "#1D3A82"
+    "primary": "#0F7A52",
+    "light": "#4FD1A1",
+    "dark": "#0B5E3F"
   },
   "logo": {
     "light": "/logo/light.svg",
@@ -17,18 +17,18 @@
   "navbar": {
     "links": [
       {
-        "label": "Home",
-        "href": "https://sendmypaper.com"
+        "label": "Pricing",
+        "href": "https://sendmypaper.com/#pricing"
       },
       {
-        "label": "Send mail",
+        "label": "Send from the web",
         "href": "https://sendmypaper.com/send"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Connect your agent",
-      "href": "https://sendmypaper.com/#connect"
+      "href": "/quickstart"
     }
   },
   "navigation": {
@@ -158,18 +158,18 @@
   },
   "fonts": {
     "heading": {
-      "family": "Bricolage Grotesque",
-      "weight": 800
+      "family": "Geist",
+      "weight": 600
     },
     "body": {
-      "family": "Public Sans",
+      "family": "Geist",
       "weight": 400
     }
   },
   "background": {
     "color": {
-      "light": "#FBFCFE",
-      "dark": "#0E1422"
+      "light": "#FFFFFF",
+      "dark": "#0B100E"
     }
   },
   "appearance": {
@@ -183,11 +183,11 @@
     "codeblocks": "system"
   },
   "banner": {
-    "content": "Sendpaper is live: physical mail for AI agents. [Connect your agent \u2192](https://sendmypaper.com/#connect)",
+    "content": "Sendpaper is live: physical mail for AI agents. [Start with the quickstart \u2192](/quickstart)",
     "dismissible": true,
     "color": {
-      "light": "#14213D",
-      "dark": "#1D3A82"
+      "light": "#0D1512",
+      "dark": "#12291F"
     }
   },
   "contextual": {
@@ -202,9 +202,9 @@
     ]
   },
   "thumbnails": {
-    "appearance": "dark",
+    "appearance": "light",
     "fonts": {
-      "family": "Bricolage Grotesque"
+      "family": "Geist"
     }
   },
   "seo": {
