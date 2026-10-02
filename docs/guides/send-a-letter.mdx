@@ -1,0 +1,16 @@
+---
+title: "Send a letter"
+description: "Mail a printed letter of up to 3 pages in a #10 window envelope."
+---
+
+Letters suit anything that needs more than a postcard: a note to a landlord, a reply to a notice, a thank-you or condolence letter, or a letter to your representative.
+
+> Write a short letter to my landlord at 77 Elm St, Unit 2, Portland OR 97205, saying I'm renewing the lease for another year, and mail it. From me at the same address, apartment 4B.
+
+## What happens
+
+- The agent drafts the text and reads it back to you.
+- It calls `create_letter` with the body (plain text; blank lines become paragraphs) and `font` set to `serif` or `sans`.
+- The letter prints in black and white on 8.5 × 11 paper, up to about 3 pages, with the addresses showing through the envelope window.
+
+<Warning>Sendpaper sends **First-Class mail only**: no certified mail, return receipt or signature tracking. If a lease, court or agency requires proof of delivery, send it from the post office instead.</Warning>

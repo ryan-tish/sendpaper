@@ -44,6 +44,16 @@
             ]
           },
           {
+            "group": "How-to guides",
+            "pages": [
+              "guides/send-a-postcard",
+              "guides/send-a-letter",
+              "guides/agent-payments",
+              "guides/track-and-cancel",
+              "guides/use-cases"
+            ]
+          },
+          {
             "group": "Connect your agent",
             "pages": [
               "agents/codex",
@@ -53,17 +63,13 @@
             ]
           },
           {
-            "group": "MCP server",
+            "group": "Reference",
             "pages": [
-              "guides/mcp-tools"
-            ]
-          },
-          {
-            "group": "How it works",
-            "pages": [
+              "guides/mcp-tools",
               "guides/order-lifecycle",
               "guides/products",
-              "guides/content-policy"
+              "guides/content-policy",
+              "guides/faq"
             ]
           }
         ]
@@ -84,6 +90,7 @@
               "GET /products",
               "POST /postcards",
               "POST /letters",
+              "POST /orders/{id}/pay",
               "GET /orders/{id}",
               "POST /orders/{id}/cancel"
             ]
@@ -183,7 +190,7 @@
     "codeblocks": "system"
   },
   "banner": {
-    "content": "Sendpaper is live: physical mail for AI agents. [Start with the quickstart \u2192](/quickstart)",
+    "content": "New: your agent can now pay for you. [See how agent payments work \u2192](/guides/agent-payments)",
     "dismissible": true,
     "color": {
       "light": "#0D1512",

@@ -1,0 +1,22 @@
+---
+title: "Track or cancel an order"
+description: "Check where an order is, and cancel or get a refund."
+---
+
+## Track
+
+Ask your agent: *"What's the status of my postcard?"* It calls `get_order`. Every order also has a status page at `order_url`.
+
+| Status | Meaning |
+| --- | --- |
+| `awaiting_payment` | Created. Nothing happens until it's paid. |
+| `paid` | In the review and print queue. |
+| `printing` | Approved and being printed. |
+| `mailed` | Handed to USPS First-Class. Usually delivered in 3–5 business days. |
+| `cancelled` / `refunded` | Not mailed. Any payment was refunded in full. |
+
+## Cancel
+
+- **Not paid yet:** ask your agent to cancel (`cancel_order`), or just don't pay. Unpaid orders are never mailed.
+- **Paid but not printed:** email support@sendmypaper.com with the order id for a full refund.
+- **Already mailed:** it can't be recalled. If it comes back undeliverable because of a mistake on our side, we'll reprint it for free.

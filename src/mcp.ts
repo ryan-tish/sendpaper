@@ -2,7 +2,8 @@ import type { Request, Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { BASE_URL, BRAND, PRODUCTS } from "./config.ts";
+import { BASE_URL, BRAND, PRODUCTS, env } from "./config.ts";
+import { PaymentError, payWithSharedToken } from "./payments.ts";
 import {
   CreateLetterSchema,
   CreatePostcardSchema,
@@ -14,14 +15,16 @@ import {
 
 const INSTRUCTIONS = `${BRAND} prints and mails real postcards and letters to US addresses via USPS First-Class.
 Flow: confirm the recipient address, return address and wording with the user, then call create_postcard or create_letter.
-The response contains a preview_url and a checkout_url. Show both to the user. Nothing is printed until the user pays at checkout_url.
+The response contains a preview_url and a checkout_url. Nothing is printed until the order is paid. Two ways to pay:
+1. If you can obtain a Stripe shared payment token (spt_…) for the user, for example through Stripe Link / link-cli, request one for the order's exact amount in USD${env.stripeNetworkId ? ` scoped to network id ${env.stripeNetworkId}` : ""}, then call pay_order. Only do this after the user has approved this purchase and its price.
+2. Otherwise, show the user the preview_url and checkout_url and let them pay there.
 Every order is reviewed by a person before printing; threatening, harassing, fraudulent or obscene mail is refused and refunded.`;
 
 const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
 
 function nextStep(o: ReturnType<typeof publicOrder>) {
   return o.checkout_url
-    ? `Order created. Show the user the preview (${o.preview_url}) and ask them to pay at ${o.checkout_url} — it will not be mailed until paid. Track it at ${o.order_url}.`
+    ? `Order created (${o.id}, ${o.price.display}). Preview: ${o.preview_url}. To pay: call pay_order with a Stripe shared payment token for ${o.price.amount_cents} cents USD, or have the user pay at ${o.checkout_url}. It will not be mailed until paid. Track it at ${o.order_url}.`
     : `Order status: ${o.status_detail} Track it at ${o.order_url}.`;
 }
 
@@ -36,7 +39,14 @@ function build(client: string | undefined) {
       annotations: { readOnlyHint: true },
     },
     async () =>
-      json(Object.entries(PRODUCTS).map(([id, p]) => ({ id, ...p, price: `$${(p.cents / 100).toFixed(2)}` }))),
+      json({
+        products: Object.entries(PRODUCTS).map(([id, p]) => ({ id, ...p, price: `$${(p.cents / 100).toFixed(2)}` })),
+        payment: {
+          options: ["shared_payment_token via pay_order", "checkout_url (Stripe Checkout, supports Link)"],
+          currency: "usd",
+          ...(env.stripeNetworkId ? { stripe_network_id: env.stripeNetworkId } : {}),
+        },
+      }),
   );
 
   server.registerTool(
@@ -70,6 +80,29 @@ function build(client: string | undefined) {
       const { order } = await createOrder({ ...input, product: "letter", source: "mcp", client });
       const o = publicOrder(order);
       return { content: [{ type: "text", text: nextStep(o) }, ...json(o).content] };
+    },
+  );
+
+  server.registerTool(
+    "pay_order",
+    {
+      title: "Pay for an order",
+      description:
+        "Pay for an unpaid order with a Stripe shared payment token (spt_…) the user approved, scoped to at least the order amount in USD. On success the order is paid and goes to print. Use only after the user approved the purchase.",
+      inputSchema: { order_id: z.string(), shared_payment_token: z.string().describe("Stripe shared payment token, spt_…") },
+      annotations: { destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ order_id, shared_payment_token }) => {
+      const o = await getOrder(order_id);
+      if (!o) return { isError: true, content: [{ type: "text", text: `No order ${order_id}` }] };
+      try {
+        const paid = publicOrder(await payWithSharedToken(o, shared_payment_token));
+        return { content: [{ type: "text", text: `Paid. ${paid.status_detail} Track it at ${paid.order_url}.` }, ...json(paid).content] };
+      } catch (e) {
+        if (e instanceof PaymentError)
+          return { isError: true, content: [{ type: "text", text: `${e.message} (${e.code}). The user can still pay at ${publicOrder(o).checkout_url ?? publicOrder(o).order_url}.` }] };
+        throw e;
+      }
     },
   );
 

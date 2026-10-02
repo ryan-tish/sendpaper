@@ -5,7 +5,11 @@
     "version": "1.0.0",
     "description": "Print and mail postcards and letters to US addresses. Every order returns a checkout_url a person pays; nothing is printed until then. No API key required."
   },
-  "servers": [{ "url": "https://sendmypaper.com/v1" }],
+  "servers": [
+    {
+      "url": "https://sendmypaper.com/v1"
+    }
+  ],
   "paths": {
     "/products": {
       "get": {
@@ -15,7 +19,21 @@
         "responses": {
           "200": {
             "description": "Products",
-            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } } } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Product"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -23,54 +41,138 @@
     "/postcards": {
       "post": {
         "summary": "Create a postcard",
-        "description": "Creates a 4×6 or 6×9 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.",
+        "description": "Creates a 4\u00d76 or 6\u00d79 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.",
         "operationId": "createPostcard",
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CreatePostcard" },
+              "schema": {
+                "$ref": "#/components/schemas/CreatePostcard"
+              },
               "example": {
                 "size": "4x6",
-                "to": { "name": "Sam Rivera", "line1": "12 Oak St", "city": "Austin", "state": "TX", "zip": "78701" },
-                "from": { "name": "Alex Kim", "line1": "88 Pine Ave", "city": "Denver", "state": "CO", "zip": "80202" },
-                "content": { "front_headline": "Happy birthday, Sam!", "front_theme": "sunset", "message": "Thirty looks great on you." },
+                "to": {
+                  "name": "Sam Rivera",
+                  "line1": "12 Oak St",
+                  "city": "Austin",
+                  "state": "TX",
+                  "zip": "78701"
+                },
+                "from": {
+                  "name": "Alex Kim",
+                  "line1": "88 Pine Ave",
+                  "city": "Denver",
+                  "state": "CO",
+                  "zip": "80202"
+                },
+                "content": {
+                  "front_headline": "Happy birthday, Sam!",
+                  "front_theme": "sunset",
+                  "message": "Thirty looks great on you."
+                },
                 "customer_email": "alex@example.com"
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Order created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
-          "200": { "description": "Idempotency-Key already used: the original order is returned", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
-          "422": { "$ref": "#/components/responses/Invalid" }
+          "201": {
+            "description": "Order created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Idempotency-Key already used: the original order is returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
         }
       }
     },
     "/letters": {
       "post": {
         "summary": "Create a letter",
-        "description": "Creates a printed letter (up to ~3 pages, 8.5×11, #10 envelope) in `awaiting_payment` and returns a `checkout_url`.",
+        "description": "Creates a printed letter (up to ~3 pages, 8.5\u00d711, #10 envelope) in `awaiting_payment` and returns a `checkout_url`.",
         "operationId": "createLetter",
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CreateLetter" },
+              "schema": {
+                "$ref": "#/components/schemas/CreateLetter"
+              },
               "example": {
-                "to": { "name": "Pat Lee", "line1": "500 Main St", "line2": "Apt 4", "city": "Boston", "state": "MA", "zip": "02110" },
-                "from": { "name": "Alex Kim", "line1": "88 Pine Ave", "city": "Denver", "state": "CO", "zip": "80202" },
-                "content": { "body": "Dear Pat,\n\nThank you for fixing the roof so quickly.\n\nBest,\nAlex", "font": "serif" }
+                "to": {
+                  "name": "Pat Lee",
+                  "line1": "500 Main St",
+                  "line2": "Apt 4",
+                  "city": "Boston",
+                  "state": "MA",
+                  "zip": "02110"
+                },
+                "from": {
+                  "name": "Alex Kim",
+                  "line1": "88 Pine Ave",
+                  "city": "Denver",
+                  "state": "CO",
+                  "zip": "80202"
+                },
+                "content": {
+                  "body": "Dear Pat,\n\nThank you for fixing the roof so quickly.\n\nBest,\nAlex",
+                  "font": "serif"
+                }
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Order created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
-          "200": { "description": "Idempotency-Key already used: the original order is returned", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
-          "422": { "$ref": "#/components/responses/Invalid" }
+          "201": {
+            "description": "Order created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Idempotency-Key already used: the original order is returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          }
         }
       }
     },
@@ -78,10 +180,31 @@
       "get": {
         "summary": "Retrieve an order",
         "operationId": "getOrder",
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "example": "ord_8k2m4qz7c1x9b3vd" } }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "ord_8k2m4qz7c1x9b3vd"
+            }
+          }
+        ],
         "responses": {
-          "200": { "description": "Order", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "200": {
+            "description": "Order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
@@ -90,11 +213,111 @@
         "summary": "Cancel an unpaid order",
         "description": "Only orders in `awaiting_payment` can be cancelled here. For paid orders, email support before printing.",
         "operationId": "cancelOrder",
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
-          "200": { "description": "Cancelled order", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "description": "Order is already paid or closed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "200": {
+            "description": "Cancelled order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Order is already paid or closed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}/pay": {
+      "post": {
+        "summary": "Pay with an agent token",
+        "description": "Pay an unpaid order with a Stripe shared payment token (`spt_\u2026`) the user approved, scoped to at least the order amount in USD. Safe to retry with the same token.",
+        "operationId": "payOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "shared_payment_token"
+                ],
+                "properties": {
+                  "shared_payment_token": {
+                    "type": "string",
+                    "example": "spt_1Q..."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paid order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Token rejected (token_amount, token_inactive, token_currency, requires_action, payment_failed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Order already paid or closed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     }
@@ -106,97 +329,328 @@
         "in": "header",
         "required": false,
         "description": "Any unique string. Retrying with the same key returns the original order instead of creating a duplicate.",
-        "schema": { "type": "string", "maxLength": 120 }
+        "schema": {
+          "type": "string",
+          "maxLength": 120
+        }
       }
     },
     "responses": {
-      "Invalid": { "description": "Validation failed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-      "NotFound": { "description": "No such order", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+      "Invalid": {
+        "description": "Validation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "No such order",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
     },
     "schemas": {
       "Address": {
         "type": "object",
-        "required": ["name", "line1", "city", "state", "zip"],
+        "required": [
+          "name",
+          "line1",
+          "city",
+          "state",
+          "zip"
+        ],
         "properties": {
-          "name": { "type": "string", "maxLength": 60 },
-          "company": { "type": "string", "maxLength": 60 },
-          "line1": { "type": "string", "maxLength": 64, "description": "Street address" },
-          "line2": { "type": "string", "maxLength": 64, "description": "Apartment, suite, unit" },
-          "city": { "type": "string", "maxLength": 40 },
-          "state": { "type": "string", "description": "Two-letter US state or territory code", "example": "CA" },
-          "zip": { "type": "string", "pattern": "^\\d{5}(-\\d{4})?$", "example": "94105" }
+          "name": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "company": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "line1": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Street address"
+          },
+          "line2": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Apartment, suite, unit"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "state": {
+            "type": "string",
+            "description": "Two-letter US state or territory code",
+            "example": "CA"
+          },
+          "zip": {
+            "type": "string",
+            "pattern": "^\\d{5}(-\\d{4})?$",
+            "example": "94105"
+          }
         }
       },
       "CreatePostcard": {
         "type": "object",
-        "required": ["to", "from", "content"],
+        "required": [
+          "to",
+          "from",
+          "content"
+        ],
         "properties": {
-          "size": { "type": "string", "enum": ["4x6", "6x9"], "default": "4x6" },
-          "to": { "$ref": "#/components/schemas/Address" },
-          "from": { "$ref": "#/components/schemas/Address", "description": "Return address, printed on the card. Required." },
+          "size": {
+            "type": "string",
+            "enum": [
+              "4x6",
+              "6x9"
+            ],
+            "default": "4x6"
+          },
+          "to": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Address",
+            "description": "Return address, printed on the card. Required."
+          },
           "content": {
             "type": "object",
-            "required": ["message"],
+            "required": [
+              "message"
+            ],
             "description": "Provide front_image_url or front_headline.",
             "properties": {
-              "front_image_url": { "type": "string", "format": "uri", "description": "https URL of a JPG or PNG for the front" },
-              "front_headline": { "type": "string", "maxLength": 60, "description": "Big text for a text-only front" },
-              "front_theme": { "type": "string", "enum": ["ink", "sky", "sunset", "forest"], "default": "ink" },
-              "message": { "type": "string", "maxLength": 600, "description": "Message on the back" }
+              "front_image_url": {
+                "type": "string",
+                "format": "uri",
+                "description": "https URL of a JPG or PNG for the front"
+              },
+              "front_headline": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "Big text for a text-only front"
+              },
+              "front_theme": {
+                "type": "string",
+                "enum": [
+                  "ink",
+                  "sky",
+                  "sunset",
+                  "forest"
+                ],
+                "default": "ink"
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 600,
+                "description": "Message on the back"
+              }
             }
           },
-          "customer_email": { "type": "string", "format": "email" },
-          "idempotency_key": { "type": "string", "description": "Alternative to the Idempotency-Key header" }
+          "customer_email": {
+            "type": "string",
+            "format": "email"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "description": "Alternative to the Idempotency-Key header"
+          }
         }
       },
       "CreateLetter": {
         "type": "object",
-        "required": ["to", "from", "content"],
+        "required": [
+          "to",
+          "from",
+          "content"
+        ],
         "properties": {
-          "to": { "$ref": "#/components/schemas/Address" },
-          "from": { "$ref": "#/components/schemas/Address" },
+          "to": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Address"
+          },
           "content": {
             "type": "object",
-            "required": ["body"],
+            "required": [
+              "body"
+            ],
             "properties": {
-              "body": { "type": "string", "maxLength": 9000, "description": "Plain text; blank lines separate paragraphs" },
-              "font": { "type": "string", "enum": ["serif", "sans"], "default": "serif" }
+              "body": {
+                "type": "string",
+                "maxLength": 9000,
+                "description": "Plain text; blank lines separate paragraphs"
+              },
+              "font": {
+                "type": "string",
+                "enum": [
+                  "serif",
+                  "sans"
+                ],
+                "default": "serif"
+              }
             }
           },
-          "customer_email": { "type": "string", "format": "email" },
-          "idempotency_key": { "type": "string" }
+          "customer_email": {
+            "type": "string",
+            "format": "email"
+          },
+          "idempotency_key": {
+            "type": "string"
+          }
         }
       },
       "Product": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "enum": ["postcard_4x6", "postcard_6x9", "letter"] },
-          "name": { "type": "string" },
-          "size": { "type": "string" },
-          "blurb": { "type": "string" },
-          "amount_cents": { "type": "integer" },
-          "currency": { "type": "string", "example": "usd" }
+          "id": {
+            "type": "string",
+            "enum": [
+              "postcard_4x6",
+              "postcard_6x9",
+              "letter"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          },
+          "blurb": {
+            "type": "string"
+          },
+          "amount_cents": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string",
+            "example": "usd"
+          }
         }
       },
       "Order": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "ord_8k2m4qz7c1x9b3vd" },
-          "object": { "type": "string", "enum": ["postcard", "letter"] },
-          "product": { "type": "string", "enum": ["postcard_4x6", "postcard_6x9", "letter"] },
-          "status": { "type": "string", "enum": ["awaiting_payment", "paid", "printing", "mailed", "cancelled", "refunded"] },
-          "status_detail": { "type": "string" },
-          "price": { "type": "object", "properties": { "amount_cents": { "type": "integer" }, "currency": { "type": "string" }, "display": { "type": "string" } } },
-          "to": { "$ref": "#/components/schemas/Address" },
-          "from": { "$ref": "#/components/schemas/Address" },
-          "content": { "type": "object" },
-          "checkout_url": { "type": ["string", "null"], "description": "Where the person pays. Null once paid or closed. Never expires." },
-          "order_url": { "type": "string", "description": "Human-readable status page" },
-          "preview_url": { "type": "string", "description": "Exact print preview" },
-          "created_at": { "type": "string", "format": "date-time" },
-          "paid_at": { "type": ["string", "null"], "format": "date-time" },
-          "mailed_at": { "type": ["string", "null"], "format": "date-time" },
-          "events": { "type": "array", "items": { "type": "object", "properties": { "at": { "type": "string" }, "status": { "type": "string" }, "note": { "type": "string" } } } }
+          "id": {
+            "type": "string",
+            "example": "ord_8k2m4qz7c1x9b3vd"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "postcard",
+              "letter"
+            ]
+          },
+          "product": {
+            "type": "string",
+            "enum": [
+              "postcard_4x6",
+              "postcard_6x9",
+              "letter"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "awaiting_payment",
+              "paid",
+              "printing",
+              "mailed",
+              "cancelled",
+              "refunded"
+            ]
+          },
+          "status_detail": {
+            "type": "string"
+          },
+          "price": {
+            "type": "object",
+            "properties": {
+              "amount_cents": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "display": {
+                "type": "string"
+              }
+            }
+          },
+          "to": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "content": {
+            "type": "object"
+          },
+          "checkout_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Where the person pays. Null once paid or closed. Never expires."
+          },
+          "order_url": {
+            "type": "string",
+            "description": "Human-readable status page"
+          },
+          "preview_url": {
+            "type": "string",
+            "description": "Exact print preview"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "paid_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "mailed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "at": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                }
+              }
+            }
+          }
         }
       },
       "Error": {
@@ -205,9 +659,27 @@
           "error": {
             "type": "object",
             "properties": {
-              "type": { "type": "string", "example": "invalid_request" },
-              "message": { "type": "string" },
-              "fields": { "type": "array", "items": { "type": "object", "properties": { "field": { "type": "string" }, "message": { "type": "string" } } } }
+              "type": {
+                "type": "string",
+                "example": "invalid_request"
+              },
+              "message": {
+                "type": "string"
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
             }
           }
         }

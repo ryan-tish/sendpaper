@@ -5,9 +5,10 @@ description: "The tools Sendpaper exposes to your agent."
 
 | Tool | What it does |
 | --- | --- |
-| `get_pricing` | Products and prices. |
+| `get_pricing` | Products, prices and payment options, including Sendpaper's Stripe network ID. |
 | `create_postcard` | Creates a 4×6 or 6×9 postcard. Returns `preview_url` and `checkout_url`. |
 | `create_letter` | Creates a printed letter (up to ~3 pages). Returns `preview_url` and `checkout_url`. |
+| `pay_order` | Pays an unpaid order with a Stripe shared payment token the user approved. See [Let your agent pay](/guides/agent-payments). |
 | `get_order` | Status of an order by id (`ord_…`). |
 | `cancel_order` | Cancels an order that has not been paid. |
 
@@ -28,13 +29,18 @@ Same `to`, `from` and `idempotency_key`, plus:
 <ParamField path="content.body" type="string" required>Plain text, blank lines between paragraphs, up to about 3 pages.</ParamField>
 <ParamField path="content.font" type="string" default="serif">`serif` or `sans`.</ParamField>
 
+## pay_order
+
+<ParamField path="order_id" type="string" required>The order to pay (`ord_…`).</ParamField>
+<ParamField path="shared_payment_token" type="string" required>A Stripe shared payment token (`spt_…`) scoped to at least the order amount in USD.</ParamField>
+
 ## What the agent gets back
 
 Both create tools return a sentence telling the agent what to do next, followed by the order as JSON:
 
 ```text
-Order created. Show the user the preview (https://sendmypaper.com/o/ord_…/preview)
-and ask them to pay at https://sendmypaper.com/o/ord_…/pay — it will not be mailed until paid.
+Order created (ord_…, $2.99). Preview: https://sendmypaper.com/o/ord_…/preview. To pay: call pay_order
+with a Stripe shared payment token for 299 cents USD, or have the user pay at https://sendmypaper.com/o/ord_…/pay.
 ```
 
 <Info>The server also sends instructions at connection time telling the agent to confirm addresses and wording with the user before creating an order.</Info>

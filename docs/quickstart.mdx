@@ -1,10 +1,10 @@
 ---
 title: "Quickstart"
-description: "Connect your agent to Sendpaper and send a postcard."
+description: "Connect your agent and send your first postcard in two minutes."
 ---
 
 <Steps>
-  <Step title="Add the MCP server">
+  <Step title="Add Sendpaper to your agent">
     <CodeGroup>
 ```bash Codex
 codex mcp add sendpaper --url https://sendmypaper.com/mcp
@@ -18,19 +18,23 @@ claude mcp add --transport http sendpaper https://sendmypaper.com/mcp
 }
 ```
     </CodeGroup>
-    No sign-up or API key. See [Connect your agent](/agents/codex) for plugin installs and other clients.
+    This gives your agent six tools: check prices, create a postcard, create a letter, pay, check status and cancel. There's no sign-up or API key. Other clients: [Connect your agent](/agents/codex).
   </Step>
   <Step title="Ask for mail in plain words">
     > Send a 4×6 postcard to my mom, Dana Kim, 12 Oak St, Austin TX 78701. Big text on the front: "Happy birthday, Mom!". On the back say I'll call on Sunday. My return address is 88 Pine Ave, Denver CO 80202.
 
-    The agent confirms the addresses and wording with you, then calls `create_postcard`.
+    Your agent reads the addresses and wording back to you before it creates anything.
   </Step>
-  <Step title="Check the preview and pay">
-    The agent hands you two links: a **preview** of exactly what will print, and a **checkout** link. Nothing is printed until you pay.
+  <Step title="Approve and pay">
+    Your agent shows you the **preview**, exactly what will print. Then either:
+    - **it pays for you** with a one-time Stripe token you approve, if it can use Stripe Link ([how agent payments work](/guides/agent-payments)), or
+    - **you pay** the checkout link it gives you.
+
+    Nothing is printed until the order is paid.
   </Step>
   <Step title="We mail it">
-    A person reviews the piece, prints it and hands it to USPS, usually within one business day. Ask your agent “what's the status of my postcard?” to have it call `get_order`.
+    A person reviews it, prints it and hands it to USPS, usually within one business day. Ask "what's the status of my postcard?" and your agent calls `get_order`.
   </Step>
 </Steps>
 
-<Tip>Prefer HTTP? The same thing is one request: see the [API introduction](/api/introduction) and the endpoint pages under **API reference**.</Tip>
+<Tip>No agent? Send from the web at [sendmypaper.com/send](https://sendmypaper.com/send). Building an app? See the [API introduction](/api/introduction).</Tip>

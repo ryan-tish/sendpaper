@@ -16,6 +16,8 @@ export const env = {
   resendKey: process.env.RESEND_API_KEY ?? "",
   notifyEmail: process.env.NOTIFY_EMAIL ?? "",
   notifyFrom: process.env.NOTIFY_FROM ?? "Sendpaper <onboarding@resend.dev>",
+  // Our Stripe business profile network id (profile_…). Agents scope shared payment tokens to it.
+  stripeNetworkId: process.env.STRIPE_NETWORK_ID ?? "",
 };
 
 export type ProductId = "postcard_4x6" | "postcard_6x9" | "letter";

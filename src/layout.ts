@@ -93,11 +93,11 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 <style>${CSS}</style></head><body>
 <header class="site"><div class="wrap"><nav>
   <a class="logo" href="/">${LOGO_MARK}${esc(BRAND.toLowerCase())}</a>
-  <div class="links"><a href="${docsUrl()}">Docs</a><a href="/#pricing">Pricing</a><a href="/send">Send from the web</a><button class="theme" type="button" id="theme" aria-label="Toggle dark mode"><svg class="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><a class="btn" href="${docsUrl("/quickstart")}">Connect your agent</a></div>
+  <div class="links"><a href="/use-cases">Use cases</a><a href="${docsUrl()}">Docs</a><a href="/#pricing">Pricing</a><a href="/send">Send from the web</a><button class="theme" type="button" id="theme" aria-label="Toggle dark mode"><svg class="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><a class="btn" href="${docsUrl("/quickstart")}">Connect your agent</a></div>
 </nav></div></header>
 <div class="wrap">
 ${body}
-<footer class="site"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="${docsUrl()}">Docs</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a><span>Support: ${esc(SUPPORT_EMAIL)}</span></footer>
+<footer class="site"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="/use-cases">Use cases</a><a href="${docsUrl()}">Docs</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a><span>Support: ${esc(SUPPORT_EMAIL)}</span></footer>
 </div>
 <script>
 document.getElementById("theme").addEventListener("click", () => {

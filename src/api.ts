@@ -2,6 +2,7 @@ import express, { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
 import { LIMITS, PRODUCTS } from "./config.ts";
 import { pool } from "./db.ts";
+import { PaymentError, payWithSharedToken } from "./payments.ts";
 import {
   CreateLetterSchema,
   CreatePostcardSchema,
@@ -91,6 +92,22 @@ api.post(
     if (o.status !== "awaiting_payment")
       return apiError(res, 409, "not_cancellable", `Order is ${o.status}. Paid orders: email support before printing.`);
     res.json(publicOrder((await setStatus(o.id, "cancelled", "cancelled by customer via API"))!));
+  }),
+);
+
+// Agent payment: charge a Stripe shared payment token (spt_…) for an unpaid order. No browser needed.
+api.post(
+  "/orders/:id/pay",
+  handle(async (req, res) => {
+    const o = await getOrder(String(req.params.id));
+    if (!o) return apiError(res, 404, "not_found", `No order ${req.params.id}`);
+    const token = String(req.body?.shared_payment_token ?? "");
+    try {
+      res.json(publicOrder(await payWithSharedToken(o, token)));
+    } catch (e) {
+      if (e instanceof PaymentError) return apiError(res, e.code === "not_payable" ? 409 : 402, e.code, e.message);
+      throw e;
+    }
   }),
 );
 

@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { readFileSync } from "node:fs";
-import { BASE_URL, BRAND, DOCS_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
+import { BASE_URL, BRAND, DOCS_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL, env } from "./config.ts";
 import { pool } from "./db.ts";
 import { landing } from "./landing.ts";
 import { sendPage } from "./send.ts";
+import { useCasesPage } from "./usecases.ts";
 import { page } from "./layout.ts";
 import { getOrder, publicOrder } from "./orders.ts";
 import { checkoutUrlFor, confirmFromRedirect } from "./payments.ts";
@@ -55,6 +56,10 @@ web.get("/agents", (_req, res) => {
       </div></section>`,
     ),
   );
+});
+
+web.get("/use-cases", (_req, res) => {
+  res.send(useCasesPage());
 });
 
 web.get("/send", (req, res) => {
@@ -132,7 +137,7 @@ web.get("/llms.txt", (_req, res) => {
 
 ## Connect
 - MCP endpoint (Streamable HTTP, no auth): ${MCP_URL}
-- Tools: get_pricing, create_postcard, create_letter, get_order, cancel_order
+- Tools: get_pricing, create_postcard, create_letter, pay_order, get_order, cancel_order
 - Setup for Codex, Muse Code, Claude and other clients: ${BASE_URL}/#connect
 
 ## Docs
@@ -142,6 +147,11 @@ web.get("/llms.txt", (_req, res) => {
 
 ## Products
 ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}, ${p.blurb}`).join("\n")}
+
+## Payment
+- Agents can pay with a Stripe shared payment token (spt_…) the user approved, scoped to the order amount in USD: call pay_order, or POST /v1/orders/{id}/pay with {"shared_payment_token": "spt_…"}.${env.stripeNetworkId ? `\n- Sendpaper's Stripe network ID: ${env.stripeNetworkId}` : ""}
+- Otherwise the user pays the order's checkout_url (Stripe Checkout).
+- Guide: ${DOCS_URL || BASE_URL + "/docs"}/guides/agent-payments
 
 ## Rules
 - US addresses only; a return address is required.

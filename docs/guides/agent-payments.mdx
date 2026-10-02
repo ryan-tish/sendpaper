@@ -1,0 +1,68 @@
+---
+title: "Let your agent pay"
+description: "How agents pay for Sendpaper orders with Stripe shared payment tokens: one-time, amount-capped, and approved by you."
+---
+
+Sendpaper accepts **Stripe shared payment tokens** (SPTs), the way AI agents pay merchants on your behalf. Your agent never sees your card number and neither do we. Each token is capped at one order's price, works once, and expires.
+
+## How it works
+
+<Steps>
+  <Step title="The agent creates the order">`create_postcard` or `create_letter` returns the order id and its exact price, for example `ord_8k2m…` for **$2.99** (`299` cents).</Step>
+  <Step title="You approve the payment">Your agent asks Stripe Link for a one-time token for that amount. You approve it in Link, on your phone or in the agent.</Step>
+  <Step title="The agent pays">The agent calls `pay_order` with the token. We charge it once, the order is marked **paid**, and it goes to print.</Step>
+</Steps>
+
+If the agent can't get a token, it gives you the order's **checkout link** instead. That's a normal Stripe Checkout page, where you can also pay with Link, cards, Apple Pay and more.
+
+## For agents: getting a token with Stripe Link
+
+Agents that have Stripe's [Link CLI](https://www.npmjs.com/package/@stripe/link-cli) (as a skill or MCP server) can request a token like this:
+
+```bash
+npx @stripe/link-cli spend-request create \
+  --payment-method-id <the user's Link payment method> \
+  --context "Sendpaper postcard ord_8k2m… to Dana Kim" \
+  --amount 299 \
+  --credential-type shared_payment_token \
+  --network-id <Sendpaper's Stripe network ID> \
+  --request-approval
+```
+
+- `--amount` is the order's `price.amount_cents`.
+- Sendpaper's Stripe network ID is returned by the `get_pricing` tool (`payment.stripe_network_id`).
+- `--request-approval` asks the user to approve before the token is issued.
+
+Then pay:
+
+```text
+pay_order(order_id: "ord_8k2m…", shared_payment_token: "spt_…")
+```
+
+## Over HTTP
+
+```bash
+curl https://sendmypaper.com/v1/orders/ord_8k2m.../pay \
+  -H "Content-Type: application/json" \
+  -d '{ "shared_payment_token": "spt_..." }'
+```
+
+The response is the updated order with `"status": "paid"`.
+
+## Errors your agent can fix
+
+| Code | Meaning | What to do |
+| --- | --- | --- |
+| `token_amount` | The token's limit is below the order price | Request a new token for at least the order amount |
+| `token_inactive` | The token was used, revoked or expired | Ask the user to approve a new one |
+| `token_currency` | The token isn't in USD | Request a USD token |
+| `requires_action` | The bank wants extra verification | Send the user to the checkout link |
+| `not_payable` | The order is already paid or cancelled | Check it with `get_order` |
+
+Paying is safe to retry: the same token is never charged twice for the same order.
+
+## Safety
+
+- **You approve every payment.** Agents should only call `pay_order` after you've agreed to the purchase and price.
+- **Nothing extra is stored.** We keep the Stripe payment reference for refunds, never the card.
+- **Refunds:** if we refuse a piece under the [content policy](/guides/content-policy), or you cancel before printing, the payment is refunded in full.
