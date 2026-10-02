@@ -12,6 +12,16 @@ const app = express();
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
 
+// One canonical host for pages (search engines, shared links). The API, MCP, webhooks and order pages
+// keep answering on the old onrender.com host so agents configured before the domain switch keep working.
+const canonical = new URL(BASE_URL).host;
+app.use((req, res, next) => {
+  const keep = /^\/(v1|mcp|webhooks|o|images|healthz)(\/|$)/.test(req.path);
+  if (req.hostname !== canonical && req.hostname.endsWith(".onrender.com") && !keep && req.method === "GET")
+    return res.redirect(301, BASE_URL + req.originalUrl);
+  next();
+});
+
 // Stripe needs the raw body to verify signatures, so this route comes before any JSON parser.
 app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
   try {

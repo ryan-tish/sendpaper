@@ -7,14 +7,14 @@ description: "Connect your agent to Sendpaper and send a postcard."
   <Step title="Add the MCP server">
     <CodeGroup>
 ```bash Codex
-codex mcp add sendpaper --url https://sendpaper.onrender.com/mcp
+codex mcp add sendpaper --url https://sendmypaper.com/mcp
 ```
 ```bash Claude Code
-claude mcp add --transport http sendpaper https://sendpaper.onrender.com/mcp
+claude mcp add --transport http sendpaper https://sendmypaper.com/mcp
 ```
 ```json Muse Code
 "mcp_servers": {
-  "sendpaper": { "transport": "streamable_http", "url": "https://sendpaper.onrender.com/mcp" }
+  "sendpaper": { "transport": "streamable_http", "url": "https://sendmypaper.com/mcp" }
 }
 ```
     </CodeGroup>

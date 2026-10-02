@@ -2,9 +2,9 @@
 
 export const BRAND = process.env.BRAND_NAME ?? "Sendpaper";
 export const BASE_URL = (process.env.BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
-// Mintlify docs site once connected (e.g. https://docs.sendpaper.co); until then the built-in /docs page.
+// Mintlify docs site (https://sendpaper.mintlify.site, later docs.sendmypaper.com); unset = built-in /docs page.
 export const DOCS_URL = (process.env.DOCS_URL ?? "").replace(/\/$/, "");
-export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "hello@sendpaper.co";
+export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "support@sendmypaper.com";
 
 export const env = {
   port: Number(process.env.PORT ?? 3000),

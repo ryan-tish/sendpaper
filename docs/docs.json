@@ -11,24 +11,24 @@
   "logo": {
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg",
-    "href": "https://sendpaper.onrender.com"
+    "href": "https://sendmypaper.com"
   },
   "favicon": "/logo/favicon.svg",
   "navbar": {
     "links": [
       {
         "label": "Home",
-        "href": "https://sendpaper.onrender.com"
+        "href": "https://sendmypaper.com"
       },
       {
         "label": "Send mail",
-        "href": "https://sendpaper.onrender.com/send"
+        "href": "https://sendmypaper.com/send"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Connect your agent",
-      "href": "https://sendpaper.onrender.com/#connect"
+      "href": "https://sendmypaper.com/#connect"
     }
   },
   "navigation": {
@@ -100,7 +100,7 @@
   "footer": {
     "socials": {
       "github": "https://github.com/ryan-tish/sendpaper-plugin",
-      "website": "https://sendpaper.onrender.com"
+      "website": "https://sendmypaper.com"
     },
     "links": [
       {
@@ -108,15 +108,15 @@
         "items": [
           {
             "label": "Home",
-            "href": "https://sendpaper.onrender.com"
+            "href": "https://sendmypaper.com"
           },
           {
             "label": "Send mail",
-            "href": "https://sendpaper.onrender.com/send"
+            "href": "https://sendmypaper.com/send"
           },
           {
             "label": "Pricing",
-            "href": "https://sendpaper.onrender.com/#pricing"
+            "href": "https://sendmypaper.com/#pricing"
           }
         ]
       },
@@ -129,11 +129,11 @@
           },
           {
             "label": "OpenAPI spec",
-            "href": "https://sendpaper.onrender.com/openapi.json"
+            "href": "https://sendmypaper.com/openapi.json"
           },
           {
             "label": "llms.txt",
-            "href": "https://sendpaper.onrender.com/llms.txt"
+            "href": "https://sendmypaper.com/llms.txt"
           }
         ]
       },
@@ -142,15 +142,15 @@
         "items": [
           {
             "label": "Terms",
-            "href": "https://sendpaper.onrender.com/terms"
+            "href": "https://sendmypaper.com/terms"
           },
           {
             "label": "Privacy",
-            "href": "https://sendpaper.onrender.com/privacy"
+            "href": "https://sendmypaper.com/privacy"
           },
           {
             "label": "Content policy",
-            "href": "https://sendpaper.onrender.com/content-policy"
+            "href": "https://sendmypaper.com/content-policy"
           }
         ]
       }
@@ -183,7 +183,7 @@
     "codeblocks": "system"
   },
   "banner": {
-    "content": "Sendpaper is live: physical mail for AI agents. [Connect your agent \u2192](https://sendpaper.onrender.com/#connect)",
+    "content": "Sendpaper is live: physical mail for AI agents. [Connect your agent \u2192](https://sendmypaper.com/#connect)",
     "dismissible": true,
     "color": {
       "light": "#14213D",

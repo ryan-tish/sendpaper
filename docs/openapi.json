@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "description": "Print and mail postcards and letters to US addresses. Every order returns a checkout_url a person pays; nothing is printed until then. No API key required."
   },
-  "servers": [{ "url": "https://sendpaper.onrender.com/v1" }],
+  "servers": [{ "url": "https://sendmypaper.com/v1" }],
   "paths": {
     "/products": {
       "get": {
