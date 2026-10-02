@@ -37,7 +37,7 @@ const CSS = `
 .hero-wrap { position: relative; margin-inline: -24px; padding-inline: 24px; }
 .art { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .art canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-.hero { position: relative; display: grid; grid-template-columns: minmax(0, 640px); padding-block: 88px 96px; }
+.hero { position: relative; display: grid; grid-template-columns: minmax(0, 640px); padding-block: 104px 112px; }
 .hero .stack { display: grid; gap: 24px; min-width: 0; }
 .stat { display: inline-flex; align-items: center; gap: 8px; justify-self: start; border: 1px solid var(--rule); background: var(--card); border-radius: 8px; padding: 5px 6px 5px 12px; font-size: .86rem; color: var(--soft); text-decoration: none; }
 .stat b { font: 500 .8rem var(--f-mono); color: var(--green); background: var(--green-soft); padding: 3px 8px; border-radius: 5px; }
@@ -74,30 +74,30 @@ const CSS = `
 .done b { font-weight: 600; }
 .chip { display: inline-flex; align-items: center; gap: 7px; margin-top: 8px; font: 500 .76rem var(--f-mono); color: var(--green); background: var(--green-soft); border: 1px solid var(--green-line); border-radius: 999px; padding: 3px 10px; }
 .chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-.pay { gap: 24px; }
-.pay-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 28px; border-top: 1px solid var(--rule); padding-top: 24px; }
-.pay-grid div { display: grid; gap: 8px; align-content: start; }
-.pay-grid p { color: var(--soft); font-size: .95rem; }
-.more { color: var(--green); text-decoration: none; font-weight: 500; font-size: .95rem; }
-.showcase { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr); gap: 48px; align-items: center; }
-.shot { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; box-shadow: 0 40px 80px -40px rgba(12, 80, 50, .45), 0 2px 6px rgba(13, 21, 18, .04); overflow: hidden; min-width: 0; }
+.pay-band { display: flex; justify-content: space-between; align-items: center; gap: 16px 40px; flex-wrap: wrap; background: var(--tint); border: 1px solid var(--rule); border-radius: 16px; padding: 24px 28px; }
+.pay-band > div { display: grid; gap: 6px; max-width: 680px; }
+.pay-band p { color: var(--soft); font-size: .95rem; }
+.more { white-space: nowrap; color: var(--green); text-decoration: none; font-weight: 500; font-size: .95rem; }
+.showcase { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr); gap: 64px; align-items: center; }
+.shot { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; box-shadow: 0 24px 48px -30px rgba(12, 80, 50, .38), 0 2px 6px rgba(13, 21, 18, .04); overflow: hidden; min-width: 0; }
 .shot .bar { display: flex; align-items: center; gap: 6px; padding: 11px 14px; border-bottom: 1px solid var(--rule); font: .74rem var(--f-mono); color: var(--faint); }
 .shot .bar i { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); }
 .shot .bar span { margin-left: 8px; }
 .shot .body { padding: 20px; display: grid; gap: 14px; font-size: .92rem; }
 .you { justify-self: end; background: var(--btn-bg); color: var(--btn-fg); padding: 10px 13px; border-radius: 14px 14px 4px 14px; max-width: 86%; }
-.works { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; padding-block: 26px; border-block: 1px solid var(--rule); color: var(--faint); font-size: .9rem; }
+.works { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; padding-block: 28px; border-block: 1px solid var(--rule); color: var(--faint); font-size: .9rem; }
 .works a { color: var(--soft); text-decoration: none; font-weight: 500; }
 .works a:hover { color: var(--ink); }
-.section-head { display: grid; gap: 10px; max-width: 640px; }
-.prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.section-head { display: grid; gap: 12px; max-width: 640px; }
+.section-head .soft { font-size: 1.05rem; }
+.prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
 .prices .card { padding: 24px; gap: 14px; }
 .prices dl { margin: 0; display: grid; gap: 0; border-top: 1px solid var(--rule); }
 .prices dl div { display: flex; justify-content: space-between; gap: 12px; padding-block: 9px; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .prices dt { color: var(--faint); }
 .prices dd { margin: 0; text-align: right; color: var(--ink); }
 .prices .btn { justify-content: center; }
-.faq { max-width: 760px; }
+.faq { max-width: 760px; gap: 20px; }
 details.q { border-bottom: 1px solid var(--rule); padding-block: 16px; }
 details.q summary { font-weight: 500; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
 details.q summary::-webkit-details-marker { display: none; }
@@ -157,14 +157,9 @@ export function landing() {
       </div>
     </section>
 
-    <section class="pay">
-      <div class="section-head"><span class="eyebrow">Agent payments</span><h2>Your agent can pay. Safely.</h2><p class="soft">Sendpaper accepts Stripe shared payment tokens, the new way for AI agents to pay on your behalf. No card number is ever shared, and each token works once, for one order.</p></div>
-      <div class="pay-grid">
-        <div><h3>Approved by you</h3><p>Your agent asks before it pays. Through Stripe Link you approve the exact amount, inside the app you're already using.</p></div>
-        <div><h3>Scoped to the order</h3><p>Each token is capped at the order's price, works for one order only, and expires. Your card details never reach us or the agent.</p></div>
-        <div><h3>A link if you'd rather pay</h3><p>Prefer to pay yourself? Every order also has a regular Stripe checkout link. Nothing is mailed until it's paid.</p></div>
-      </div>
-      <a class="more" href="${esc(docsUrl("/guides/agent-payments"))}">How agent payments work →</a>
+    <section class="pay-line">
+      <div class="pay-band"><div><h3>Your agent can pay, with your OK.</h3><p>Sendpaper accepts Stripe's one-time agent payment tokens. You approve the amount and your card is never shared. Prefer to pay yourself? Every order has a checkout link too.</p></div>
+      <a class="more" href="${esc(docsUrl("/guides/agent-payments"))}">How it works →</a></div>
     </section>
 
     <section id="pricing">

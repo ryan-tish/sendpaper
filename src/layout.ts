@@ -49,7 +49,8 @@ pre code { border: 0; padding: 0; background: none; }
 .btn.alt { background: var(--card); color: var(--ink); border-color: var(--rule); }
 .btn.alt:hover { border-color: var(--faint); opacity: 1; }
 .btn:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
-section { padding-block: 48px; display: grid; gap: 20px; }
+section { padding-block: 96px 0; display: grid; gap: 36px; }
+@media (max-width: 720px) { section { padding-block: 64px 0; gap: 28px; } }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 .card { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 20px; display: grid; gap: 8px; align-content: start; min-width: 0; }
 .price { font: 600 1.9rem var(--f-ui); letter-spacing: -0.03em; }
@@ -63,7 +64,7 @@ textarea { resize: vertical; min-height: 120px; }
 fieldset { border: 1px solid var(--rule); border-radius: 12px; padding: 18px; display: grid; gap: 12px; margin: 0; min-width: 0; background: var(--card); }
 legend { font: 600 .98rem var(--f-ui); padding: 0 6px; }
 .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-footer.site { border-top: 1px solid var(--rule); margin-top: 48px; padding-block: 28px 44px; font-size: .88rem; color: var(--soft); display: flex; gap: 10px 22px; flex-wrap: wrap; align-items: center; }
+footer.site { border-top: 1px solid var(--rule); margin-top: 112px; padding-block: 28px 44px; font-size: .88rem; color: var(--soft); display: flex; gap: 10px 22px; flex-wrap: wrap; align-items: center; }
 footer.site a { color: var(--soft); text-decoration: none; }
 footer.site a:hover { color: var(--ink); }
 .err { color: var(--bad); font-weight: 600; }
