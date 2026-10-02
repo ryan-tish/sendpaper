@@ -26,25 +26,41 @@ const CLIENTS: [string, string][] = [
   ["VS Code", "/agents/other-clients"],
 ];
 
+// Same five rows on every card so they compare at a glance (Ryan: "uniform across packages").
+const DETAILS: Record<keyof typeof PRODUCTS, [string, string][]> = {
+  postcard_4x6: [["Size", "4 × 6 in"], ["Printing", "Full-color front"], ["Writing", "Up to 600 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
+  postcard_6x9: [["Size", "6 × 9 in"], ["Printing", "Full-color front"], ["Writing", "Up to 600 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
+  letter: [["Size", "8.5 × 11 in, #10 envelope"], ["Printing", "Black & white, up to 3 pages"], ["Writing", "Up to about 9,000 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
+};
+
 const CSS = `
 .hero-wrap { position: relative; margin-inline: -24px; padding-inline: 24px; overflow: hidden; }
 .hero-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr); gap: 56px; align-items: center; padding-block: 72px 80px; }
+.hero { position: relative; display: grid; grid-template-columns: minmax(0, 640px); padding-block: 88px 96px; }
 .hero .stack { display: grid; gap: 24px; min-width: 0; }
 .stat { display: inline-flex; align-items: center; gap: 8px; justify-self: start; border: 1px solid var(--rule); background: var(--card); border-radius: 8px; padding: 5px 6px 5px 12px; font-size: .86rem; color: var(--soft); text-decoration: none; }
 .stat b { font: 500 .8rem var(--f-mono); color: var(--green); background: var(--green-soft); padding: 3px 8px; border-radius: 5px; }
 .lede { font-size: 1.15rem; color: var(--soft); max-width: 46ch; }
 .lede b { color: var(--ink); font-weight: 600; }
 .ctas { display: flex; gap: 10px; flex-wrap: wrap; }
-.cmd { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; max-width: 560px; }
+.cmd { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; max-width: 600px; }
 .cmd-row { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; border: 1px solid var(--rule); background: var(--tint); border-radius: 10px; padding: 4px; }
 .picker { position: relative; flex: none; }
-.picker select { appearance: none; -webkit-appearance: none; width: auto; font: 500 .82rem var(--f-ui); color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 7px; padding: 6px 28px 6px 10px; cursor: pointer; }
-.picker::after { content: ""; position: absolute; right: 10px; top: 50%; width: 6px; height: 6px; border-right: 1.5px solid var(--soft); border-bottom: 1.5px solid var(--soft); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+.picker-btn { display: inline-flex; align-items: center; gap: 8px; font: 500 .84rem var(--f-ui); color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 7px; padding: 6px 10px; cursor: pointer; }
+.picker-btn:hover { border-color: var(--faint); }
+.picker-btn svg { color: var(--faint); transition: transform .15s; }
+.picker-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.menu { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 196px; margin: 0; padding: 5px; list-style: none; background: var(--card); border: 1px solid var(--rule); border-radius: 10px; box-shadow: 0 16px 40px -18px rgba(13, 21, 18, .35), 0 2px 6px rgba(13, 21, 18, .06); }
+.menu li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 10px; border-radius: 7px; font-size: .88rem; color: var(--ink); cursor: pointer; }
+.menu li.active, .menu li:hover { background: var(--tint); }
+.menu li svg { color: var(--green); visibility: hidden; }
+.menu li[aria-selected="true"] { font-weight: 500; }
+.menu li[aria-selected="true"] svg { visibility: visible; }
 .cmd-row code { flex: 1; border: 0; background: none; padding: 0; font-size: .82rem; white-space: nowrap; overflow-x: auto; min-width: 0; scrollbar-width: none; }
 .copy { flex: none; font: 500 .76rem var(--f-ui); background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
 .cmd a { font-size: .85rem; color: var(--soft); text-decoration: none; }
 .cmd a:hover { color: var(--ink); }
+.showcase { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr); gap: 48px; align-items: center; }
 .shot { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; box-shadow: 0 40px 80px -40px rgba(12, 80, 50, .45), 0 2px 6px rgba(13, 21, 18, .04); overflow: hidden; min-width: 0; }
 .shot .bar { display: flex; align-items: center; gap: 6px; padding: 11px 14px; border-bottom: 1px solid var(--rule); font: .74rem var(--f-mono); color: var(--faint); }
 .shot .bar i { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); }
@@ -64,8 +80,12 @@ const CSS = `
 .works a:hover { color: var(--ink); }
 .section-head { display: grid; gap: 10px; max-width: 640px; }
 .prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
-.prices .card { padding: 24px; }
-.prices .card p { color: var(--soft); font-size: .93rem; }
+.prices .card { padding: 24px; gap: 14px; }
+.prices dl { margin: 0; display: grid; gap: 0; border-top: 1px solid var(--rule); }
+.prices dl div { display: flex; justify-content: space-between; gap: 12px; padding-block: 9px; border-bottom: 1px solid var(--rule); font-size: .9rem; }
+.prices dt { color: var(--faint); }
+.prices dd { margin: 0; text-align: right; color: var(--ink); }
+.prices .btn { justify-content: center; }
 .faq { max-width: 760px; }
 details.q { border-bottom: 1px solid var(--rule); padding-block: 16px; }
 details.q summary { font-weight: 500; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
@@ -73,7 +93,7 @@ details.q summary::-webkit-details-marker { display: none; }
 details.q summary::after { content: "+"; color: var(--faint); font-family: var(--f-mono); }
 details.q[open] summary::after { content: "−"; }
 details.q p { color: var(--soft); margin-top: 10px; }
-@media (max-width: 900px) { .hero { grid-template-columns: minmax(0, 1fr); padding-block: 44px 56px; gap: 36px; } }
+@media (max-width: 900px) { .hero { grid-template-columns: minmax(0, 1fr); padding-block: 48px 56px; } .showcase { grid-template-columns: minmax(0, 1fr); gap: 24px; } }
 `;
 
 
@@ -92,13 +112,23 @@ export function landing() {
           <div class="ctas"><a class="btn" href="${esc(docsUrl("/quickstart"))}">Read the quickstart ›</a><a class="btn alt" href="/send">Send from the web</a></div>
           <div class="cmd">
             <div class="cmd-row">
-              <label class="picker"><span class="sr">Your agent</span><select id="agent">${INSTALL.map((o) => `<option value="${o.id}">${esc(o.label)}</option>`).join("")}</select></label>
+              <div class="picker">
+                <button class="picker-btn" id="agentBtn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Choose your agent"><span id="agentLabel">${esc(INSTALL[0].label)}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+                <ul class="menu" id="agentMenu" role="listbox" tabindex="-1" aria-label="Agents" hidden>${INSTALL.map((o, i) => `<li role="option" id="opt-${o.id}" data-id="${o.id}" aria-selected="${i === 0}">${esc(o.label)}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></li>`).join("")}</ul>
+              </div>
               <code id="cmd">${esc(INSTALL[0].cmd)}</code><button class="copy" type="button" data-copy="cmd">Copy</button>
             </div>
             <a id="setup" href="${esc(docsUrl(INSTALL[0].doc))}">Full setup for Codex in the docs →</a>
           </div>
         </div>
-        <div class="shot" aria-label="Example: an agent sending a postcard">
+      </div>
+    </div>
+
+    <div class="works"><span>Works with</span>${CLIENTS.map(([n, p]) => `<a href="${esc(docsUrl(p))}">${esc(n)}</a>`).join("")}<span>and anything that speaks MCP or REST</span></div>
+
+    <section class="showcase">
+      <div class="section-head"><span class="eyebrow">See it in action</span><h2>One sentence in, a stamped postcard out</h2><p class="soft">Your agent confirms the address and wording, then hands you an exact preview and a checkout link. Nothing prints until you pay.</p></div>
+      <div class="shot" aria-label="Example: an agent sending a postcard">
           <div class="bar"><i></i><i></i><i></i><span>codex · sendpaper</span></div>
           <div class="body">
             <div class="you">Mail my mom a birthday postcard. She's at 12 Oak St, Austin TX 78701. Say I'll call Sunday.</div>
@@ -109,15 +139,14 @@ export function landing() {
                 <div class="links2"><span>Preview</span><span class="pay">Pay ${usd(PRODUCTS.postcard_4x6.cents)}</span></div></div></div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="works"><span>Works with</span>${CLIENTS.map(([n, p]) => `<a href="${esc(docsUrl(p))}">${esc(n)}</a>`).join("")}<span>and anything that speaks MCP or REST</span></div>
+    </section>
 
     <section id="pricing">
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
-      <div class="prices">${Object.values(PRODUCTS)
-        .map((p) => `<div class="card"><span class="eyebrow">${esc(p.size)}</span><h3>${esc(p.name)}</h3><div class="price">${usd(p.cents)}</div><p>${esc(p.blurb)}</p></div>`)
+      <div class="prices">${(Object.keys(PRODUCTS) as (keyof typeof PRODUCTS)[])
+        .map((id) => `<div class="card"><h3>${esc(PRODUCTS[id].name)}</h3><div class="price">${usd(PRODUCTS[id].cents)}</div>
+          <dl>${DETAILS[id].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+          <a class="btn alt" href="/send?product=${id}">Send ${id === "letter" ? "a letter" : "a postcard"}</a></div>`)
         .join("")}</div>
     </section>
 
@@ -134,14 +163,37 @@ export function landing() {
 
     <script>
     const INSTALL = ${JSON.stringify(INSTALL.map((o) => ({ ...o, doc: docsUrl(o.doc) })))};
-    const agent = document.getElementById("agent");
-    function pick(id) {
+    const btn = document.getElementById("agentBtn"), menu = document.getElementById("agentMenu");
+    const opts = [...menu.querySelectorAll('[role="option"]')];
+    let active = 0;
+    function pick(id, save) {
       const o = INSTALL.find((x) => x.id === id) || INSTALL[0];
       document.getElementById("cmd").textContent = o.cmd;
+      document.getElementById("agentLabel").textContent = o.label;
       const a = document.getElementById("setup"); a.href = o.doc; a.textContent = "Full setup for " + o.label + " in the docs →";
+      opts.forEach((li) => li.setAttribute("aria-selected", String(li.dataset.id === o.id)));
+      if (save) try { localStorage.setItem("agent", o.id); } catch {}
     }
-    agent.addEventListener("change", () => { pick(agent.value); try { localStorage.setItem("agent", agent.value); } catch {} });
-    try { const saved = localStorage.getItem("agent"); if (saved && INSTALL.some((x) => x.id === saved)) { agent.value = saved; pick(saved); } } catch {}
+    function setActive(i) {
+      active = (i + opts.length) % opts.length;
+      opts.forEach((li, j) => li.classList.toggle("active", j === active));
+      menu.setAttribute("aria-activedescendant", opts[active].id);
+    }
+    function open() { menu.hidden = false; btn.setAttribute("aria-expanded", "true"); setActive(Math.max(0, opts.findIndex((li) => li.getAttribute("aria-selected") === "true"))); menu.focus(); }
+    function close(focusBtn) { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); if (focusBtn) btn.focus(); }
+    btn.addEventListener("click", () => (menu.hidden ? open() : close()));
+    btn.addEventListener("keydown", (e) => { if (["ArrowDown", "ArrowUp"].includes(e.key)) { e.preventDefault(); open(); } });
+    menu.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") { e.preventDefault(); setActive(active + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(active - 1); }
+      else if (e.key === "Home") { e.preventDefault(); setActive(0); }
+      else if (e.key === "End") { e.preventDefault(); setActive(opts.length - 1); }
+      else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(opts[active].dataset.id, true); close(true); }
+      else if (e.key === "Escape" || e.key === "Tab") close(e.key === "Escape");
+    });
+    opts.forEach((li, i) => { li.addEventListener("mousemove", () => setActive(i)); li.addEventListener("click", () => { pick(li.dataset.id, true); close(true); }); });
+    document.addEventListener("click", (e) => { if (!menu.hidden && !e.target.closest(".picker")) close(); });
+    try { const saved = localStorage.getItem("agent"); if (saved) pick(saved); } catch {}
     document.querySelectorAll(".copy").forEach((b) => b.addEventListener("click", async () => {
       const el = document.getElementById(b.dataset.copy);
       try { await navigator.clipboard.writeText(el.textContent); b.textContent = "Copied"; }
