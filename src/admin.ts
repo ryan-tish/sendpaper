@@ -4,6 +4,7 @@ import { PRODUCTS, env } from "./config.ts";
 import { page } from "./layout.ts";
 import { getOrder, listOrders, setStatus, STATUSES, type Status } from "./orders.ts";
 import { stripe } from "./payments.ts";
+import { postgridMode, printProofUrl, sendToPrint, syncPrint } from "./fulfill.ts";
 import { addressBlock, esc, printSheet } from "./render.ts";
 
 // The operator's queue: paid orders get reviewed, printed (or sent to a print partner), then marked mailed.
@@ -48,8 +49,22 @@ admin.get("/", async (req, res) => {
 });
 
 admin.get("/orders/:id", async (req, res) => {
-  const o = await getOrder(String(req.params.id));
+  let o = await getOrder(String(req.params.id));
   if (!o) return res.status(404).send("No such order");
+  if (o.print_id) o = (await syncPrint(o.id).catch(() => o)) ?? o;
+  const mode = postgridMode();
+  const proof = o.print_id ? await printProofUrl(o) : null;
+  const printPanel = `<div class="card" style="gap:10px">
+    <b>Print with PostGrid <span class="pill${mode === "live" ? "" : " ok"}">${mode === "live" ? "LIVE · mails for real" : mode === "test" ? "test mode · never mailed" : "not configured"}</span></b>
+    ${o.print_id
+      ? `<p>Job <code>${esc(o.print_id)}</code> · status <b>${esc(o.print_status ?? "?")}</b>${proof ? ` · <a href="${esc(proof)}" target="_blank" rel="noopener">PDF proof</a>` : ""}</p>
+         ${o.print_error ? `<p class="err">PostGrid cancelled it: ${esc(o.print_error)}</p>` : ""}
+         <form method="post" action="/admin/orders/${o.id}/print-sync"><button class="btn alt">Refresh status</button></form>`
+      : o.status === "paid" && mode !== "off"
+        ? `<p class="soft">Check the print sheet first. This sends the order to PostGrid${mode === "live" ? " and it will be printed and mailed" : " in test mode (a PDF proof, nothing mailed)"}.</p>
+           <form method="post" action="/admin/orders/${o.id}/print-send"><button class="btn">Approve &amp; send to print</button></form>`
+        : `<p class="soft">${o.status === "paid" ? "Set POSTGRID_API_KEY to enable." : `Available once the order is paid (now ${esc(o.status)}).`}</p>`}
+  </div>`;
   const btn = (s: Status, label: string, extra = "") =>
     `<form method="post" action="/admin/orders/${o.id}/status" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
       <input type="hidden" name="status" value="${s}">${extra}<button class="btn${s === "refunded" || s === "cancelled" ? " alt" : ""}">${label}</button></form>`;
@@ -59,7 +74,8 @@ admin.get("/orders/:id", async (req, res) => {
       `<section><h1>${esc(o.id)}</h1>
       <p><b>${esc(PRODUCTS[o.product].name)}</b> · ${esc(o.status)} · $${(o.price_cents / 100).toFixed(2)} · ${esc(o.customer_email ?? "no email")} · via ${esc(o.source)} ${esc(o.client ?? "")}</p>
       <div class="grid"><div class="card"><b>To</b>${addressBlock(o.to_address)}</div><div class="card"><b>From</b>${addressBlock(o.from_address)}</div></div>
-      <p><a class="btn" href="/admin/orders/${o.id}/print" target="_blank">Open print sheet</a></p>
+      <p><a class="btn alt" href="/admin/orders/${o.id}/print" target="_blank">Open print sheet</a></p>
+      ${printPanel}
       <div style="display:grid;gap:12px">
         ${btn("printing", "Mark printing")}
         ${btn("mailed", "Mark mailed", `<label style="flex:1">Note (e.g. partner job id)<input name="note"></label>`)}
@@ -71,6 +87,22 @@ admin.get("/orders/:id", async (req, res) => {
       { noindex: true },
     ),
   );
+});
+
+admin.post("/orders/:id/print-send", async (req, res) => {
+  const o = await getOrder(String(req.params.id));
+  if (!o) return res.status(404).send("No such order");
+  try {
+    await sendToPrint(o);
+    res.redirect(303, `/admin/orders/${o.id}`);
+  } catch (e) {
+    res.status(409).send(page("Not sent", `<section><h1>Not sent to print</h1><p class="err">${esc(e instanceof Error ? e.message : String(e))}</p><p><a href="/admin/orders/${o.id}">Back to order</a></p></section>`, { noindex: true }));
+  }
+});
+
+admin.post("/orders/:id/print-sync", async (req, res) => {
+  await syncPrint(String(req.params.id)).catch((e) => console.error("print sync", e));
+  res.redirect(303, `/admin/orders/${req.params.id}`);
 });
 
 admin.get("/orders/:id/print", async (req, res) => {

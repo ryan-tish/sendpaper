@@ -32,6 +32,10 @@ export async function migrate() {
       mailed_at        timestamptz
     );
     CREATE INDEX IF NOT EXISTS orders_status_idx ON orders (status, created_at DESC);
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS print_provider text;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS print_id text;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS print_status text;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS print_error text;
 
     CREATE TABLE IF NOT EXISTS images (
       id          text PRIMARY KEY,

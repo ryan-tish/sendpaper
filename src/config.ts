@@ -18,6 +18,8 @@ export const env = {
   notifyFrom: process.env.NOTIFY_FROM ?? "Sendpaper <onboarding@resend.dev>",
   // Our Stripe business profile network id (profile_…). Agents scope shared payment tokens to it.
   stripeNetworkId: process.env.STRIPE_NETWORK_ID ?? "",
+  // PostGrid print & mail. test_sk_… renders proofs but never mails; live_sk_… PRINTS AND MAILS FOR REAL.
+  postgridKey: process.env.POSTGRID_API_KEY ?? "",
 };
 
 export type ProductId = "postcard_4x6" | "postcard_6x9" | "letter";

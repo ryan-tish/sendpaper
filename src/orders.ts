@@ -102,6 +102,10 @@ export type OrderRow = {
   created_at: Date;
   paid_at: Date | null;
   mailed_at: Date | null;
+  print_provider: string | null;
+  print_id: string | null;
+  print_status: string | null;
+  print_error: string | null;
 };
 
 type CreateInput = {

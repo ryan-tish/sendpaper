@@ -6,6 +6,7 @@ import { migrate, pool } from "./db.ts";
 import { docs } from "./docs.ts";
 import { handleMcp } from "./mcp.ts";
 import { handleWebhook } from "./payments.ts";
+import { startPrintSync } from "./fulfill.ts";
 import { web } from "./web.ts";
 
 const app = express();
@@ -80,4 +81,5 @@ app.use((err: unknown, req: express.Request, res: express.Response, _next: expre
 });
 
 await migrate();
+startPrintSync();
 app.listen(env.port, () => console.log(`listening on ${env.port} (${BASE_URL})`));
