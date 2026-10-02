@@ -28,7 +28,7 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 va
 .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 24px; }
 header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--rule); }
 header.site nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-block: 14px; flex-wrap: wrap; }
-.logo { display: inline-flex; align-items: center; gap: 9px; font: 700 1.12rem var(--f-ui); letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
+.logo { display: inline-flex; align-items: center; gap: 8px; font: 700 1.12rem var(--f-ui); letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
 nav .links { display: flex; gap: 26px; align-items: center; font-size: .93rem; }
 nav .links a { color: var(--soft); text-decoration: none; font-weight: 500; }
 nav .links a:hover { color: var(--ink); }
@@ -75,7 +75,8 @@ th { font-weight: 500; color: var(--soft); }
 @media (max-width: 720px) { nav .links a:not(.btn) { display: none; } }
 `;
 
-export const LOGO_MARK = `<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3.2" fill="var(--green)"/><path d="M3 7l9 6 9-6" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+// Drawn on a 20px grid with whole-pixel edges and a white flap so it stays crisp at 1x (the lime-on-green version looked blurry).
+export const LOGO_MARK = `<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" shape-rendering="geometricPrecision"><rect x="1" y="4" width="18" height="12" rx="2.5" fill="var(--green)"/><path d="M3 6.5l7 4.75 7-4.75" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 export function docsUrl(path = "") {
   return DOCS_URL ? `${DOCS_URL}${path}` : "/docs";
