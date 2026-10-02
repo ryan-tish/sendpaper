@@ -6,7 +6,7 @@ import type { Address, OrderRow } from "./orders.ts";
 export const esc = (s: unknown) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-const THEMES: Record<string, [string, string]> = {
+export const THEMES: Record<string, [string, string]> = {
   ink: ["#1d2433", "#f4efe6"],
   sky: ["#2f6fb3", "#ffffff"],
   sunset: ["#e2603f", "#fff6e8"],

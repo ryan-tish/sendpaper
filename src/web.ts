@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { BASE_URL, BRAND, DOCS_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
 import { pool } from "./db.ts";
 import { landing } from "./landing.ts";
+import { sendPage } from "./send.ts";
 import { page } from "./layout.ts";
 import { getOrder, publicOrder } from "./orders.ts";
 import { checkoutUrlFor, confirmFromRedirect } from "./payments.ts";
@@ -57,76 +58,7 @@ web.get("/agents", (_req, res) => {
 });
 
 web.get("/send", (req, res) => {
-  const initial = String(req.query.product ?? "postcard_4x6");
-  const options = Object.entries(PRODUCTS)
-    .map(([id, p]) => `<option value="${id}"${id === initial ? " selected" : ""}>${esc(p.name)} — ${usd(p.cents)}</option>`)
-    .join("");
-  const addr = (prefix: string, title: string) => `<fieldset><legend>${title}</legend>
-    <label>Full name<input id="${prefix}_name" required maxlength="60" autocomplete="${prefix === "from" ? "name" : "off"}"></label>
-    <label>Street address<input id="${prefix}_line1" required maxlength="64"></label>
-    <label>Apt, suite (optional)<input id="${prefix}_line2" maxlength="64"></label>
-    <div class="row"><label>City<input id="${prefix}_city" required maxlength="40"></label>
-    <label>State<input id="${prefix}_state" required maxlength="2" placeholder="CA"></label>
-    <label>ZIP<input id="${prefix}_zip" required maxlength="10" inputmode="numeric"></label></div></fieldset>`;
-  res.send(
-    page(
-      `Send mail — ${BRAND}`,
-      `<section><h1>Send a postcard or letter</h1><p class="soft">US addresses only. You'll see the exact print preview before you pay.</p>
-      <form id="f" novalidate style="display:grid;gap:18px;max-width:720px">
-        <label>What are you sending?<select id="product">${options}</select></label>
-        <fieldset id="pc"><legend>Postcard</legend>
-          <label>Front photo (JPG/PNG, optional)<input id="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
-          <label>…or big text for the front<input id="headline" maxlength="${LIMITS.postcardHeadline}" placeholder="Greetings from Lisbon!"></label>
-          <label>Text color theme<select id="theme"><option value="ink">Ink</option><option value="sky">Sky</option><option value="sunset">Sunset</option><option value="forest">Forest</option></select></label>
-          <label>Message on the back<textarea id="message" maxlength="${LIMITS.postcardMessage}" placeholder="Wish you were here…"></textarea></label>
-        </fieldset>
-        <fieldset id="lt" hidden><legend>Letter</legend>
-          <label>Letter text<textarea id="body" maxlength="${LIMITS.letterBody}" style="min-height:260px" placeholder="Dear …"></textarea></label>
-          <label>Typeface<select id="font"><option value="serif">Serif</option><option value="sans">Sans-serif</option></select></label>
-        </fieldset>
-        ${addr("to", "Send to")}
-        ${addr("from", "From (return address)")}
-        <label>Your email (receipt and updates)<input id="email" type="email" required autocomplete="email"></label>
-        <label style="display:flex;gap:10px;align-items:start;font-weight:400"><input id="ok" type="checkbox" style="width:auto;margin-top:5px">
-          <span>This mail isn't threatening, harassing, fraudulent or obscene, and I'm OK with ${esc(BRAND)} reviewing it before printing. <a href="/content-policy" target="_blank">Content policy</a></span></label>
-        <p id="err" class="err" role="alert"></p>
-        <button class="btn" id="go" type="submit" style="justify-self:start">Preview and pay</button>
-      </form></section>
-      <script>
-      const $ = (id) => document.getElementById(id);
-      const sync = () => { const l = $("product").value === "letter"; $("lt").hidden = !l; $("pc").hidden = l; };
-      $("product").addEventListener("change", sync); sync();
-      const addr = (p) => Object.fromEntries(["name","line1","line2","city","state","zip"].map(k => [k, $(p+"_"+k).value.trim()]).filter(([,v]) => v));
-      $("f").addEventListener("submit", async (e) => {
-        e.preventDefault(); $("err").textContent = "";
-        if (!$("ok").checked) { $("err").textContent = "Please confirm the content policy."; return; }
-        $("go").disabled = true; $("go").textContent = "Working…";
-        try {
-          const product = $("product").value;
-          let body, url;
-          if (product === "letter") {
-            url = "/v1/letters"; body = { content: { body: $("body").value, font: $("font").value } };
-          } else {
-            url = "/v1/postcards"; const content = { message: $("message").value, front_theme: $("theme").value };
-            if ($("headline").value.trim()) content.front_headline = $("headline").value.trim();
-            const file = $("photo").files[0];
-            if (file) {
-              if (file.size > ${LIMITS.imageBytes}) throw new Error("That photo is over 6 MB. Try a smaller one.");
-              const up = await fetch("/v1/images", { method: "POST", headers: { "Content-Type": file.type }, body: file });
-              const uj = await up.json(); if (!up.ok) throw new Error(uj.error.message); content.front_image_url = uj.url;
-            }
-            body = { size: product === "postcard_6x9" ? "6x9" : "4x6", content };
-          }
-          Object.assign(body, { to: addr("to"), from: addr("from"), customer_email: $("email").value.trim() });
-          const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "X-Client": "web" }, body: JSON.stringify(body) });
-          const j = await r.json();
-          if (!r.ok) throw new Error(j.error.fields ? j.error.fields.map(f => (f.field || "form") + ": " + f.message).join(" · ") : j.error.message);
-          location.href = "/o/" + j.id;
-        } catch (err) { $("err").textContent = err.message; $("go").disabled = false; $("go").textContent = "Preview and pay"; }
-      });
-      </script>`,
-    ),
-  );
+  res.send(sendPage(String(req.query.product ?? "")));
 });
 
 web.get("/o/:id", async (req, res) => {

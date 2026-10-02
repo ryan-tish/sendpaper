@@ -1,6 +1,7 @@
 import { BRAND, DOCS_URL, SUPPORT_EMAIL } from "./config.ts";
 import { esc } from "./render.ts";
 
+// Light is the default for everyone (Ryan, 2026-10-02); dark is opt-in via the nav toggle, remembered in localStorage.
 // "Meadow" (chosen 2026-10-02, after Mintlify + Cal.com): white space, one near-black primary button,
 // green reserved for accents and success, Geist throughout with Geist Mono for anything an agent would type.
 const CSS = `
@@ -12,11 +13,6 @@ const CSS = `
   --f-ui: "Geist", system-ui, -apple-system, sans-serif;
   --f-mono: "Geist Mono", ui-monospace, Menlo, monospace;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --paper: #0b100e; --tint: #101714; --card: #121a16; --ink: #e6ede9; --soft: #a1aea7; --faint: #6f7c75; --rule: #222c27;
-  --green: #4fd1a1; --green-soft: #12291f; --green-line: #1d3d2f; --lime: #a6e07e;
-  --ok: #4fd1a1; --ok-bg: #12291f; --warn: #f0c071; --warn-bg: #33270f; --bad: #f2a097;
-  --btn-bg: #e6ede9; --btn-fg: #0b100e; color-scheme: dark } }
 :root[data-theme="dark"] {
   --paper: #0b100e; --tint: #101714; --card: #121a16; --ink: #e6ede9; --soft: #a1aea7; --faint: #6f7c75; --rule: #222c27;
   --green: #4fd1a1; --green-soft: #12291f; --green-line: #1d3d2f; --lime: #a6e07e;
@@ -24,6 +20,10 @@ const CSS = `
   --btn-bg: #e6ede9; --btn-fg: #0b100e; color-scheme: dark }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.theme { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--rule); background: var(--card); color: var(--soft); cursor: pointer; }
+.theme:hover { color: var(--ink); }
+.theme .moon, :root[data-theme="dark"] .theme .sun { display: block; } .theme .sun, :root[data-theme="dark"] .theme .moon { display: none; }
 body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 var(--f-ui); -webkit-font-smoothing: antialiased; }
 .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 24px; }
 header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--rule); }
@@ -89,13 +89,22 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<script>try { if (localStorage.getItem("theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch {}</script>
 <style>${CSS}</style></head><body>
 <header class="site"><div class="wrap"><nav>
   <a class="logo" href="/">${LOGO_MARK}${esc(BRAND.toLowerCase())}</a>
-  <div class="links"><a href="${docsUrl()}">Docs</a><a href="/#pricing">Pricing</a><a href="/send">Send from the web</a><a class="btn" href="${docsUrl("/quickstart")}">Connect your agent</a></div>
+  <div class="links"><a href="${docsUrl()}">Docs</a><a href="/#pricing">Pricing</a><a href="/send">Send from the web</a><button class="theme" type="button" id="theme" aria-label="Toggle dark mode"><svg class="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><a class="btn" href="${docsUrl("/quickstart")}">Connect your agent</a></div>
 </nav></div></header>
 <div class="wrap">
 ${body}
 <footer class="site"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="${docsUrl()}">Docs</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a><span>Support: ${esc(SUPPORT_EMAIL)}</span></footer>
-</div></body></html>`;
+</div>
+<script>
+document.getElementById("theme").addEventListener("click", () => {
+  const dark = document.documentElement.dataset.theme !== "dark";
+  if (dark) document.documentElement.dataset.theme = "dark"; else delete document.documentElement.dataset.theme;
+  try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch {}
+  dispatchEvent(new Event("themechange"));
+});
+</script></body></html>`;
 }

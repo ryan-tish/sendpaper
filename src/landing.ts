@@ -5,7 +5,16 @@ import { esc } from "./render.ts";
 const MCP_URL = `${BASE_URL}/mcp`;
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 const slug = BRAND.toLowerCase();
-const COMMAND = `codex mcp add ${slug} --url ${MCP_URL}`;
+
+// One-line install per client; the picker swaps the command and the "full setup" link.
+const INSTALL: { id: string; label: string; cmd: string; doc: string }[] = [
+  { id: "codex", label: "Codex", cmd: `codex mcp add ${slug} --url ${MCP_URL}`, doc: "/agents/codex" },
+  { id: "claude", label: "Claude Code", cmd: `claude mcp add --transport http ${slug} ${MCP_URL}`, doc: "/agents/claude" },
+  { id: "muse", label: "Muse Code", cmd: `"mcp_servers": { "${slug}": { "transport": "streamable_http", "url": "${MCP_URL}" } }`, doc: "/agents/muse-code" },
+  { id: "cursor", label: "Cursor", cmd: `{ "mcpServers": { "${slug}": { "url": "${MCP_URL}" } } }`, doc: "/agents/other-clients" },
+  { id: "vscode", label: "VS Code", cmd: `code --add-mcp '{"name":"${slug}","type":"http","url":"${MCP_URL}"}'`, doc: "/agents/other-clients" },
+  { id: "url", label: "Any MCP client", cmd: MCP_URL, doc: "/agents/other-clients" },
+];
 
 // Setup lives in the docs (one source of truth); the homepage keeps one copyable command and these links.
 const CLIENTS: [string, string][] = [
@@ -27,9 +36,12 @@ const CSS = `
 .lede { font-size: 1.15rem; color: var(--soft); max-width: 46ch; }
 .lede b { color: var(--ink); font-weight: 600; }
 .ctas { display: flex; gap: 10px; flex-wrap: wrap; }
-.cmd { display: grid; gap: 8px; justify-items: start; min-width: 0; }
-.cmd-row { display: flex; align-items: center; gap: 6px; max-width: 100%; border: 1px solid var(--rule); background: var(--tint); border-radius: 8px; padding: 4px 4px 4px 12px; }
-.cmd-row code { border: 0; background: none; padding: 0; font-size: .82rem; white-space: nowrap; overflow-x: auto; min-width: 0; }
+.cmd { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; max-width: 560px; }
+.cmd-row { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; border: 1px solid var(--rule); background: var(--tint); border-radius: 10px; padding: 4px; }
+.picker { position: relative; flex: none; }
+.picker select { appearance: none; -webkit-appearance: none; width: auto; font: 500 .82rem var(--f-ui); color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 7px; padding: 6px 28px 6px 10px; cursor: pointer; }
+.picker::after { content: ""; position: absolute; right: 10px; top: 50%; width: 6px; height: 6px; border-right: 1.5px solid var(--soft); border-bottom: 1.5px solid var(--soft); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+.cmd-row code { flex: 1; border: 0; background: none; padding: 0; font-size: .82rem; white-space: nowrap; overflow-x: auto; min-width: 0; scrollbar-width: none; }
 .copy { flex: none; font: 500 .76rem var(--f-ui); background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
 .cmd a { font-size: .85rem; color: var(--soft); text-decoration: none; }
 .cmd a:hover { color: var(--ink); }
@@ -51,19 +63,9 @@ const CSS = `
 .works a { color: var(--soft); text-decoration: none; font-weight: 500; }
 .works a:hover { color: var(--ink); }
 .section-head { display: grid; gap: 10px; max-width: 640px; }
-.feat { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-.feat .card { padding: 22px; gap: 10px; }
-.feat .ic { width: 34px; height: 34px; border-radius: 9px; background: var(--green-soft); border: 1px solid var(--green-line); display: grid; place-items: center; }
-.feat p { color: var(--soft); font-size: .95rem; }
-.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; background: var(--card); }
-.flow > div { padding: 22px; border-right: 1px solid var(--rule); display: grid; gap: 8px; align-content: start; }
-.flow > div:last-child { border-right: 0; }
-.flow .n { font: 500 .74rem var(--f-mono); color: var(--green); letter-spacing: .06em; }
-.flow p { color: var(--soft); font-size: .93rem; }
 .prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 .prices .card { padding: 24px; }
 .prices .card p { color: var(--soft); font-size: .93rem; }
-.band { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; background: var(--tint); border: 1px solid var(--rule); border-radius: 16px; padding: 28px; }
 .faq { max-width: 760px; }
 details.q { border-bottom: 1px solid var(--rule); padding-block: 16px; }
 details.q summary { font-weight: 500; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
@@ -71,11 +73,9 @@ details.q summary::-webkit-details-marker { display: none; }
 details.q summary::after { content: "+"; color: var(--faint); font-family: var(--f-mono); }
 details.q[open] summary::after { content: "−"; }
 details.q p { color: var(--soft); margin-top: 10px; }
-@media (max-width: 900px) { .hero { grid-template-columns: minmax(0, 1fr); padding-block: 44px 56px; gap: 36px; } .flow > div { border-right: 0; border-bottom: 1px solid var(--rule); } .flow > div:last-child { border-bottom: 0; } }
+@media (max-width: 900px) { .hero { grid-template-columns: minmax(0, 1fr); padding-block: 44px 56px; gap: 36px; } }
 `;
 
-const icon = (d: string) =>
-  `<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg></span>`;
 
 export function landing() {
   const docs = docsUrl();
@@ -91,8 +91,11 @@ export function landing() {
           <p class="lede">Real postcards and letters from <b>Codex</b>, <b>Muse</b> and <b>Claude</b>. Your agent writes it, you approve and pay, and we print and mail it.</p>
           <div class="ctas"><a class="btn" href="${esc(docsUrl("/quickstart"))}">Read the quickstart ›</a><a class="btn alt" href="/send">Send from the web</a></div>
           <div class="cmd">
-            <div class="cmd-row"><code id="cmd">${esc(COMMAND)}</code><button class="copy" type="button" data-copy="cmd">Copy</button></div>
-            <a href="${esc(docsUrl("/quickstart"))}">Setup for Claude, Muse Code and other clients in the docs →</a>
+            <div class="cmd-row">
+              <label class="picker"><span class="sr">Your agent</span><select id="agent">${INSTALL.map((o) => `<option value="${o.id}">${esc(o.label)}</option>`).join("")}</select></label>
+              <code id="cmd">${esc(INSTALL[0].cmd)}</code><button class="copy" type="button" data-copy="cmd">Copy</button>
+            </div>
+            <a id="setup" href="${esc(docsUrl(INSTALL[0].doc))}">Full setup for Codex in the docs →</a>
           </div>
         </div>
         <div class="shot" aria-label="Example: an agent sending a postcard">
@@ -111,34 +114,12 @@ export function landing() {
 
     <div class="works"><span>Works with</span>${CLIENTS.map(([n, p]) => `<a href="${esc(docsUrl(p))}">${esc(n)}</a>`).join("")}<span>and anything that speaks MCP or REST</span></div>
 
-    <section>
-      <div class="section-head"><span class="eyebrow">Safe by design</span><h2>Built to hand to an agent</h2></div>
-      <div class="feat">
-        <div class="card">${icon('<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>')}<h3>A person pays every order</h3><p>Each order returns a checkout link. There's no stored card or API key, so an agent can draft mail but never spend money on its own.</p></div>
-        <div class="card">${icon('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>')}<h3>The preview is the print</h3><p>Every order has a preview link showing exactly what will be printed and mailed, addresses included.</p></div>
-        <div class="card">${icon('<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/>')}<h3>Reviewed before printing</h3><p>A person checks every piece. Threatening, harassing or fraudulent mail is refused and refunded.</p></div>
-        <div class="card">${icon('<path d="M4 17l6-6-6-6M12 19h8"/>')}<h3>Built for tool calls</h3><p>Idempotency keys make retries safe, and validation errors name every bad field so the agent can fix them in one pass.</p></div>
-      </div>
-    </section>
-
-    <section>
-      <div class="section-head"><span class="eyebrow">How it works</span><h2>What happens after the tool call</h2></div>
-      <div class="flow">
-        <div><span class="n">01 · AGENT</span><h3>Drafts and confirms</h3><p>Calls <code>create_postcard</code> or <code>create_letter</code> after checking the address and wording with you.</p></div>
-        <div><span class="n">02 · YOU</span><h3>Preview and pay</h3><p>Open the preview, then pay with Stripe. Unpaid orders are never mailed.</p></div>
-        <div><span class="n">03 · US</span><h3>Review and print</h3><p>A person reviews it and prints it, usually within one business day.</p></div>
-        <div><span class="n">04 · USPS</span><h3>Delivered</h3><p>First-Class, typically 3–5 business days. Your agent can check with <code>get_order</code>.</p></div>
-      </div>
-    </section>
-
     <section id="pricing">
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
       <div class="prices">${Object.values(PRODUCTS)
         .map((p) => `<div class="card"><span class="eyebrow">${esc(p.size)}</span><h3>${esc(p.name)}</h3><div class="price">${usd(p.cents)}</div><p>${esc(p.blurb)}</p></div>`)
         .join("")}</div>
     </section>
-
-    <section><div class="band"><div style="display:grid;gap:6px"><h2>Not using an agent?</h2><p class="soft">Write a postcard or letter in your browser. Same preview, same price.</p></div><a class="btn" href="/send">Send from the web</a></div></section>
 
     <section class="faq">
       <div class="section-head"><span class="eyebrow">FAQ</span><h2>Questions</h2></div>
@@ -152,6 +133,15 @@ export function landing() {
     </section>
 
     <script>
+    const INSTALL = ${JSON.stringify(INSTALL.map((o) => ({ ...o, doc: docsUrl(o.doc) })))};
+    const agent = document.getElementById("agent");
+    function pick(id) {
+      const o = INSTALL.find((x) => x.id === id) || INSTALL[0];
+      document.getElementById("cmd").textContent = o.cmd;
+      const a = document.getElementById("setup"); a.href = o.doc; a.textContent = "Full setup for " + o.label + " in the docs →";
+    }
+    agent.addEventListener("change", () => { pick(agent.value); try { localStorage.setItem("agent", agent.value); } catch {} });
+    try { const saved = localStorage.getItem("agent"); if (saved && INSTALL.some((x) => x.id === saved)) { agent.value = saved; pick(saved); } } catch {}
     document.querySelectorAll(".copy").forEach((b) => b.addEventListener("click", async () => {
       const el = document.getElementById(b.dataset.copy);
       try { await navigator.clipboard.writeText(el.textContent); b.textContent = "Copied"; }
@@ -162,11 +152,11 @@ export function landing() {
     (function () {
       const c = document.getElementById("lines");
       if (!c || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      const dark = () => matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light";
+      const dark = () => document.documentElement.dataset.theme === "dark";
       function draw() {
         const r = c.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
         c.width = r.width * dpr; c.height = r.height * dpr;
-        const x = c.getContext("2d"); x.scale(dpr, dpr);
+        const x = c.getContext("2d"); x.scale(dpr, dpr); x.clearRect(0, 0, r.width, r.height);
         const W = r.width, H = r.height, a = dark() ? 0.5 : 0.75;
         for (let i = 0; i < 64; i++) {
           const t = i / 63;
@@ -180,7 +170,7 @@ export function landing() {
           x.strokeStyle = g; x.lineWidth = 1; x.stroke();
         }
       }
-      draw(); addEventListener("resize", draw);
+      draw(); addEventListener("resize", draw); addEventListener("themechange", draw);
     })();
     </script>`,
     {

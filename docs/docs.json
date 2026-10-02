@@ -173,7 +173,7 @@
     }
   },
   "appearance": {
-    "default": "system"
+    "default": "light"
   },
   "icons": {
     "library": "lucide"
