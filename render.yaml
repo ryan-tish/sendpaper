@@ -29,6 +29,6 @@ services:
 
 databases:
   - name: sendpaper-db
-    plan: free  # EXPIRES 2026-10-31 — upgrade to basic-256mb before then or lose all orders
+    plan: basic-256mb  # upgraded from free 2026-10-02 (free expired 2026-10-31)
     region: oregon
     databaseName: sendpaper
