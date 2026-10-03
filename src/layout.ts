@@ -1,4 +1,5 @@
 import { BRAND, DOCS_URL, SUPPORT_EMAIL } from "./config.ts";
+import { readFileSync } from "node:fs";
 import { esc } from "./render.ts";
 
 // Light is the default for everyone (Ryan, 2026-10-02); dark is opt-in via the nav toggle, remembered in localStorage.
@@ -76,7 +77,13 @@ th { font-weight: 500; color: var(--soft); }
 `;
 
 // Drawn on a 20px grid with whole-pixel edges and a white flap so it stays crisp at 1x (the lime-on-green version looked blurry).
-export const LOGO_MARK = `<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" shape-rendering="geometricPrecision"><rect x="1" y="4" width="18" height="12" rx="2.5" fill="var(--green)"/><path d="M3 6.5l7 4.75 7-4.75" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+// The Mintlify wordmark (docs/logo/light.svg: Geist 700 as paths) so site and docs match exactly.
+// Its fixed colors become theme tokens, so one inline SVG serves light and dark.
+const LOGO_FULL = readFileSync(new URL("../docs/logo/light.svg", import.meta.url), "utf8")
+  .replace('<svg xmlns="http://www.w3.org/2000/svg" width="142" height="28"', '<svg xmlns="http://www.w3.org/2000/svg" height="26" width="132" role="img" aria-label="sendpaper"')
+  .replace('fill="#0F7A52"', 'fill="var(--green)"')
+  .replace('stroke="#FFFFFF"', 'stroke="var(--btn-fg)"')
+  .replace('fill="#0D1512"', 'fill="var(--ink)"');
 
 export function docsUrl(path = "") {
   return DOCS_URL ? `${DOCS_URL}${path}` : "/docs";
@@ -97,7 +104,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 <script>try { if (localStorage.getItem("theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch {}</script>
 <style>${CSS}</style></head><body>
 <header class="site"><div class="wrap"><nav>
-  <a class="logo" href="/">${LOGO_MARK}${esc(BRAND.toLowerCase())}</a>
+  <a class="logo" href="/">${LOGO_FULL}</a>
   <div class="links"><a href="/use-cases">Use cases</a><a href="${docsUrl()}">Docs</a><a href="/#pricing">Pricing</a><a href="/send">Send from the web</a><button class="theme" type="button" id="theme" aria-label="Toggle dark mode"><svg class="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><a class="btn" href="${docsUrl("/quickstart")}">Connect your agent</a></div>
 </nav></div></header>
 <div class="wrap">

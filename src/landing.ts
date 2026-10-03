@@ -7,13 +7,13 @@ const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 const slug = BRAND.toLowerCase();
 
 // One-line install per client; the picker swaps the command and the "full setup" link.
-const INSTALL: { id: string; label: string; cmd: string; doc: string; what: string }[] = [
-  { id: "codex", label: "Codex", cmd: `codex mcp add ${slug} --url ${MCP_URL}`, doc: "/agents/codex", what: "Run this once in your terminal. It adds Sendpaper to Codex, and from then on you can just ask Codex to mail something." },
-  { id: "claude", label: "Claude Code", cmd: `claude mcp add --transport http ${slug} ${MCP_URL}`, doc: "/agents/claude", what: "Run this once in your terminal. It adds Sendpaper to Claude Code, and from then on you can just ask Claude to mail something." },
-  { id: "muse", label: "Muse Code", cmd: `"mcp_servers": { "${slug}": { "transport": "streamable_http", "url": "${MCP_URL}" } }`, doc: "/agents/muse-code", what: "Paste this into your Muse Code settings. It adds Sendpaper to Muse, and from then on you can just ask Muse to mail something." },
-  { id: "cursor", label: "Cursor", cmd: `{ "mcpServers": { "${slug}": { "url": "${MCP_URL}" } } }`, doc: "/agents/other-clients", what: "Add this to ~/.cursor/mcp.json. It gives Cursor's agent the Sendpaper tools for pricing, creating, paying and tracking mail." },
-  { id: "vscode", label: "VS Code", cmd: `code --add-mcp '{"name":"${slug}","type":"http","url":"${MCP_URL}"}'`, doc: "/agents/other-clients", what: "Run this once. It adds Sendpaper to VS Code's agent mode, and from then on you can just ask it to mail something." },
-  { id: "url", label: "Any MCP client", cmd: MCP_URL, doc: "/agents/other-clients", what: "Add this URL as a remote MCP server (Streamable HTTP, no login). Your agent gets the tools to price, create, pay for and track mail." },
+const INSTALL: { id: string; label: string; cmd: string; doc: string }[] = [
+  { id: "codex", label: "Codex", cmd: `codex mcp add ${slug} --url ${MCP_URL}`, doc: "/agents/codex" },
+  { id: "claude", label: "Claude Code", cmd: `claude mcp add --transport http ${slug} ${MCP_URL}`, doc: "/agents/claude" },
+  { id: "muse", label: "Muse Code", cmd: `"mcp_servers": { "${slug}": { "transport": "streamable_http", "url": "${MCP_URL}" } }`, doc: "/agents/muse-code" },
+  { id: "cursor", label: "Cursor", cmd: `{ "mcpServers": { "${slug}": { "url": "${MCP_URL}" } } }`, doc: "/agents/other-clients" },
+  { id: "vscode", label: "VS Code", cmd: `code --add-mcp '{"name":"${slug}","type":"http","url":"${MCP_URL}"}'`, doc: "/agents/other-clients" },
+  { id: "url", label: "Any MCP client", cmd: MCP_URL, doc: "/agents/other-clients" },
 ];
 
 // Setup lives in the docs (one source of truth); the homepage keeps one copyable command and these links.
@@ -25,6 +25,8 @@ const CLIENTS: [string, string][] = [
   ["Cursor", "/agents/other-clients"],
   ["VS Code", "/agents/other-clients"],
 ];
+
+const SIZE: Record<keyof typeof PRODUCTS, string> = { postcard_4x6: "4×6", postcard_6x9: "6×9", letter: "8.5×11" };
 
 // Same five rows on every card so they compare at a glance (Ryan: "uniform across packages").
 const DETAILS: Record<keyof typeof PRODUCTS, [string, string][]> = {
@@ -61,7 +63,6 @@ const CSS = `
 .menu li[aria-selected="true"] svg { visibility: visible; }
 .cmd-row code { flex: 1; border: 0; background: none; padding: 0; font-size: .82rem; white-space: nowrap; overflow-x: auto; min-width: 0; scrollbar-width: none; }
 .copy { flex: none; font: 500 .76rem var(--f-ui); background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
-.cmd .what { font-size: .88rem; color: var(--soft); max-width: 60ch; }
 .cmd a { font-size: .85rem; color: var(--green); text-decoration: none; font-weight: 500; }
 .cmd a:hover { color: var(--ink); }
 .steps { display: grid; gap: 6px; font-size: .84rem; }
@@ -69,11 +70,7 @@ const CSS = `
 .steps .ok { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--green-soft); color: var(--green); font-size: .7rem; font-weight: 700; }
 .steps code { font-size: .8rem; color: var(--green); background: var(--green-soft); border-color: var(--green-line); }
 .steps .muted { color: var(--faint); font-size: .82rem; }
-.done { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 14px; align-items: center; border: 1px solid var(--rule); border-radius: 12px; padding: 12px; }
-.done .pc { aspect-ratio: 3/2; border-radius: 5px; background: linear-gradient(135deg, #12805a, #86cf63); color: #fff; font: 600 .72rem/1.15 var(--f-ui); display: grid; place-items: center; text-align: center; padding: 8px; box-shadow: 0 6px 14px -8px rgba(15, 122, 82, .7); }
-.done b { font-weight: 600; }
-.chip { display: inline-flex; align-items: center; gap: 7px; margin-top: 8px; font: 500 .76rem var(--f-mono); color: var(--green); background: var(--green-soft); border: 1px solid var(--green-line); border-radius: 999px; padding: 3px 10px; }
-.chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.agent { justify-self: start; background: var(--tint); border: 1px solid var(--rule); padding: 10px 13px; border-radius: 14px 14px 14px 4px; max-width: 86%; }
 .pay-band { display: flex; justify-content: space-between; align-items: center; gap: 16px 40px; flex-wrap: wrap; background: var(--tint); border: 1px solid var(--rule); border-radius: 16px; padding: 24px 28px; }
 .pay-band > div { display: grid; gap: 6px; max-width: 680px; }
 .pay-band p { color: var(--soft); font-size: .95rem; }
@@ -97,6 +94,8 @@ const CSS = `
 .prices dt { color: var(--faint); }
 .prices dd { margin: 0; text-align: right; color: var(--ink); }
 .prices .btn { justify-content: center; }
+.prices .size { font: 600 .8rem var(--f-mono); color: var(--green); letter-spacing: .02em; margin-bottom: -10px; }
+.btn.green { background: var(--green); border-color: var(--green); color: var(--btn-fg); }
 .faq { max-width: 760px; gap: 20px; }
 details.q { border-bottom: 1px solid var(--rule); padding-block: 16px; }
 details.q summary { font-weight: 500; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
@@ -119,7 +118,7 @@ export function landing() {
         <div class="stack">
           <a class="stat" href="${esc(docsUrl("/guides/agent-payments"))}"><b>New</b> Your agent can now pay for you →</a>
           <h1>Physical mail for AI agents</h1>
-          <p class="lede">Real postcards and letters from <b>Codex</b>, <b>Muse</b> and <b>Claude</b>. Ask in one sentence. Your agent writes it, pays with your approval, and we print and mail it.</p>
+          <p class="lede">Real postcards and letters from <b>Codex</b>, <b>Muse</b> and <b>Claude</b>.</p>
           <div class="ctas"><a class="btn" href="${esc(docsUrl("/quickstart"))}">Read the quickstart ›</a><a class="btn alt" href="/send">Send from the web</a></div>
           <div class="cmd">
             <div class="cmd-row">
@@ -129,7 +128,6 @@ export function landing() {
               </div>
               <code id="cmd">${esc(INSTALL[0].cmd)}</code><button class="copy" type="button" data-copy="cmd">Copy</button>
             </div>
-            <p class="what" id="what">${esc(INSTALL[0].what)}</p>
             <a id="setup" href="${esc(docsUrl(INSTALL[0].doc))}">Full setup for Codex in the docs →</a>
           </div>
         </div>
@@ -143,32 +141,28 @@ export function landing() {
       <div class="shot" aria-label="Example: an agent sending and paying for a postcard">
         <div class="bar"><i></i><i></i><i></i><span>muse · sendpaper</span></div>
         <div class="body">
-          <div class="you">Mail my mom a birthday postcard. She's at 12 Oak St, Austin TX 78701. Say I'll call Sunday.</div>
+          <div class="you">Mail my mom, Dana Kim, a birthday postcard. She's at 12 Oak St, Austin TX 78701. Say I'll call Sunday.</div>
           <div class="steps">
             <div><span class="ok">✓</span><code>create_postcard</code><span class="muted">4×6 · "Happy birthday, Mom!" · $2.99</span></div>
             <div><span class="ok">✓</span><code>pay_order</code><span class="muted">Link · Visa •• 4242 · approved by you</span></div>
           </div>
-          <div class="done">
-            <div class="pc">Happy birthday, Mom!</div>
-            <div><b>Done.</b> Your postcard to Dana Kim is paid and goes out tomorrow. It should arrive in 3–5 days, and I'll tell you when it ships.
-              <div class="chip"><i></i>Paid · in the print queue</div></div>
-          </div>
+          <div class="agent">Your postcard to Dana Kim is paid and goes out tomorrow. It should arrive in 3–5 days, and I'll let you know when it ships.</div>
         </div>
       </div>
-    </section>
-
-    <section class="pay-line">
-      <div class="pay-band"><div><h3>Your agent can pay, with your OK.</h3><p>Sendpaper accepts Stripe's one-time agent payment tokens. You approve the amount and your card is never shared. Prefer to pay yourself? Every order has a checkout link too.</p></div>
-      <a class="more" href="${esc(docsUrl("/guides/agent-payments"))}">How it works →</a></div>
     </section>
 
     <section id="pricing">
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
       <div class="prices">${(Object.keys(PRODUCTS) as (keyof typeof PRODUCTS)[])
-        .map((id) => `<div class="card"><h3>${esc(PRODUCTS[id].name)}</h3><div class="price">${usd(PRODUCTS[id].cents)}</div>
+        .map((id) => `<div class="card"><span class="size">${esc(SIZE[id])}</span><h3>${id === "letter" ? "Letter" : "Postcard"}</h3><div class="price">${usd(PRODUCTS[id].cents)}</div>
           <dl>${DETAILS[id].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
-          <a class="btn alt" href="/send?product=${id}">Send ${id === "letter" ? "a letter" : "a postcard"}</a></div>`)
+          <a class="btn green" href="/send?product=${id}">Send ${id === "letter" ? "a letter" : "a postcard"}</a></div>`)
         .join("")}</div>
+    </section>
+
+    <section class="pay-line">
+      <div class="pay-band"><div><h3>Your agent can pay, with your OK.</h3><p>Sendpaper accepts Stripe's one-time agent payment tokens. You approve the amount and your card is never shared. Prefer to pay yourself? Every order has a checkout link too.</p></div>
+      <a class="more" href="${esc(docsUrl("/guides/agent-payments"))}">How it works →</a></div>
     </section>
 
     <section class="faq">
@@ -191,7 +185,6 @@ export function landing() {
       const o = INSTALL.find((x) => x.id === id) || INSTALL[0];
       document.getElementById("cmd").textContent = o.cmd;
       document.getElementById("agentLabel").textContent = o.label;
-      document.getElementById("what").textContent = o.what;
       const a = document.getElementById("setup"); a.href = o.doc; a.textContent = "Full setup for " + o.label + " in the docs →";
       opts.forEach((li) => li.setAttribute("aria-selected", String(li.dataset.id === o.id)));
       if (save) try { localStorage.setItem("agent", o.id); } catch {}
