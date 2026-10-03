@@ -4,6 +4,11 @@ Print-and-mail ordering for people and AI agents: postcards (4×6 $2.99, 6×9 $3
 
 Stack: Node 24 running TypeScript natively (no build step), Express 5, Postgres, Stripe, `@modelcontextprotocol/sdk` (stateless Streamable HTTP). Deployed with `render.yaml` to Render, *My Workspace* (ryan.j.tish@gmail.com), **not** the ryan@render.com work account. The Codex plugin, MCP registry `server.json` and Muse Code snippet live in a separate repo at `~/sendpaper-plugin`.
 
+## Where to read next
+- **`STRATEGY.md`**: the go-to-market plan (be first in the Muse and Codex stores, the no-fake-reviews rule, phases) and the next-product pick.
+- **Directory submission drafts** (OpenAI, Muse, MCP Registry, Smithery/Glama/PulseMCP/mcp.so, Codex marketplace pull request, MuseDirectory and the X demo): https://claude.ai/code/artifact/0645747e-ecf7-44a3-99b7-0d6a11ccf40c
+- The idea came from the gap screener at `~/muse-gap-scanner` (it has its own CLAUDE.md).
+
 ## State (2026-10-01, launch day)
 - Built and run locally. The REST API, MCP (initialize, tools/list, create_letter) and every page were checked against a local Postgres; 3 schema tests pass.
 - **Stripe is UNTESTED**: no key was available. The checkout redirect, webhook and success-redirect confirmation have never run.
@@ -42,7 +47,7 @@ Stack: Node 24 running TypeScript natively (no build step), Express 5, Postgres,
 - **The Mintlify CLI refuses Node 25.** Run it under Node 22, pinned: `cd docs && npx -y -p node@22 -p mint@4.2.949 -- mint validate` (and `mint broken-links`, `mint dev`).
 - **Keep one canonical copy of the docs.** Once `DOCS_URL` is set, the built-in `/docs` page redirects. Point Mintlify's custom domain at `docs.<our domain>`, never leave it on `*.mintlify.site` long-term (that subdomain accrues the search credit instead of us). Keep `/llms.txt` on the main domain, because agents look there first.
 - **The docs must not claim registry listings or submissions that haven't happened.** Two premature claims were caught and removed on 2026-10-01.
-- **Postgres was upgraded to basic-256mb on 2026-10-02**, so the free-tier expiry is gone. **The web service is still on FREE**: the Render API returned 500 on `PATCH /services/:id {serviceDetails:{plan:"starter"}}` twice, so Ryan must upgrade it in the dashboard. Until then it sleeps when idle (30–60s cold starts can time out an agent's first MCP call).
+- **Postgres was upgraded to basic-256mb on 2026-10-02**, so the free-tier expiry is gone. The web service was upgraded to a paid instance (`0.5c-512mb`) by Ryan in the dashboard on 2026-10-02, after the Render API returned 500 on `PATCH /services/:id {serviceDetails:{plan:"starter"}}`. Plan changes need the dashboard.
 - **Imports must use the `.ts` extension**, and only erasable TypeScript syntax is allowed (no enums or namespaces), because Node strips types at runtime.
 - The Stripe webhook route must stay **before** any JSON body parser in `server.ts`.
 - The Render CLI default config is the WORK account. For personal deploys use `RENDER_CLI_CONFIG_PATH=~/.render/cli-personal.yaml`.
