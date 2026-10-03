@@ -73,6 +73,7 @@ const CSS = `
 .uc-head { display: grid; gap: 12px; padding-block: 56px 16px; max-width: 720px; }
 .uc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; padding-block: 24px 8px; }
 .uc { display: flex; flex-direction: column; gap: 12px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 22px; scroll-margin-top: 90px; }
+.uc-head h1 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); }
 .uc p { color: var(--soft); font-size: .95rem; }
 .uc .prompt { font: .84rem/1.55 var(--f-mono); color: var(--ink); background: var(--tint); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; }
 .uc .prompt::before { content: "› "; color: var(--green); }

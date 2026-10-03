@@ -267,21 +267,28 @@ export function landing() {
         new IntersectionObserver((es) => { visible = es[0].isIntersecting; if (visible && !running) play(); }, { threshold: 0.4 }).observe(shot);
       }
     }
-    // Hairline curves fanning across the hero (drawn once, redrawn on resize; skipped for reduced motion).
+    // Hairline curves fanning across the hero. They drift slowly (the fan opens, closes and twists) while the hero is on
+    // screen; reduced-motion visitors get one still frame.
     (function () {
       const c = document.getElementById("lines");
-      if (!c || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (!c) return;
+      const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
       const dark = () => document.documentElement.dataset.theme === "dark";
-      function draw() {
+      let W = 0, H = 0, x = null, raf = 0, onScreen = true;
+      function size() {
         const r = c.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
-        c.width = r.width * dpr; c.height = r.height * dpr;
-        const x = c.getContext("2d"); x.scale(dpr, dpr); x.clearRect(0, 0, r.width, r.height);
-        const W = r.width, H = r.height, a = dark() ? 0.5 : 0.75;
+        W = r.width; H = r.height; c.width = W * dpr; c.height = H * dpr;
+        x = c.getContext("2d"); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      function draw(ms) {
+        const p = ms / 1000, a = dark() ? 0.5 : 0.75;
+        const open = 1 + 0.22 * Math.sin(p * 0.35), twist = 0.05 * Math.sin(p * 0.23 + 1), sway = 0.03 * Math.sin(p * 0.17);
+        x.clearRect(0, 0, W, H);
         for (let i = 0; i < 64; i++) {
           const t = i / 63;
           x.beginPath();
-          x.moveTo(W * 0.38 + t * W * 0.12, H + 10);
-          x.bezierCurveTo(W * 0.6, H * (0.8 - t * 0.35), W * 0.76, H * (0.28 + t * 0.22), W + 30, -30 + t * H * 0.3);
+          x.moveTo(W * (0.38 + sway) + t * W * 0.12, H + 10);
+          x.bezierCurveTo(W * (0.6 + twist * (t - 0.5)), H * (0.8 - t * 0.35 * open), W * (0.76 - twist * (t - 0.5)), H * (0.28 + t * 0.22 * open), W + 30, -30 + t * H * 0.3 * (2 - open));
           const g = x.createLinearGradient(W * 0.38, H, W, 0);
           g.addColorStop(0, "rgba(16,150,100,0)");
           g.addColorStop(0.3, "rgba(" + Math.round(30 + t * 120) + "," + Math.round(160 + t * 50) + "," + Math.round(100 - t * 50) + "," + a + ")");
@@ -289,7 +296,12 @@ export function landing() {
           x.strokeStyle = g; x.lineWidth = 1; x.stroke();
         }
       }
-      draw(); addEventListener("resize", draw); addEventListener("themechange", draw);
+      function loop(ms) { draw(ms); raf = onScreen ? requestAnimationFrame(loop) : 0; }
+      size();
+      if (still) { draw(0); addEventListener("resize", () => { size(); draw(0); }); addEventListener("themechange", () => draw(0)); return; }
+      addEventListener("resize", size);
+      new IntersectionObserver((es) => { onScreen = es[0].isIntersecting; if (onScreen && !raf) raf = requestAnimationFrame(loop); }).observe(c);
+      raf = requestAnimationFrame(loop);
     })();
     </script>`,
     {
