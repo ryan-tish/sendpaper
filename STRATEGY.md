@@ -27,7 +27,8 @@ disclosed and never conditioned on a positive rating.
 2. Codex: open the awesome-codex-plugins pull request, and use `codex plugin marketplace add ryan-tish/sendpaper-plugin` in all copy.
 3. Submit to OpenAI's app directory and Meta's Muse Connector Platform **as soon as the blockers clear, not when it's perfect**.
    Reviews take weeks and are first-come. Meta's form mentions "featured placement"; ask for launch-partner placement.
-4. MuseDirectory: post the X demo, then submit. Each real public use case is another listing.
+4. MuseDirectory (musedirectory.dev): post the X demo, then submit. Each real public use case is another listing.
+5. **musedirectory.ai**: a bigger community tracker (2,367 connectors as of 2026-10-02) where builders submit their endpoint and it's checked automatically on the spot. Submit Sendpaper the same day.
 
 ### Phase 2: win the agent's choice (week 1)
 When several mail tools are installed, **the agent picks whichever is described best.** That's our version of search ranking:
@@ -61,5 +62,27 @@ When several mail tools are installed, **the agent picks whichever is described 
 
 ## 2. Next product
 
-_(Filled from the screener in `~/muse-gap-scanner` plus a fresh competitor check across MCP registries. The screener alone
-missed MCP competitors last time, which is how print-and-mail looked uncontested.)_
+**Pick: "Occasions": a birthday card plus real flowers or gifts, built into Sendpaper.** Second choice: certified-mail cancellations and disputes.
+Researched 2026-10-02 across MCP registries and the ChatGPT/Muse directories; items marked ⚠ are unverified.
+
+| Idea (screener rank) | Score /10 | Why |
+| --- | --- | --- |
+| **Gifts, flowers and occasions** | **8** | No gift or flower connector on Muse. Florist One's API is free and self-serve, pays 20% commission and fulfils through local florists. A $70 arrangement earns about $14, plus the card. It reuses everything we built: card printing, agent payments, the review queue and address handling. Occasion reminders bring repeat orders. Risk: 1-800-Flowers (already in ChatGPT) ports to Muse. |
+| **Certified-mail cancellations and disputes** | **7** (as a Sendpaper add-on) | PostGrid offers certified mail by API ($6.94, or $9.85 with an electronic return receipt). Gyms and contracts often require written or certified cancellation; Byegym charges $29 for this. Sell for about $15–20 at about $11 cost. Ships in days. Sits beside phone-call negotiators (Pine, CutMyBill, Rocket Money) rather than fighting them. |
+| Unclaimed property | 4 | Good free hook, but claims are free from the state and finder fees are capped (about 10% in most states, registration and bonds in some). |
+| Government admin | 4 | Ticket Fighter covers parking disputes; DMV and passports aren't self-serve and the passport needs the physical document. |
+| Returns and refunds | 4 | No consumer API; needs inbox or retailer access. |
+| Bill negotiation | 5 alone | **Not actually open:** CutMyBill and SubKiller are on Muse ⚠ (seen on musedirectory.ai, not confirmed with Meta); Pine sells a phone-negotiation MCP. |
+| Insurance quotes | 2 | Needs a producer licence in each state; Insurify (ChatGPT) and Sigo (MCP for Muse, launched 2026-10-01) are already there. |
+| Family and school | 3 | Each school's data is different, there's no payment to earn from, and calendar connectors already cover most of it. |
+
+### Plan for Occasions (after Sendpaper is live and listed)
+1. Verify Florist One: how API orders are paid ⚠, whether we can be the merchant of record with shared payment tokens, delivery coverage and terms.
+2. Add `send_flowers` (plus `browse_arrangements`) next to the card tools: "card + flowers" as one order, one payment and one preview.
+3. Reminders: let the agent save birthdays and anniversaries and propose a card a week ahead. That's the retention loop.
+4. Then certified mail (`create_letter` with `mail_class: certified`, cancellation and dispute templates) as the second add-on.
+
+Sources: Florist One API https://www.floristone.com/api/ · Goody https://developer.ongoody.com/ · PostGrid certified mail
+https://www.postgrid.com/how-to-send-certified-mail-via-api/ · Byegym https://byegym.com/cancel/anytime-fitness · Insurify ChatGPT
+https://insurify.com/press/news/insurify-expands-chatgpt-plugin/ · Sigo MCP https://www.prnewswire.com/news-releases/sigo-seguros-opens-its-auto-insurance-mcp-server-to-chatgpt-grok-bot-and-muse-others-are-blocking-them-302896570.html
+· Pine https://pineclaw.com/ · musedirectory.ai https://musedirectory.ai/ · finder-fee caps https://themissingmint.com/guides/unclaimed-money-finder-fee-cap-by-state
