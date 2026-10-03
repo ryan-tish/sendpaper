@@ -45,6 +45,19 @@ const CSS = `
 .stat b { font: 500 .8rem var(--f-mono); color: var(--green); background: var(--green-soft); padding: 3px 8px; border-radius: 5px; }
 .lede { font-size: 1.15rem; color: var(--soft); max-width: 46ch; }
 .lede b { color: var(--ink); font-weight: 600; }
+/* Motion (all of it is added by JS only when the visitor hasn't asked for reduced motion; without JS the page is static and complete) */
+.rot { display: inline-grid; vertical-align: top; height: 1.5em; line-height: 1.5; overflow: hidden; clip-path: inset(0); }
+.rot b { grid-area: 1 / 1; opacity: 0; transform: translateY(100%); transition: opacity .35s ease, transform .35s ease; }
+.rot b.on { opacity: 1; transform: none; }
+.rot b.off { opacity: 0; transform: translateY(-100%); }
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+.reveal.in { opacity: 1; transform: none; }
+.shot.anim .steps > div, .shot.anim .agent { opacity: 0; transform: translateY(6px); transition: opacity .35s ease, transform .35s ease; }
+.shot.anim .steps > div.in, .shot.anim .agent.in { opacity: 1; transform: none; }
+.shot.anim .you .rest { visibility: hidden; }
+.shot.anim .you .caret { display: inline-block; width: 1px; height: 1em; margin-left: 1px; vertical-align: -2px; background: currentColor; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.copy.ok { color: var(--green); background: var(--green-soft); border-color: var(--green-line); }
 .ctas { display: flex; gap: 10px; flex-wrap: wrap; }
 .cmd { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; max-width: 600px; }
 .cmd-row { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; border: 1px solid var(--rule); background: var(--tint); border-radius: 10px; padding: 4px; }
@@ -211,10 +224,49 @@ export function landing() {
     try { const saved = localStorage.getItem("agent"); if (saved) pick(saved); } catch {}
     document.querySelectorAll(".copy").forEach((b) => b.addEventListener("click", async () => {
       const el = document.getElementById(b.dataset.copy);
-      try { await navigator.clipboard.writeText(el.textContent); b.textContent = "Copied"; }
+      try { await navigator.clipboard.writeText(el.textContent); b.textContent = "Copied ✓"; b.classList.add("ok"); }
       catch { const r = document.createRange(); r.selectNodeContents(el); getSelection().removeAllRanges(); getSelection().addRange(r); b.textContent = "Press ⌘C"; }
-      setTimeout(() => (b.textContent = "Copy"), 1600);
+      setTimeout(() => { b.textContent = "Copy"; b.classList.remove("ok"); }, 1600);
     }));
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // Hero: cycle the agent name ("from Codex" → "Muse" → …). Screen readers keep the full static sentence.
+      const lede = document.querySelector(".lede");
+      if (lede) {
+        const names = ["Codex", "Muse", "Claude", "ChatGPT", "Cursor"];
+        lede.innerHTML = '<span class="sr-only">Real postcards and letters from Codex, Muse and Claude.</span><span aria-hidden="true">Real postcards and letters from <span class="rot">' + names.map((n, i) => '<b class="' + (i ? "" : "on") + '">' + n + "</b>").join("") + "</span></span>";
+        const words = [...lede.querySelectorAll(".rot b")];
+        let k = 0;
+        setInterval(() => {
+          const prev = words[k]; k = (k + 1) % words.length;
+          prev.classList.replace("on", "off"); setTimeout(() => prev.classList.remove("off"), 400);
+          words[k].classList.add("on");
+        }, 2200);
+      }
+      // Sections fade up once as they scroll in.
+      const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -10% 0px" });
+      document.querySelectorAll(".wrap > section, .works").forEach((el) => { el.classList.add("reveal"); io.observe(el); });
+      // The chat demo plays itself while it's on screen: type the ask, tick the two tool calls, then the agent's reply. Loops.
+      const shot = document.querySelector(".shot");
+      if (shot) {
+        const you = shot.querySelector(".you"), text = you.textContent, steps = [...shot.querySelectorAll(".steps > div")], reply = shot.querySelector(".agent");
+        shot.classList.add("anim");
+        let timers = [], visible = false, running = false;
+        const later = (ms, f) => timers.push(setTimeout(f, ms));
+        function reset() { timers.forEach(clearTimeout); timers = []; steps.concat(reply).forEach((el) => el.classList.remove("in")); you.innerHTML = '<span class="typed"></span><span class="caret"></span><span class="rest"></span>'; you.lastChild.textContent = text; }
+        function play() {
+          running = true; reset();
+          const typed = you.querySelector(".typed"), rest = you.querySelector(".rest");
+          let i = 0;
+          (function type() { typed.textContent = text.slice(0, i); rest.textContent = text.slice(i); if (i++ < text.length) later(22, type); else { you.querySelector(".caret").remove();
+            later(500, () => steps[0].classList.add("in"));
+            later(1300, () => steps[1].classList.add("in"));
+            later(2300, () => reply.classList.add("in"));
+            later(7500, () => (visible ? play() : (running = false)));
+          } })();
+        }
+        new IntersectionObserver((es) => { visible = es[0].isIntersecting; if (visible && !running) play(); }, { threshold: 0.4 }).observe(shot);
+      }
+    }
     // Hairline curves fanning across the hero (drawn once, redrawn on resize; skipped for reduced motion).
     (function () {
       const c = document.getElementById("lines");

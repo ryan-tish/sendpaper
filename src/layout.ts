@@ -55,6 +55,7 @@ section { padding-block: 96px 0; display: grid; gap: 36px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 .card { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 20px; display: grid; gap: 8px; align-content: start; min-width: 0; }
 .price { font: 600 1.9rem var(--f-ui); letter-spacing: -0.03em; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .eyebrow { font: 500 .74rem var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--green); }
 .pill { display: inline-block; font: 500 .78rem var(--f-mono); padding: 4px 10px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); }
 .pill.ok { background: var(--ok-bg); color: var(--ok); }
@@ -74,6 +75,7 @@ th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var
 th { font-weight: 500; color: var(--soft); }
 .scroll { overflow-x: auto; }
 @media (max-width: 720px) { nav .links a:not(.btn) { display: none; } }
+@media (max-width: 440px) { nav .links { gap: 10px; } nav .links a.btn { padding: 7px 11px; font-size: .84rem; } .logo svg { height: 22px; width: auto; } }
 `;
 
 // Drawn on a 20px grid with whole-pixel edges and a white flap so it stays crisp at 1x (the lime-on-green version looked blurry).
