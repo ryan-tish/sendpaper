@@ -116,10 +116,10 @@ export function sendPage(initial: string) {
         <div class="step"><div class="step-h"><span>01</span><h2>Choose</h2></div><div class="choices" role="radiogroup" aria-label="Product">${choices}</div></div>
 
         <div class="step" id="pc"><div class="step-h"><span>02</span><h2>Design the front</h2></div>
-          <div class="seg" role="radiogroup" aria-label="Front style"><label><input type="radio" name="front" value="photo" checked>Photo</label><label><input type="radio" name="front" value="text">Text</label></div>
-          <label class="drop" id="drop"><input id="photo" type="file" accept="image/jpeg,image/png,image/webp"><span id="dropText"><b>Drop a photo</b> or click to choose<br><small>JPG, PNG or WebP, up to 25 MB. You can crop it next.</small></span></label>
+          <div class="seg" role="radiogroup" aria-label="Front style"><label><input type="radio" name="front" value="text" checked>Text</label><label><input type="radio" name="front" value="photo">Photo</label></div>
+          <label class="drop" id="drop" hidden><input id="photo" type="file" accept="image/jpeg,image/png,image/webp"><span id="dropText"><b>Drop a photo</b> or click to choose<br><small>JPG, PNG or WebP, up to 25 MB. You can crop it next.</small></span></label>
           <button type="button" class="linkbtn" id="recrop" hidden>Adjust crop</button>
-          <div id="textFront" hidden style="display:grid;gap:12px">
+          <div id="textFront" style="display:grid;gap:12px">
             <div class="field"><div class="top"><label for="headline">Big text</label><span class="count" id="hc">0/${LIMITS.postcardHeadline}</span></div><input id="headline" maxlength="${LIMITS.postcardHeadline}" placeholder="Greetings from Lisbon!"></div>
             <div class="field"><div class="top">Color</div><div class="swatches" role="radiogroup" aria-label="Color">${swatches}</div></div>
           </div>

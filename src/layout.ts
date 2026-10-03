@@ -97,7 +97,7 @@ export function page(title: string, body: string, opts: { description?: string; 
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(opts.description ?? `${BRAND} prints and mails real postcards and letters, from the web, a REST API, or your AI agent (Codex, Muse Code, Claude).`)}">
 ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml">
 <link rel="alternate" type="text/plain" title="For AI agents" href="/llms.txt">
 <link rel="service-desc" type="application/json" href="/openapi.json">
 <meta name="ai-agent-instructions" content="Agents: skip the forms. Call the MCP server at /mcp, the REST API at /v1, or open an order link (/quick?...). Details: /llms.txt">

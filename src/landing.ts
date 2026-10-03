@@ -282,7 +282,7 @@ export function landing() {
       }
       function draw(ms) {
         const p = ms / 1000, a = dark() ? 0.5 : 0.75;
-        const open = 1 + 0.22 * Math.sin(p * 0.35), twist = 0.05 * Math.sin(p * 0.23 + 1), sway = 0.03 * Math.sin(p * 0.17);
+        const open = 1 + 0.42 * Math.sin(p * 0.7), twist = 0.16 * Math.sin(p * 0.5 + 1), sway = 0.06 * Math.sin(p * 0.37);
         x.clearRect(0, 0, W, H);
         for (let i = 0; i < 64; i++) {
           const t = i / 63;
