@@ -8,6 +8,7 @@ import { handleMcp } from "./mcp.ts";
 import { handleWebhook } from "./payments.ts";
 import { startPrintSync } from "./fulfill.ts";
 import { web } from "./web.ts";
+import { quick } from "./quick.ts";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -70,6 +71,7 @@ app.get("/.well-known/openai-apps-challenge", (_req, res) => {
 });
 
 app.use(docs);
+app.use(quick);
 app.use(web);
 
 // Last-resort handler: log the error, but never forward an upstream error's status or headers (Stripe errors carry both).

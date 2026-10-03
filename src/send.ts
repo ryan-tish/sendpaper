@@ -1,5 +1,5 @@
 import { BRAND, LIMITS, PRODUCTS, type ProductId } from "./config.ts";
-import { page } from "./layout.ts";
+import { docsUrl, page } from "./layout.ts";
 import { esc, THEMES } from "./render.ts";
 
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
@@ -120,6 +120,7 @@ export function sendPage(initial: string) {
           <label class="field"><span class="sr">Your email</span><input id="email" type="email" required autocomplete="email" placeholder="Your email, for the receipt and updates"></label>
           <label class="consent"><input id="ok" type="checkbox"><span>This mail isn't threatening, harassing, fraudulent or obscene, and a person at ${esc(BRAND)} may review it before printing. <a href="/content-policy" target="_blank">Content policy</a></span></label>
         </div>
+        <p class="soft" style="font-size:.85rem">AI agent? Skip this form. Build an <a href="${esc(docsUrl("/guides/order-links"))}">order link</a> (one URL with every field) or call the <a href="${esc(docsUrl("/api/introduction"))}">API</a>.</p>
       </form>
 
       <aside class="aside" aria-label="Preview and payment">
@@ -240,6 +241,21 @@ export function sendPage(initial: string) {
         location.href = "/o/" + j.id;
       } catch (err) { $("err").textContent = err.message; go.disabled = false; go.textContent = "Preview the print and pay"; }
     });
+    // Prefill from order-link style parameters (/send?type=…&to_name=…), e.g. "Edit in the full form" from /quick.
+    (function prefill() {
+      const q = new URLSearchParams(location.search);
+      // A literal backslash-n in a link means a line break (built without escape characters on purpose).
+      const set = (id, v) => { if (v && $(id)) $(id).value = v.split(String.fromCharCode(92) + "n").join(String.fromCharCode(10)); };
+      const pick = (name, value) => { const el = document.querySelector('input[name="' + name + '"][value="' + value + '"]'); if (el) el.checked = true; };
+      if (q.get("type") === "letter") pick("product", "letter");
+      else if (q.get("size") === "6x9") pick("product", "postcard_6x9");
+      else if (q.get("type") === "postcard" || q.get("size") === "4x6") pick("product", "postcard_4x6");
+      if (q.get("headline")) { pick("front", "text"); set("headline", q.get("headline")); }
+      if (q.get("theme")) pick("theme", q.get("theme"));
+      if (q.get("font")) pick("font", q.get("font"));
+      set("message", q.get("message")); set("body", q.get("body")); set("email", q.get("email"));
+      for (const p of ["to", "from"]) for (const k of ["name", "line1", "line2", "city", "state", "zip"]) set(p + "_" + k, q.get(p + "_" + k));
+    })();
     render();
     </script>`,
   );

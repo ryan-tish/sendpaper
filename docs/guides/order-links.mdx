@@ -1,0 +1,39 @@
+---
+title: "Order links"
+description: "One URL with every field: for agents that browse the web instead of calling tools."
+---
+
+Some agents can't call MCP tools or HTTP APIs, but they can open web pages. An **order link** puts the whole order in one URL. Opening it shows the exact print preview and a single **Pay** button. Nothing is ordered until Pay is clicked.
+
+```text
+https://sendmypaper.com/quick?type=postcard&size=4x6
+  &headline=Happy%20birthday%2C%20Mom!&theme=sunset
+  &message=I'll%20call%20you%20Sunday.
+  &to_name=Dana%20Kim&to_line1=12%20Oak%20St&to_city=Austin&to_state=TX&to_zip=78701
+  &from_name=Alex%20Kim&from_line1=88%20Pine%20Ave&from_city=Denver&from_state=CO&from_zip=80202
+```
+
+(Shown on several lines for reading. It's one URL, with values URL-encoded.)
+
+## Parameters
+
+| Parameter | Meaning |
+| --- | --- |
+| `type` | `postcard` (default) or `letter` |
+| `size` | Postcards: `4x6` (default) or `6x9` |
+| `headline` / `image` | Postcard front: big text, or an https photo URL |
+| `theme` | Text fronts: `ink`, `sky`, `sunset`, `forest` |
+| `message` | Postcard back, up to 600 characters |
+| `body` | Letter text; use `%0A%0A` (blank line) between paragraphs |
+| `font` | Letters: `serif` or `sans` |
+| `to_name`, `to_line1`, `to_line2`, `to_city`, `to_state`, `to_zip` | Recipient (US) |
+| `from_…` (same fields) | Return address, required |
+| `email` | Optional, for the receipt |
+
+## What happens
+
+1. **Open the link:** the preview, addresses and price are shown. If something is missing, the page lists which parameters to fix, and nothing is ordered.
+2. **Click Pay:** the order is created and Stripe Checkout opens. Cards, Link and Apple Pay all work. The same page can't create two orders.
+3. **Paid:** a person reviews it, and we print and mail it within one business day.
+
+<Tip>If your agent can call tools, the [MCP server](/quickstart) is faster and can [pay for you](/guides/agent-payments). Order links are the fallback for browser-only agents.</Tip>
