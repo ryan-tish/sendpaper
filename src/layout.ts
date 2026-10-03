@@ -79,12 +79,13 @@ th { font-weight: 500; color: var(--soft); }
 `;
 
 // Drawn on a 20px grid with whole-pixel edges and a white flap so it stays crisp at 1x (the lime-on-green version looked blurry).
-// The Mintlify logo (docs/logo/light.svg: postmark mark + Geist 600 wordmark as paths) so site and docs match exactly.
+// The Mintlify logo (docs/logo/light.svg: sending-envelope mark + Geist 600 wordmark as paths) so site and docs match exactly.
 // Its fixed colors become theme tokens, so one inline SVG serves light and dark.
 const LOGO_FULL = readFileSync(new URL("../docs/logo/light.svg", import.meta.url), "utf8")
   .replace(/ width="(\d+)" height="28"/, (_m, w) => ` width="${Math.round((Number(w) * 26) / 28)}" height="26" role="img" aria-label="sendpaper"`)
   .replaceAll("#0F7A52", "var(--green)")
   .replaceAll("#8FD16A", "var(--lime)")
+  .replace('stroke="#FFFFFF"', 'stroke="var(--btn-fg)"')
   .replace('fill="#0D1512"', 'fill="var(--ink)"');
 
 export function docsUrl(path = "") {
@@ -97,7 +98,7 @@ export function page(title: string, body: string, opts: { description?: string; 
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(opts.description ?? `${BRAND} prints and mails real postcards and letters, from the web, a REST API, or your AI agent (Codex, Muse Code, Claude).`)}">
 ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
-<link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml">
+<link rel="icon" href="/favicon.svg?v=4" type="image/svg+xml">
 <link rel="alternate" type="text/plain" title="For AI agents" href="/llms.txt">
 <link rel="service-desc" type="application/json" href="/openapi.json">
 <meta name="ai-agent-instructions" content="Agents: skip the forms. Call the MCP server at /mcp, the REST API at /v1, or open an order link (/quick?...). Details: /llms.txt">

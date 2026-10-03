@@ -103,8 +103,8 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) { .flip .uc-in { transition: none; } }
 `;
 
-// The logo's postmark, faint in each card's corner like a cancellation mark.
-const MARK = `<svg class="mark" width="42" height="26" viewBox="0 0 42 26" aria-hidden="true"><circle cx="12" cy="13" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="13" r="3.2" fill="currentColor"/><path d="M26 7.5c2.6-2.4 4.9 2.4 7.5 0s4.9 2.4 7.5 0M26 13c2.6-2.4 4.9 2.4 7.5 0s4.9 2.4 7.5 0M26 18.5c2.6-2.4 4.9 2.4 7.5 0s4.9 2.4 7.5 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+// The logo's envelope, faint in each card's corner.
+const MARK = `<svg class="mark" width="36" height="26" viewBox="0 0 36 26" aria-hidden="true"><path d="M1 9h5M3 13h4M1 17h5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><rect x="8" y="3" width="27" height="20" rx="4" fill="currentColor"/><path d="M11 6.5 21.5 14 32 6.5" fill="none" stroke="var(--card)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 const LABEL: Record<ProductId, string> = { postcard_4x6: "Postcard 4×6", postcard_6x9: "Postcard 6×9", letter: "Letter" };
 
