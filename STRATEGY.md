@@ -17,7 +17,7 @@ which is the opposite of market share. What is allowed: real people using it and
 disclosed and never conditioned on a positive rating.
 
 ### Phase 0: unblock (today)
-- [ ] Plugin repo `ryan-tish/sendpaper-plugin` public
+- [x] Plugin repo `ryan-tish/sendpaper-plugin` public (2026-10-02); official MCP Registry listing live (2026-10-03)
 - [ ] Agent payments working (3 Stripe key permissions), Stripe and PostGrid live, one real postcard to Ryan
 - [ ] support@sendmypaper.com receiving mail (Google Workspace recommended)
 - [x] Render web service and database on paid plans (2026-10-02)
