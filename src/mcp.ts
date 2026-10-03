@@ -97,7 +97,7 @@ function build(client: string | undefined) {
       if (!o) return { isError: true, content: [{ type: "text", text: `No order ${order_id}` }] };
       try {
         const paid = publicOrder(await payWithSharedToken(o, shared_payment_token));
-        return { content: [{ type: "text", text: `Paid. ${paid.status_detail} Track it at ${paid.order_url}.` }, ...json(paid).content] };
+        return { content: [{ type: "text", text: `${paid.status_detail} Track it at ${paid.order_url}.` }, ...json(paid).content] };
       } catch (e) {
         if (e instanceof PaymentError)
           return { isError: true, content: [{ type: "text", text: `${e.message} (${e.code}). The user can still pay at ${publicOrder(o).checkout_url ?? publicOrder(o).order_url}.` }] };
