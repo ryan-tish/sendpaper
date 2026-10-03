@@ -31,6 +31,21 @@ const CSS = `
 .drop input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .drop b { color: var(--ink); font-weight: 500; }
 .drop .thumb { width: 120px; aspect-ratio: 3/2; object-fit: cover; border-radius: 6px; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--green); font: 500 .88rem var(--f-ui); cursor: pointer; justify-self: start; }
+.linkbtn:hover { color: var(--ink); }
+dialog.cropper { border: 1px solid var(--rule); border-radius: 16px; padding: 24px; background: var(--card); color: var(--ink); width: min(680px, calc(100vw - 32px)); box-sizing: border-box; }
+dialog.cropper::backdrop { background: rgba(10, 16, 14, .55); }
+.crop { display: grid; gap: 16px; }
+.crop .soft { font-size: .92rem; margin-top: 4px; }
+.crop-view { position: relative; overflow: hidden; border-radius: 8px; background: #111; cursor: grab; touch-action: none; user-select: none; }
+.crop-view.dragging { cursor: grabbing; }
+.crop-view:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.crop-view img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; pointer-events: none; }
+.crop-safe { position: absolute; border: 1.5px dashed rgba(255, 255, 255, .9); pointer-events: none; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .28); }
+.crop-zoom { display: flex; align-items: center; gap: 12px; font-size: .9rem; color: var(--soft); }
+.crop-zoom input { flex: 1; accent-color: var(--green); }
+.crop-warn { font-size: .85rem; color: #9a5b00; }
+.crop-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .swatches { display: flex; gap: 10px; }
 .swatches label { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); position: relative; }
 .swatches input { position: absolute; opacity: 0; pointer-events: none; }
@@ -102,7 +117,8 @@ export function sendPage(initial: string) {
 
         <div class="step" id="pc"><div class="step-h"><span>02</span><h2>Design the front</h2></div>
           <div class="seg" role="radiogroup" aria-label="Front style"><label><input type="radio" name="front" value="photo" checked>Photo</label><label><input type="radio" name="front" value="text">Text</label></div>
-          <label class="drop" id="drop"><input id="photo" type="file" accept="image/jpeg,image/png,image/webp"><span id="dropText"><b>Drop a photo</b> or click to choose<br><small>JPG or PNG, up to 6 MB</small></span></label>
+          <label class="drop" id="drop"><input id="photo" type="file" accept="image/jpeg,image/png,image/webp"><span id="dropText"><b>Drop a photo</b> or click to choose<br><small>JPG, PNG or WebP, up to 25 MB. You can crop it next.</small></span></label>
+          <button type="button" class="linkbtn" id="recrop" hidden>Adjust crop</button>
           <div id="textFront" hidden style="display:grid;gap:12px">
             <div class="field"><div class="top"><label for="headline">Big text</label><span class="count" id="hc">0/${LIMITS.postcardHeadline}</span></div><input id="headline" maxlength="${LIMITS.postcardHeadline}" placeholder="Greetings from Lisbon!"></div>
             <div class="field"><div class="top">Color</div><div class="swatches" role="radiogroup" aria-label="Color">${swatches}</div></div>
@@ -140,10 +156,20 @@ export function sendPage(initial: string) {
       </aside>
     </div>
 
+    <dialog class="cropper" id="cropDlg" aria-labelledby="cropTitle">
+      <div class="crop">
+        <div><h2 id="cropTitle">Crop your photo</h2><p class="soft">Drag to move it, zoom with the slider. Everything outside the dashed line is trimmed off when the card is cut.</p></div>
+        <div class="crop-view" id="cropView" tabindex="0" role="application" aria-label="Photo position. Arrow keys move it; plus and minus zoom."><img id="cropImg" alt=""><div class="crop-safe" id="cropSafe"></div></div>
+        <label class="crop-zoom">Zoom <input id="cropZoom" type="range" min="1" max="4" step="0.01" value="1"></label>
+        <p class="crop-warn" id="cropWarn" hidden>This photo is low resolution for this size, so it may print a little soft. Zoom out or use a larger photo.</p>
+        <div class="crop-actions"><button type="button" class="btn alt" id="cropCancel">Cancel</button><button type="button" class="btn" id="cropOk">Use this crop</button></div>
+      </div>
+    </dialog>
+
     <script>
     const PRODUCTS = ${JSON.stringify(PRODUCTS)};
     const THEMES = ${JSON.stringify(THEMES)};
-    const MAX_IMG = ${LIMITS.imageBytes};
+    const MAX_IMG = ${LIMITS.imageBytes}, MAX_ORIGINAL = 25 * 1024 * 1024;
     const $ = (id) => document.getElementById(id);
     const val = (name) => document.querySelector('input[name="' + name + '"]:checked').value;
     let side = "front", photoUrl = null, photoFile = null;
@@ -157,7 +183,7 @@ export function sendPage(initial: string) {
     function render() {
       const product = val("product"), letter = product === "letter", photo = val("front") === "photo";
       $("pc").hidden = letter; $("lt").hidden = !letter;
-      $("drop").hidden = !photo; $("textFront").hidden = photo;
+      $("drop").hidden = !photo; $("textFront").hidden = photo; $("recrop").hidden = !photo || !photoFile;
       $("pvName").textContent = PRODUCTS[product].name;
       $("total").textContent = "$" + (PRODUCTS[product].cents / 100).toFixed(2);
       $("pvCard").hidden = letter; $("pvLetter").hidden = !letter; $("flip").hidden = letter;
@@ -198,16 +224,85 @@ export function sendPage(initial: string) {
     $("message").addEventListener("focus", () => { if (side !== "back") $("flip").querySelector('[data-side="back"]').click(); });
     ["headline", "photo"].forEach(id => $(id).addEventListener("focus", () => { if (side !== "front") $("flip").querySelector('[data-side="front"]').click(); }));
 
+    // Photos go through a cropper at the card's print shape (with bleed), then are re-encoded as a 300 dpi JPEG.
+    // What's uploaded is exactly what prints.
+    const SHEET = { postcard_4x6: [6.25, 4.25], postcard_6x9: [9.25, 6.25] }, BLEED = 0.125;
+    const dlg = $("cropDlg"), view = $("cropView"), cimg = $("cropImg"), zoomEl = $("cropZoom");
+    const crop = { file: null, url: null, product: "postcard_4x6", nw: 0, nh: 0, Vw: 0, Vh: 0, s0: 1, zoom: 1, ox: 0, oy: 0 };
     function takeFile(file) {
       if (!file) return;
-      if (!/^image\\/(jpeg|png|webp)$/.test(file.type)) { $("err").textContent = "Use a JPG, PNG or WebP photo."; return; }
-      if (file.size > MAX_IMG) { $("err").textContent = "That photo is over 6 MB. Try a smaller one."; return; }
-      $("err").textContent = ""; photoFile = file;
-      if (photoUrl) URL.revokeObjectURL(photoUrl);
-      photoUrl = URL.createObjectURL(file);
-      $("dropText").innerHTML = '<img class="thumb" alt="" src="' + photoUrl + '"><br><b>Change photo</b>';
-      side = "front"; render();
+      if (!/^image.(jpeg|png|webp)$/.test(file.type)) { $("err").textContent = "Use a JPG, PNG or WebP photo."; return; }
+      if (file.size > MAX_ORIGINAL) { $("err").textContent = "That photo is over 25 MB. Try a smaller one."; return; }
+      $("err").textContent = ""; openCrop(file);
     }
+    function openCrop(file) {
+      crop.file = file;
+      crop.product = val("product") === "postcard_6x9" ? "postcard_6x9" : "postcard_4x6";
+      const [w, h] = SHEET[crop.product];
+      view.style.aspectRatio = w + " / " + h;
+      $("cropSafe").style.inset = (BLEED / h * 100) + "% " + (BLEED / w * 100) + "%";
+      if (crop.url) URL.revokeObjectURL(crop.url);
+      crop.url = URL.createObjectURL(file);
+      cimg.onload = () => { crop.nw = cimg.naturalWidth; crop.nh = cimg.naturalHeight; cimg.style.width = crop.nw + "px"; cimg.style.height = crop.nh + "px"; dlg.showModal(); fit(); view.focus(); };
+      cimg.onerror = () => { $("err").textContent = "That photo couldn't be opened. Try a JPG or PNG."; };
+      cimg.src = crop.url;
+    }
+    function fit() {
+      crop.Vw = view.clientWidth; crop.Vh = view.clientHeight;
+      crop.s0 = Math.max(crop.Vw / crop.nw, crop.Vh / crop.nh);
+      crop.zoom = 1; zoomEl.value = "1";
+      crop.ox = (crop.Vw - crop.nw * crop.s0) / 2; crop.oy = (crop.Vh - crop.nh * crop.s0) / 2;
+      place();
+    }
+    function place() {
+      const sc = crop.s0 * crop.zoom;
+      crop.ox = Math.min(0, Math.max(crop.Vw - crop.nw * sc, crop.ox));
+      crop.oy = Math.min(0, Math.max(crop.Vh - crop.nh * sc, crop.oy));
+      cimg.style.transform = "translate(" + crop.ox + "px," + crop.oy + "px) scale(" + sc + ")";
+      // Warn below ~150 dpi at print size.
+      $("cropWarn").hidden = (crop.Vw / sc) >= SHEET[crop.product][0] * 150;
+    }
+    function zoomTo(z) {
+      z = Math.min(4, Math.max(1, z));
+      const old = crop.s0 * crop.zoom, cx = (crop.Vw / 2 - crop.ox) / old, cy = (crop.Vh / 2 - crop.oy) / old;
+      crop.zoom = z; zoomEl.value = String(z);
+      const sc = crop.s0 * z; crop.ox = crop.Vw / 2 - cx * sc; crop.oy = crop.Vh / 2 - cy * sc;
+      place();
+    }
+    zoomEl.addEventListener("input", () => zoomTo(parseFloat(zoomEl.value)));
+    view.addEventListener("wheel", (e) => { e.preventDefault(); zoomTo(crop.zoom * (1 - e.deltaY * 0.0015)); }, { passive: false });
+    let drag = null;
+    view.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, ox: crop.ox, oy: crop.oy }; view.setPointerCapture(e.pointerId); view.classList.add("dragging"); });
+    view.addEventListener("pointermove", (e) => { if (!drag) return; crop.ox = drag.ox + e.clientX - drag.x; crop.oy = drag.oy + e.clientY - drag.y; place(); });
+    ["pointerup", "pointercancel"].forEach(t => view.addEventListener(t, () => { drag = null; view.classList.remove("dragging"); }));
+    view.addEventListener("keydown", (e) => {
+      const step = e.shiftKey ? 40 : 10, k = e.key;
+      if (k === "ArrowLeft") crop.ox += step; else if (k === "ArrowRight") crop.ox -= step;
+      else if (k === "ArrowUp") crop.oy += step; else if (k === "ArrowDown") crop.oy -= step;
+      else if (k === "+" || k === "=") return zoomTo(crop.zoom + 0.1), e.preventDefault();
+      else if (k === "-") return zoomTo(crop.zoom - 0.1), e.preventDefault();
+      else return;
+      e.preventDefault(); place();
+    });
+    addEventListener("resize", () => { if (dlg.open) fit(); });
+    $("cropCancel").addEventListener("click", () => { dlg.close(); $("photo").value = ""; });
+    $("cropOk").addEventListener("click", () => {
+      const [w, h] = SHEET[crop.product], sc = crop.s0 * crop.zoom;
+      const out = document.createElement("canvas"); out.width = Math.round(w * 300); out.height = Math.round(h * 300);
+      const g = out.getContext("2d"); g.imageSmoothingQuality = "high";
+      g.drawImage(cimg, -crop.ox / sc, -crop.oy / sc, crop.Vw / sc, crop.Vh / sc, 0, 0, out.width, out.height);
+      out.toBlob((blob) => {
+        if (!blob) { $("err").textContent = "Couldn't crop that photo. Try another one."; return; }
+        if (blob.size > MAX_IMG) { $("err").textContent = "The cropped photo is still over 6 MB. Try a smaller one."; return; }
+        photoFile = new File([blob], "front.jpg", { type: "image/jpeg" });
+        if (photoUrl) URL.revokeObjectURL(photoUrl);
+        photoUrl = URL.createObjectURL(photoFile);
+        $("dropText").innerHTML = '<img class="thumb" alt="" src="' + photoUrl + '"><br><b>Change photo</b>';
+        $("recrop").hidden = false; $("photo").value = "";
+        dlg.close(); side = "front"; render();
+      }, "image/jpeg", 0.9);
+    });
+    $("recrop").addEventListener("click", () => { if (crop.file) openCrop(crop.file); });
     $("photo").addEventListener("change", (e) => takeFile(e.target.files[0]));
     const drop = $("drop");
     ["dragenter", "dragover"].forEach(t => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
