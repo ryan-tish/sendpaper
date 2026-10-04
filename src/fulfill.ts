@@ -8,7 +8,7 @@
 // - Letters: PostGrid prints both addresses in the top ~2.75in of page 1 (addressPlacement top_first_page)
 //   and adds no margins. Anything overlapping that area is auto-cancelled with
 //   cancellation.reason = "invalid_content".
-import { BASE_URL, BRAND, env } from "./config.ts";
+import { BASE_URL, BRAND, env, EXTRA_SERVICE, isLetter } from "./config.ts";
 import { pool } from "./db.ts";
 import { getOrder, setStatus, type Address, type OrderRow } from "./orders.ts";
 import { esc, THEMES } from "./render.ts";
@@ -76,7 +76,7 @@ async function pg(path: string, init: { method?: string; body?: unknown; idempot
   return body;
 }
 
-const kind = (o: OrderRow) => (o.product === "letter" ? "letters" : "postcards");
+const kind = (o: OrderRow) => (isLetter(o.product) ? "letters" : "postcards");
 
 async function recordPrint(id: string, fields: { print_id?: string; print_status?: string; print_error?: string | null }) {
   await pool.query(
@@ -97,8 +97,16 @@ export async function sendToPrint(o: OrderRow) {
     mailingClass: "first_class",
   };
   const body =
-    o.product === "letter"
-      ? { ...base, html: letterHtml(o), addressPlacement: "top_first_page", color: false, doubleSided: false }
+    isLetter(o.product)
+      ? {
+          ...base,
+          html: letterHtml(o),
+          addressPlacement: "top_first_page",
+          color: false,
+          doubleSided: false,
+          // USPS Certified Mail (with or without return receipt) for the certified letter products.
+          ...(EXTRA_SERVICE[o.product] ? { extraService: EXTRA_SERVICE[o.product] } : {}),
+        }
       : { ...base, size: o.product === "postcard_6x9" ? "9x6" : "6x4", ...postcardHtml(o) };
   const job = await pg(`/${kind(o)}`, { method: "POST", body, idempotencyKey: `sendpaper-${o.id}` });
   await recordPrint(o.id, { print_id: job.id, print_status: job.status, print_error: null });
@@ -106,6 +114,14 @@ export async function sendToPrint(o: OrderRow) {
 }
 
 const MAILED = new Set(["processed_for_delivery", "completed"]);
+
+// PostGrid's carrierTracking shape isn't documented in what we've seen (it's null in test mode), so accept the
+// likely field names and fall back to the job's own trackingNumber.
+function trackingNumber(job: any): string | null {
+  const t = job?.carrierTracking;
+  const v = (t && (t.trackingNumber ?? t.tracking_number ?? t.number ?? t.id)) ?? job?.trackingNumber ?? job?.tracking_number;
+  return typeof v === "string" && /^[A-Z0-9]{10,40}$/i.test(v) ? v : null;
+}
 
 // Pull PostGrid's latest status. Moves printing → mailed, and surfaces cancellations (bad content, bad address).
 export async function syncPrint(orderId: string) {
@@ -115,6 +131,9 @@ export async function syncPrint(orderId: string) {
   const job = await pg(`/${kind(o)}/${printId}`);
   const err = job.status === "cancelled" ? `${job.cancellation?.reason ?? "cancelled"}: ${job.cancellation?.note ?? ""}`.trim() : null;
   await recordPrint(o.id, { print_status: job.status, print_error: err });
+  // USPS tracking appears once the piece is accepted (certified letters always get one).
+  const tracking = trackingNumber(job);
+  if (tracking && tracking !== o.tracking_number) await pool.query("UPDATE orders SET tracking_number = $2 WHERE id = $1", [o.id, tracking]);
   if (o.status === "printing" && MAILED.has(job.status)) return setStatus(o.id, "mailed", `PostGrid ${job.status}`);
   return getOrder(o.id);
 }

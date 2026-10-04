@@ -8,7 +8,7 @@
 //         &from_name=…&from_line1=…&from_city=…&from_state=CO&from_zip=80202
 import { randomBytes } from "node:crypto";
 import express, { Router } from "express";
-import { BASE_URL, BRAND, PRODUCTS, type ProductId } from "./config.ts";
+import { BASE_URL, BRAND, PRODUCTS, type ProductId, letterProduct, type Certified, isLetter } from "./config.ts";
 import { page } from "./layout.ts";
 import { CreateLetterSchema, CreatePostcardSchema, createOrder } from "./orders.ts";
 import { addressBlock, esc, letterPages, postcardBack, postcardFront, PRINT_CSS } from "./render.ts";
@@ -22,6 +22,7 @@ export const QUICK_PARAMS = {
   message: "postcard back, up to 600 characters",
   body: "letter text; blank lines between paragraphs",
   font: "letters: serif or sans",
+  certified: "letters: certified ($14.99, USPS tracking and proof of delivery) or certified_return_receipt ($19.99, adds the recipient's signature)",
   "to_name, to_line1, to_line2, to_city, to_state, to_zip": "recipient (US)",
   "from_name, from_line1, from_line2, from_city, from_state, from_zip": "return address (required)",
   email: "optional, for the receipt",
@@ -51,6 +52,7 @@ const PARAM_FOR: Record<string, string> = {
   "content.message": "message",
   "content.body": "body",
   "content.font": "font",
+  certified: "certified",
   content: "headline or image",
   customer_email: "email",
 };
@@ -60,7 +62,7 @@ export function parseQuick(q: Q) {
   const letter = q.type === "letter";
   const base = { to: addr(q, "to"), from: addr(q, "from"), ...(q.email ? { customer_email: q.email } : {}) };
   const parsed = letter
-    ? CreateLetterSchema.safeParse({ ...base, content: { body: (q.body ?? "").replace(/\\n/g, "\n"), ...(q.font ? { font: q.font } : {}) } })
+    ? CreateLetterSchema.safeParse({ ...base, ...(q.certified ? { certified: q.certified } : {}), content: { body: (q.body ?? "").replace(/\\n/g, "\n"), ...(q.font ? { font: q.font } : {}) } })
     : CreatePostcardSchema.safeParse({
         ...base,
         size: q.size === "6x9" ? "6x9" : "4x6",
@@ -73,7 +75,7 @@ export function parseQuick(q: Q) {
       });
   if (!parsed.success)
     return { ok: false as const, errors: parsed.error.issues.map((i) => ({ param: paramName(i.path.join(".")), message: /received undefined/.test(i.message) ? "missing: add this parameter" : i.message })) };
-  const product: ProductId = letter ? "letter" : (parsed.data as { size: string }).size === "6x9" ? "postcard_6x9" : "postcard_4x6";
+  const product: ProductId = letter ? letterProduct((parsed.data as { certified?: Certified }).certified) : (parsed.data as { size: string }).size === "6x9" ? "postcard_6x9" : "postcard_4x6";
   return { ok: true as const, product, data: parsed.data };
 }
 
@@ -115,7 +117,7 @@ quick.get("/quick", (req, res) => {
   }
   const preview = { product: r.product, content: r.data.content as Record<string, string>, to_address: r.data.to, from_address: r.data.from, created_at: new Date() };
   const pieces =
-    r.product === "letter"
+    isLetter(r.product)
       ? letterPages(preview)
       : `${postcardFront(preview)}${postcardBack(preview)}`;
   const p = PRODUCTS[r.product];

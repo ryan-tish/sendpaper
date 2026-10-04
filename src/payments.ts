@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { BASE_URL, BRAND, PRODUCTS, env } from "./config.ts";
+import { BASE_URL, BRAND, EXTRA_SERVICE, PRODUCTS, env } from "./config.ts";
 import { attachSession, getOrder, setStatus, type OrderRow } from "./orders.ts";
 import { notifyPaid } from "./notify.ts";
 
@@ -7,31 +7,46 @@ export const stripe = env.stripeSecret ? new Stripe(env.stripeSecret) : null;
 
 // Called by /o/:id/pay. A fresh session each time, so the stable /pay link never expires
 // even though Stripe Checkout sessions do (24h).
+// Catalog products (scripts/stripe-catalog.ts creates `sendpaper_<product id>`). Checkout references them so Stripe
+// reports group sales by product; the amount still comes from the order. Until a product exists, fall back to
+// inline product_data (remembered per process so we don't retry a missing product on every checkout).
+const missingCatalog = new Set<string>();
+
 export async function checkoutUrlFor(o: OrderRow): Promise<string> {
   if (!stripe) throw new Error("Payments are not configured (STRIPE_SECRET_KEY missing).");
   const p = PRODUCTS[o.product];
-  const session = await stripe.checkout.sessions.create({
+  const via = EXTRA_SERVICE[o.product] === "certified_return_receipt" ? "USPS Certified Mail with a return receipt" : EXTRA_SERVICE[o.product] ? "USPS Certified Mail" : "USPS First-Class";
+  const inline = { name: `${p.name} to ${o.to_address.name}`, description: `${p.blurb} Printed and mailed by ${BRAND} via ${via}.` };
+  const catalogId = `sendpaper_${o.product}`;
+  const create = (useCatalog: boolean) =>
+    stripe!.checkout.sessions.create({
     mode: "payment",
     line_items: [
       {
         quantity: 1,
-        price_data: {
-          currency: "usd",
-          unit_amount: o.price_cents,
-          product_data: {
-            name: `${p.name} to ${o.to_address.name}`,
-            description: `${p.blurb} Printed and mailed by ${BRAND} via USPS First-Class.`,
-          },
-        },
+        price_data: useCatalog
+          ? { currency: "usd", unit_amount: o.price_cents, product: catalogId }
+          : { currency: "usd", unit_amount: o.price_cents, product_data: inline },
       },
     ],
     customer_email: o.customer_email ?? undefined,
     client_reference_id: o.id,
-    metadata: { order_id: o.id },
-    payment_intent_data: { metadata: { order_id: o.id } },
+    metadata: { order_id: o.id, product: o.product },
+    payment_intent_data: { metadata: { order_id: o.id, product: o.product } },
     success_url: `${BASE_URL}/o/${o.id}?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${BASE_URL}/o/${o.id}`,
   });
+  let session: Stripe.Checkout.Session;
+  if (missingCatalog.has(catalogId)) session = await create(false);
+  else {
+    try {
+      session = await create(true);
+    } catch (e) {
+      if (!(e instanceof Stripe.errors.StripeInvalidRequestError) || !/product/i.test(e.message)) throw e;
+      missingCatalog.add(catalogId);
+      session = await create(false);
+    }
+  }
   await attachSession(o.id, session.id);
   return session.url!;
 }

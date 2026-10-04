@@ -1,5 +1,5 @@
 import { OFFER_LIMIT } from "./offer.ts";
-import { BASE_URL, BRAND, PRODUCTS } from "./config.ts";
+import { BASE_URL, BRAND, PRODUCTS, EXTRA_SERVICE } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
 
@@ -27,13 +27,16 @@ const CLIENTS: [string, string][] = [
   ["VS Code", "/agents/other-clients"],
 ];
 
-const SIZE: Record<keyof typeof PRODUCTS, string> = { postcard_4x6: "4×6", postcard_6x9: "6×9", letter: "8.5×11" };
+const SIZE: Record<keyof typeof PRODUCTS, string> = { postcard_4x6: "4×6", postcard_6x9: "6×9", letter: "8.5×11", letter_certified: "USPS Certified", letter_certified_rr: "USPS Certified" };
+const TITLE: Record<keyof typeof PRODUCTS, string> = { postcard_4x6: "Postcard", postcard_6x9: "Postcard", letter: "Letter", letter_certified: "Certified letter", letter_certified_rr: "Certified + return receipt" };
 
 // Same five rows on every card so they compare at a glance (Ryan: "uniform across packages").
 const DETAILS: Record<keyof typeof PRODUCTS, [string, string][]> = {
   postcard_4x6: [["Size", "4 × 6 in"], ["Printing", "Full-color front"], ["Writing", "Up to 600 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
   postcard_6x9: [["Size", "6 × 9 in"], ["Printing", "Full-color front"], ["Writing", "Up to 600 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
   letter: [["Size", "8.5 × 11 in, #10 envelope"], ["Printing", "Black & white, up to 3 pages"], ["Writing", "Up to about 9,000 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
+  letter_certified: [["Size", "8.5 × 11 in, #10 envelope"], ["Printing", "Black & white, up to 3 pages"], ["Writing", "Up to about 9,000 characters"], ["Postage", "Certified Mail + tracking"], ["Mailed", "Within 1 business day"]],
+  letter_certified_rr: [["Size", "8.5 × 11 in, #10 envelope"], ["Printing", "Black & white, up to 3 pages"], ["Writing", "Up to about 9,000 characters"], ["Postage", "Certified + signed receipt"], ["Mailed", "Within 1 business day"]],
 };
 
 const CSS = `
@@ -108,6 +111,12 @@ const CSS = `
 .prices dt { color: var(--faint); }
 .prices dd { margin: 0; text-align: right; color: var(--ink); }
 .prices .btn { justify-content: center; }
+.cert-card { grid-template-columns: minmax(0, 1.6fr) auto auto; align-items: center; gap: 20px 36px; padding: 24px; }
+.cert-copy { display: grid; gap: 6px; }
+.cert-opts { display: flex; gap: 28px; }
+.cert-opts > div { display: grid; gap: 2px; }
+.cert-opts .price { font-size: 1.6rem; }
+@media (max-width: 860px) { .cert-card { grid-template-columns: minmax(0, 1fr); } }
 .prices .size { font: 600 .8rem var(--f-mono); color: var(--green); letter-spacing: .02em; margin-bottom: -10px; }
 .faq { max-width: 760px; gap: 20px; }
 details.q { border-bottom: 1px solid var(--rule); padding-block: 16px; }
@@ -170,10 +179,20 @@ export function landing(offerLeft = 0) {
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
       ${offerLeft > 0 ? `<div class="offer-banner"><span><b>First postcard free.</b> Any size, no card needed. One per return address.</span><a href="/send" class="more">Send one →</a></div>` : ""}
       <div class="prices">${(Object.keys(PRODUCTS) as (keyof typeof PRODUCTS)[])
-        .map((id) => `<div class="card"><span class="size">${esc(SIZE[id])}</span><h3>${id === "letter" ? "Letter" : "Postcard"}</h3><div class="price">${usd(PRODUCTS[id].cents)}</div>
+        .filter((id) => !EXTRA_SERVICE[id])
+        .map((id) => `<div class="card"><span class="size">${esc(SIZE[id])}</span><h3>${TITLE[id]}</h3><div class="price">${usd(PRODUCTS[id].cents)}</div>
           <dl>${DETAILS[id].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
-          <a class="btn green" href="/send?product=${id}">Send ${id === "letter" ? "a letter" : "a postcard"}</a></div>`)
+          <a class="btn green" href="/send?product=${id}">Send ${id.startsWith("postcard") ? "a postcard" : "a letter"}</a></div>`)
         .join("")}</div>
+      <div class="card cert-card">
+        <div class="cert-copy"><span class="eyebrow">USPS Certified Mail</span><h3>Need proof it arrived?</h3>
+          <p class="soft">Send any letter by Certified Mail for a USPS tracking number and proof of delivery. Add a return receipt for the recipient's signature, which leases, courts and agencies often require.</p></div>
+        <div class="cert-opts">
+          <div><span class="price">${usd(PRODUCTS.letter_certified.cents)}</span><span class="soft">Certified</span></div>
+          <div><span class="price">${usd(PRODUCTS.letter_certified_rr.cents)}</span><span class="soft">+ return receipt</span></div>
+        </div>
+        <a class="btn green" href="/send?product=letter_certified">Send certified</a>
+      </div>
     </section>
 
     <section class="pay-line">
@@ -185,6 +204,7 @@ export function landing(offerLeft = 0) {
       <div class="section-head"><span class="eyebrow">FAQ</span><h2>Questions</h2></div>
       <div>
         <details class="q"><summary>Is there a free trial?</summary><p>Your first postcard is free, any size: one per return address. It's applied automatically, so you just confirm it on the order page with no card needed. <a href="/reviews">See what senders say</a>.</p></details>
+        <details class="q"><summary>Can you send certified mail?</summary><p>Yes. Letters can go by USPS Certified Mail ($14.99) with a tracking number and proof of delivery, or with a return receipt ($19.99) that adds the recipient's signature. Ask your agent to "send it certified", or choose it under Mailing on the <a href="/send?product=letter_certified">web form</a>.</p></details>
         <details class="q"><summary>Can my agent pay for me?</summary><p>Yes, if you let it. Agents pay with a one-time Stripe token capped at the order's exact price, which you approve in your agent (for example through Stripe Link). Your card details are never shared. Or pay the checkout link yourself. Either way, nothing is mailed until it's paid.</p></details>
         <details class="q"><summary>Which agents work?</summary><p>Anything that supports remote MCP servers over Streamable HTTP: Codex, Muse Code, Claude Code, Claude Desktop, claude.ai, ChatGPT developer mode, Cursor and VS Code. Everything else can use the <a href="${esc(docsUrl("/api/introduction"))}">REST API</a>.</p></details>
         <details class="q"><summary>Where can you mail to?</summary><p>US addresses, including Puerto Rico, US territories and APO/FPO/DPO military addresses.</p></details>

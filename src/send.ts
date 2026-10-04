@@ -1,5 +1,5 @@
 import { OFFER_LIMIT } from "./offer.ts";
-import { BRAND, LIMITS, PRODUCTS, type ProductId } from "./config.ts";
+import { BRAND, LIMITS, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc, THEMES } from "./render.ts";
 
@@ -25,6 +25,7 @@ const CSS = `
 .seg { display: inline-flex; padding: 3px; background: var(--tint); border: 1px solid var(--rule); border-radius: 9px; gap: 2px; justify-self: start; }
 .seg label { display: block; padding: 6px 14px; border-radius: 7px; cursor: pointer; font-size: .88rem; color: var(--soft); }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg-wrap { flex-wrap: wrap; }
 .seg label:has(input:checked) { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(13, 21, 18, .08); }
 .seg label:has(input:focus-visible) { outline: 2px solid var(--green); }
 .drop { display: grid; place-items: center; gap: 6px; text-align: center; padding: 26px 16px; border: 1.5px dashed var(--rule); border-radius: 12px; background: var(--tint); color: var(--soft); cursor: pointer; font-weight: 400; font-size: .9rem; }
@@ -96,8 +97,19 @@ const addressFields = (p: string, label: string) => `<fieldset class="addr" styl
 </fieldset>`;
 
 export function sendPage(initial: string, offerLeft = 0) {
-  const start: ProductId = initial in PRODUCTS ? (initial as ProductId) : "postcard_4x6";
+  const asked: ProductId = initial in PRODUCTS ? (initial as ProductId) : "postcard_4x6";
+  // Certified letters are a mailing option on the Letter tile, not tiles of their own.
+  const start: ProductId = isLetter(asked) ? "letter" : asked;
+  const startMailing = EXTRA_SERVICE[asked] ?? "none";
+  const mailing = (["none", "certified", "certified_return_receipt"] as const)
+    .map((m) => {
+      const p = PRODUCTS[letterProduct(m)];
+      const label = m === "none" ? "First-Class" : m === "certified" ? "Certified" : "Certified + receipt";
+      return `<label><input type="radio" name="mailing" value="${m}"${m === startMailing ? " checked" : ""}>${label} · ${usd(p.cents)}</label>`;
+    })
+    .join("");
   const choices = (Object.entries(PRODUCTS) as [ProductId, (typeof PRODUCTS)[ProductId]][])
+    .filter(([id]) => !EXTRA_SERVICE[id])
     .map(
       ([id, p]) => `<label class="choice"><input type="radio" name="product" value="${id}"${id === start ? " checked" : ""}>
         <b>${esc(id === "letter" ? "Letter" : `Postcard ${p.size.replace(/ in$/, "").replace(/ /g, "")}`)}</b><small>${esc(p.size)}</small><span class="p">${usd(p.cents)}</span></label>`,
@@ -130,6 +142,9 @@ export function sendPage(initial: string, offerLeft = 0) {
         <div class="step" id="lt" hidden><div class="step-h"><span>02</span><h2>Write the letter</h2></div>
           <div class="field"><div class="top"><label for="body">Letter</label><span class="count" id="bc">0/${LIMITS.letterBody}</span></div><textarea id="body" maxlength="${LIMITS.letterBody}" style="min-height:280px" placeholder="Dear …"></textarea></div>
           <div class="seg" role="radiogroup" aria-label="Typeface"><label><input type="radio" name="font" value="serif" checked>Serif</label><label><input type="radio" name="font" value="sans">Sans-serif</label></div>
+          <div class="field"><div class="top">Mailing</div>
+            <div class="seg seg-wrap" role="radiogroup" aria-label="Mailing">${mailing}</div>
+            <p class="note" style="margin:0">Certified Mail gets a USPS tracking number and proof of delivery. The return receipt adds the recipient's signature, which landlords, courts and agencies often ask for.</p></div>
         </div>
 
         <div class="step"><div class="step-h"><span>03</span><h2>Send to</h2></div>${addressFields("to", "Recipient address")}</div>
@@ -148,7 +163,7 @@ export function sendPage(initial: string, offerLeft = 0) {
           <div class="flip" id="flip"><button type="button" data-side="front" aria-pressed="true">Front</button><button type="button" data-side="back" aria-pressed="false">Back</button></div>
         </div>
         <div class="summary">
-          <div class="line"><span>Printing, envelope, First-Class postage</span><span>Included</span></div>
+          <div class="line"><span id="postageLine">Printing, envelope, First-Class postage</span><span>Included</span></div>
           <div class="total"><span>Total</span><b id="total">${usd(PRODUCTS[start].cents)}</b></div>
           <p id="err" class="err" role="alert" style="margin:0"></p>
           <button class="btn" id="go" type="submit" form="f">Preview the print and pay</button>
@@ -174,6 +189,9 @@ export function sendPage(initial: string, offerLeft = 0) {
     const MAX_IMG = ${LIMITS.imageBytes}, MAX_ORIGINAL = 25 * 1024 * 1024;
     const $ = (id) => document.getElementById(id);
     const val = (name) => document.querySelector('input[name="' + name + '"]:checked').value;
+    // A letter's product depends on its mailing option (regular, certified, certified + return receipt).
+    const LETTER_PRODUCT = { none: "letter", certified: "letter_certified", certified_return_receipt: "letter_certified_rr" };
+    const effectiveProduct = () => (val("product") === "letter" ? LETTER_PRODUCT[val("mailing")] : val("product"));
     let side = "front", photoUrl = null, photoFile = null;
 
     function addr(p) {
@@ -183,11 +201,12 @@ export function sendPage(initial: string, offerLeft = 0) {
       return [a.name, a.line1, a.line2, [a.city, a.state].filter(Boolean).join(", ") + (a.zip ? " " + a.zip : "")].filter(Boolean).join("\\n");
     }
     function render() {
-      const product = val("product"), letter = product === "letter", photo = val("front") === "photo";
+      const product = effectiveProduct(), letter = val("product") === "letter", photo = val("front") === "photo";
       $("pc").hidden = letter; $("lt").hidden = !letter;
       if ($("offerNote")) $("offerNote").hidden = letter;
       $("drop").hidden = !photo; $("textFront").hidden = photo; $("recrop").hidden = !photo || !photoFile;
       $("pvName").textContent = PRODUCTS[product].name;
+      $("postageLine").textContent = product === "letter_certified" ? "Printing, envelope, Certified Mail" : product === "letter_certified_rr" ? "Printing, envelope, Certified Mail + return receipt" : "Printing, envelope, First-Class postage";
       $("total").textContent = "$" + (PRODUCTS[product].cents / 100).toFixed(2);
       $("pvCard").hidden = letter; $("pvLetter").hidden = !letter; $("flip").hidden = letter;
       $("hc").textContent = $("headline").value.length + "/${LIMITS.postcardHeadline}";
@@ -320,7 +339,7 @@ export function sendPage(initial: string, offerLeft = 0) {
         const product = val("product");
         let url, body;
         if (product === "letter") {
-          url = "/v1/letters"; body = { content: { body: $("body").value, font: val("font") } };
+          url = "/v1/letters"; body = { content: { body: $("body").value, font: val("font") }, certified: val("mailing") };
         } else {
           url = "/v1/postcards";
           const content = { message: $("message").value, front_theme: val("theme") };
@@ -346,6 +365,7 @@ export function sendPage(initial: string, offerLeft = 0) {
       const set = (id, v) => { if (v && $(id)) $(id).value = v.split(String.fromCharCode(92) + "n").join(String.fromCharCode(10)); };
       const pick = (name, value) => { const el = document.querySelector('input[name="' + name + '"][value="' + value + '"]'); if (el) el.checked = true; };
       if (q.get("type") === "letter") pick("product", "letter");
+      if (q.get("certified")) { pick("product", "letter"); pick("mailing", q.get("certified")); }
       else if (q.get("size") === "6x9") pick("product", "postcard_6x9");
       else if (q.get("type") === "postcard" || q.get("size") === "4x6") pick("product", "postcard_4x6");
       if (q.get("headline")) { pick("front", "text"); set("headline", q.get("headline")); }

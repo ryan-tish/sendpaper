@@ -24,14 +24,27 @@ export const env = {
   posthogKey: process.env.POSTHOG_KEY ?? "",
 };
 
-export type ProductId = "postcard_4x6" | "postcard_6x9" | "letter";
+export type ProductId = "postcard_4x6" | "postcard_6x9" | "letter" | "letter_certified" | "letter_certified_rr";
 
 // Prices include printing, postage (USPS First-Class) and the envelope. US addresses only.
 export const PRODUCTS: Record<ProductId, { name: string; cents: number; blurb: string; size: string }> = {
   postcard_4x6: { name: "Postcard 4×6", cents: 299, size: "4 × 6 in", blurb: "Full-color front, your message on the back." },
   postcard_6x9: { name: "Postcard 6×9", cents: 399, size: "6 × 9 in", blurb: "Bigger card, more room for a photo and a note." },
   letter: { name: "Letter", cents: 499, size: "8.5 × 11 in", blurb: "Up to 3 printed pages, folded into a #10 envelope." },
+  // Certified Mail (Ryan, 2026-10-04): same letter, sent via USPS Certified Mail through PostGrid's extraService.
+  letter_certified: { name: "Certified letter", cents: 1499, size: "8.5 × 11 in", blurb: "USPS Certified Mail: tracking number and proof of mailing and delivery." },
+  letter_certified_rr: { name: "Certified letter + return receipt", cents: 1999, size: "8.5 × 11 in", blurb: "USPS Certified Mail with a return receipt: the recipient's signature as proof of delivery." },
 };
+
+// Every letter product shares the letter layout and limits; certified ones add a USPS extra service.
+export const isLetter = (p: ProductId) => p === "letter" || p === "letter_certified" || p === "letter_certified_rr";
+export const EXTRA_SERVICE: Partial<Record<ProductId, "certified" | "certified_return_receipt">> = {
+  letter_certified: "certified",
+  letter_certified_rr: "certified_return_receipt",
+};
+export type Certified = "none" | "certified" | "certified_return_receipt";
+export const letterProduct = (c: Certified | undefined): ProductId =>
+  c === "certified" ? "letter_certified" : c === "certified_return_receipt" ? "letter_certified_rr" : "letter";
 
 export const LIMITS = {
   postcardMessage: 600,

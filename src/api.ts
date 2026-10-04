@@ -1,6 +1,6 @@
 import express, { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
-import { BASE_URL, LIMITS, PRODUCTS } from "./config.ts";
+import { BASE_URL, LIMITS, PRODUCTS, letterProduct } from "./config.ts";
 import { pool } from "./db.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import {
@@ -65,11 +65,11 @@ api.post(
 api.post(
   "/letters",
   handle(async (req, res) => {
-    const input = CreateLetterSchema.parse(req.body);
+    const { certified, ...input } = CreateLetterSchema.parse(req.body);
     const { order, existing } = await createOrder({
       ...input,
       idempotency_key: idem(req, input),
-      product: "letter",
+      product: letterProduct(certified),
       source: "api",
       client: client(req),
       analytics_id: req.get("x-analytics-id") || undefined,

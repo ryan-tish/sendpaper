@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { BASE_URL, BRAND, PRODUCTS, env } from "./config.ts";
+import { BASE_URL, BRAND, PRODUCTS, env, letterProduct } from "./config.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import { track } from "./analytics.ts";
 import { recordToolCall } from "./stats.ts";
@@ -21,6 +21,7 @@ Flow: confirm the recipient address, return address and wording with the user, t
 The response contains a preview_url and a checkout_url. Nothing is printed until the order is paid. Two ways to pay:
 1. If you can obtain a Stripe shared payment token (spt_…) for the user, for example through Stripe Link / link-cli, request one for the order's exact amount in USD${env.stripeNetworkId ? ` scoped to network id ${env.stripeNetworkId}` : ""}, then call pay_order. Only do this after the user has approved this purchase and its price.
 2. Otherwise, show the user the preview_url and checkout_url and let them pay there.
+Letters can go by USPS Certified Mail (create_letter certified option) when the user needs proof of mailing and delivery; the order then gets a USPS tracking number.
 Every order is reviewed by a person before printing; threatening, harassing, fraudulent or obscene mail is refused and refunded.`;
 
 const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
@@ -88,13 +89,13 @@ function build(client: string | undefined) {
     {
       title: "Create a letter",
       description:
-        "Create a printed letter order (up to 3 pages, 8.5x11, mailed in a #10 envelope) and get a payment link. Mails only after the user pays.",
+        "Create a printed letter order (up to 3 pages, 8.5x11, mailed in a #10 envelope) and get a payment link. Mails only after the user pays. Set certified to \"certified\" ($14.99) for USPS Certified Mail with tracking and proof of delivery, or \"certified_return_receipt\" ($19.99) to add the recipient's signature; use these when the user needs proof (landlord notices, legal or tax replies, disputes). Regular letters are $4.99.",
       inputSchema: CreateLetterSchema.shape,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
     async (args) => {
-      const input = CreateLetterSchema.parse(args);
-      const { order } = await createOrder({ ...input, product: "letter", source: "mcp", client });
+      const { certified, ...input } = CreateLetterSchema.parse(args);
+      const { order } = await createOrder({ ...input, product: letterProduct(certified), source: "mcp", client });
       const o = await orderWithOffer(order);
       return { content: [{ type: "text", text: nextStep(o) }, ...json(o).content] };
     },

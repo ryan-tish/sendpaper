@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import express, { Router } from "express";
 import { readFileSync } from "node:fs";
-import { BASE_URL, BRAND, DOCS_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL, env } from "./config.ts";
+import { BASE_URL, BRAND, DOCS_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL, env, EXTRA_SERVICE, isLetter } from "./config.ts";
 import { pool } from "./db.ts";
 import { landing } from "./landing.ts";
 import { sendPage } from "./send.ts";
@@ -87,6 +87,7 @@ web.get("/o/:id", async (req, res) => {
         <div><span class="pill${paid || offer.eligible ? " ok" : ""}">${offer.eligible ? "free · ready to send" : esc(o.status.replace("_", " "))}</span></div>
         <p>${offer.eligible ? "Your first postcard is free. Confirm below and we'll print and mail it." : esc(p.status_detail)}</p>
         ${o.free_offer ? `<p><span class="pill ok">Free</span> Your first postcard is on us.</p>` : ""}
+        ${EXTRA_SERVICE[o.product] ? `<p><span class="pill ok">USPS Certified Mail${EXTRA_SERVICE[o.product] === "certified_return_receipt" ? " · return receipt" : ""}</span> ${o.tracking_number ? `Tracking: <a href="https://tools.usps.com/go/TrackConfirmAction?tLabels=${esc(o.tracking_number)}" target="_blank" rel="noopener">${esc(o.tracking_number)}</a>` : "You'll get a USPS tracking number here once it's accepted for mailing."}</p>` : ""}
         ${o.status === "awaiting_payment" && offer.eligible
           ? `<form id="free" method="post" action="/o/${esc(o.id)}/claim" class="card offer-card">
               <span class="eyebrow">First postcard free</span>
@@ -119,7 +120,7 @@ web.get("/o/:id", async (req, res) => {
           <div class="card"><span class="eyebrow">From</span><div>${addressBlock(o.from_address)}</div></div>
         </div>
         <h2>Print preview</h2>
-        <iframe src="/o/${esc(o.id)}/preview" title="Print preview" style="width:100%;height:${o.product === "letter" ? 1150 : o.product === "postcard_6x9" ? 1250 : 900}px;border:1px solid var(--rule);border-radius:10px;background:#e9e7e2"></iframe>
+        <iframe src="/o/${esc(o.id)}/preview" title="Print preview" style="width:100%;height:${isLetter(o.product) ? 1150 : o.product === "postcard_6x9" ? 1250 : 900}px;border:1px solid var(--rule);border-radius:10px;background:#e9e7e2"></iframe>
         <p class="soft">Something wrong? ${o.status === "awaiting_payment" ? `<a href="/send">Start a new order</a> — unpaid orders are never mailed.` : `Email ${esc(SUPPORT_EMAIL)} with your order id before it's printed.`}</p>
       </section>`,
       { noindex: true },

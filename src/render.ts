@@ -1,6 +1,6 @@
 // Print layouts. The same HTML is the customer preview and the operator's print sheet,
 // so what the customer approved is exactly what gets printed.
-import { BRAND } from "./config.ts";
+import { BRAND, isLetter } from "./config.ts";
 import type { Address, OrderRow } from "./orders.ts";
 
 export const esc = (s: unknown) =>
@@ -76,7 +76,7 @@ export const PRINT_CSS = `
 
 export function printSheet(o: OrderRow, opts: { operator?: boolean } = {}) {
   const pieces =
-    o.product === "letter" ? letterPages(o) : `${postcardFront(o)}${postcardBack(o)}`;
+    isLetter(o.product) ? letterPages(o) : `${postcardFront(o)}${postcardBack(o)}`;
   const note = opts.operator
     ? `<p class="noprint" style="font:14px system-ui">Order <b>${esc(o.id)}</b> · ${esc(o.product)} · ${esc(o.status)}. Print at 100% scale (no "fit to page").</p>`
     : "";

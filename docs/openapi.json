@@ -41,7 +41,7 @@
     "/postcards": {
       "post": {
         "summary": "Create a postcard",
-        "description": "Creates a 4\u00d76 or 6\u00d79 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.",
+        "description": "Creates a 4×6 or 6×9 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.",
         "operationId": "createPostcard",
         "parameters": [
           {
@@ -111,7 +111,7 @@
     "/letters": {
       "post": {
         "summary": "Create a letter",
-        "description": "Creates a printed letter (up to ~3 pages, 8.5\u00d711, #10 envelope) in `awaiting_payment` and returns a `checkout_url`.",
+        "description": "Creates a printed letter (up to ~3 pages, 8.5×11, #10 envelope) in `awaiting_payment` and returns a `checkout_url`. Set `certified` to send it by USPS Certified Mail.",
         "operationId": "createLetter",
         "parameters": [
           {
@@ -253,7 +253,7 @@
     "/orders/{id}/pay": {
       "post": {
         "summary": "Pay with an agent token",
-        "description": "Pay an unpaid order with a Stripe shared payment token (`spt_\u2026`) the user approved, scoped to at least the order amount in USD. Safe to retry with the same token.",
+        "description": "Pay an unpaid order with a Stripe shared payment token (`spt_…`) the user approved, scoped to at least the order amount in USD. Safe to retry with the same token.",
         "operationId": "payOrder",
         "parameters": [
           {
@@ -510,6 +510,16 @@
           },
           "idempotency_key": {
             "type": "string"
+          },
+          "certified": {
+            "type": "string",
+            "enum": [
+              "none",
+              "certified",
+              "certified_return_receipt"
+            ],
+            "default": "none",
+            "description": "USPS Certified Mail. `certified` ($14.99): tracking number and proof of mailing and delivery. `certified_return_receipt` ($19.99): adds the recipient's signature. `none` ($4.99): regular First-Class."
           }
         }
       },
@@ -521,7 +531,9 @@
             "enum": [
               "postcard_4x6",
               "postcard_6x9",
-              "letter"
+              "letter",
+              "letter_certified",
+              "letter_certified_rr"
             ]
           },
           "name": {
@@ -648,6 +660,31 @@
                 "note": {
                   "type": "string"
                 }
+              }
+            }
+          },
+          "certified": {
+            "type": "string",
+            "enum": [
+              "none",
+              "certified",
+              "certified_return_receipt"
+            ],
+            "description": "Letters only: the USPS extra service."
+          },
+          "tracking": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "USPS tracking once the piece is accepted (certified letters always get one).",
+            "properties": {
+              "number": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
               }
             }
           }

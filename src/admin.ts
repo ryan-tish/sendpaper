@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import express, { Router, type NextFunction, type Request, type Response } from "express";
-import { PRODUCTS, env } from "./config.ts";
+import { EXTRA_SERVICE, PRODUCTS, env } from "./config.ts";
 import { page } from "./layout.ts";
 import { getOrder, listOrders, setStatus, setTest, STATUSES, type Status } from "./orders.ts";
 import { stripe } from "./payments.ts";
@@ -81,6 +81,7 @@ admin.get("/orders/:id", async (req, res) => {
       `Admin · ${o.id}`,
       `<section><h1>${esc(o.id)}</h1>
       <p><b>${esc(PRODUCTS[o.product].name)}</b> · ${esc(o.status)} · ${o.free_offer ? `<span class="pill ok">FREE · first postcard</span> (reject with "Cancel without refund")` : `$${(o.price_cents / 100).toFixed(2)}`} · ${esc(o.customer_email ?? "no email")} · via ${esc(o.source)} ${esc(o.client ?? "")}</p>
+      ${EXTRA_SERVICE[o.product] ? `<p><span class="pill ok">USPS ${EXTRA_SERVICE[o.product] === "certified_return_receipt" ? "Certified + return receipt" : "Certified"}</span> ${o.tracking_number ? `Tracking <a href="https://tools.usps.com/go/TrackConfirmAction?tLabels=${esc(o.tracking_number)}" target="_blank" rel="noopener">${esc(o.tracking_number)}</a>` : "Tracking number appears after PostGrid hands it to USPS."}</p>` : ""}
       <div class="grid"><div class="card"><b>To</b>${addressBlock(o.to_address)}</div><div class="card"><b>From</b>${addressBlock(o.from_address)}</div></div>
       <p><a class="btn alt" href="/admin/orders/${o.id}/print" target="_blank">Open print sheet</a></p>
       ${printPanel}

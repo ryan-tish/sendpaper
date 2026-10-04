@@ -7,7 +7,7 @@ description: "The tools Sendpaper exposes to your agent."
 | --- | --- |
 | `get_pricing` | Products, prices and payment options, including Sendpaper's Stripe network ID. |
 | `create_postcard` | Creates a 4×6 or 6×9 postcard. Returns `preview_url` and `checkout_url`. |
-| `create_letter` | Creates a printed letter (up to ~3 pages). Returns `preview_url` and `checkout_url`. |
+| `create_letter` | Creates a printed letter (up to ~3 pages), optionally by USPS Certified Mail. Returns `preview_url` and `checkout_url`. |
 | `pay_order` | Pays an unpaid order with a Stripe shared payment token the user approved. See [Let your agent pay](/guides/agent-payments). |
 | `get_order` | Status of an order by id (`ord_…`). |
 | `cancel_order` | Cancels an order that has not been paid. |
@@ -28,6 +28,7 @@ Same `to`, `from` and `idempotency_key`, plus:
 
 <ParamField path="content.body" type="string" required>Plain text, blank lines between paragraphs, up to about 3 pages.</ParamField>
 <ParamField path="content.font" type="string" default="serif">`serif` or `sans`.</ParamField>
+<ParamField path="certified" type="string" default="none">`none` ($4.99), `certified` ($14.99, USPS tracking and proof of delivery) or `certified_return_receipt` ($19.99, adds the recipient's signature).</ParamField>
 
 ## pay_order
 

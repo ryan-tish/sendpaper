@@ -34,7 +34,7 @@ async function senderUsedOffer(o: OrderRow) {
 export async function offerFor(o: OrderRow): Promise<{ eligible: boolean; remaining: number }> {
   const remaining = await offerRemaining();
   const eligible =
-    o.product !== "letter" && o.status === "awaiting_payment" && remaining > 0 && !(await senderUsedOffer(o));
+    o.product.startsWith("postcard") && o.status === "awaiting_payment" && remaining > 0 && !(await senderUsedOffer(o));
   return { eligible, remaining };
 }
 
@@ -110,7 +110,7 @@ export async function setReviewApproved(id: number, approved: boolean) {
 export async function orderWithOffer(o: OrderRow) {
   const base = publicOrder(o);
   if (o.free_offer) return { ...base, first_postcard_free: { applied: true } };
-  if (o.status !== "awaiting_payment" || o.product === "letter") return base;
+  if (o.status !== "awaiting_payment" || !o.product.startsWith("postcard")) return base;
   const { eligible } = await offerFor(o);
   return eligible
     ? {

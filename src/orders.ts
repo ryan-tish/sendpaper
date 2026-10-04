@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
-import { BASE_URL, LIMITS, PRODUCTS, US_STATES, type ProductId } from "./config.ts";
+import { BASE_URL, EXTRA_SERVICE, LIMITS, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
 import { pool } from "./db.ts";
 import { track } from "./analytics.ts";
 
@@ -82,7 +82,16 @@ export const CreatePostcardSchema = z.object({
   ...common,
   content: PostcardContentSchema,
 });
-export const CreateLetterSchema = z.object({ ...common, content: LetterContentSchema });
+export const CreateLetterSchema = z.object({
+  ...common,
+  content: LetterContentSchema,
+  certified: z
+    .enum(["none", "certified", "certified_return_receipt"])
+    .default("none")
+    .describe(
+      "USPS Certified Mail. \"certified\" ($14.99): tracking number and proof of mailing and delivery. \"certified_return_receipt\" ($19.99): adds the recipient's signature as proof of delivery, which landlords, courts and agencies often require. \"none\" ($4.99): regular First-Class.",
+    ),
+});
 
 export type OrderRow = {
   id: string;
@@ -110,6 +119,7 @@ export type OrderRow = {
   free_offer: boolean;
   analytics_id: string | null;
   is_test: boolean;
+  tracking_number: string | null;
 };
 
 type CreateInput = {
@@ -208,7 +218,8 @@ export function orderUrl(id: string) {
 export function publicOrder(o: OrderRow, checkoutUrl?: string | null) {
   return {
     id: o.id,
-    object: o.product === "letter" ? "letter" : "postcard",
+    object: isLetter(o.product) ? "letter" : "postcard",
+    certified: EXTRA_SERVICE[o.product] ?? "none",
     product: o.product,
     product_name: PRODUCTS[o.product].name,
     status: o.status,
@@ -223,6 +234,7 @@ export function publicOrder(o: OrderRow, checkoutUrl?: string | null) {
     created_at: o.created_at,
     paid_at: o.paid_at,
     mailed_at: o.mailed_at,
+    tracking: o.tracking_number ? { number: o.tracking_number, url: `https://tools.usps.com/go/TrackConfirmAction?tLabels=${o.tracking_number}` } : null,
     events: o.events,
   };
 }

@@ -25,17 +25,17 @@ export const USE_CASES: UseCase[] = [
     id: "taxes",
     title: "Taxes and paperwork",
     why: "Some agencies still want a letter: answering a notice, sending a signed statement, mailing a form.",
-    prompt: "Write a short letter responding to this IRS notice, explaining the payment I already made, and mail it to the address on the notice.",
-    product: "letter",
-    note: "We mail First-Class only. If the agency requires certified mail or proof of delivery, use the post office instead.",
+    prompt: "Write a short letter responding to this IRS notice, explaining the payment I already made, and send it by certified mail to the address on the notice.",
+    product: "letter_certified",
+    note: "Certified Mail gives you a USPS tracking number and proof of delivery, so you can show when the agency received it.",
   },
   {
     id: "landlord",
     title: "Landlords and leases",
     why: "Leases often require written notice for repairs, renewals and move-outs.",
-    prompt: "Mail my landlord a printed copy of this 30-day notice that I'm not renewing the lease. Return address is my apartment.",
-    product: "letter",
-    note: "First-Class only, so keep a copy. If your lease requires certified mail, send it that way.",
+    prompt: "Send my landlord this 30-day notice that I'm not renewing the lease, by certified mail with a return receipt. Return address is my apartment.",
+    product: "letter_certified_rr",
+    note: "The return receipt comes back with the landlord's signature, which is the proof most leases and courts ask for.",
   },
   {
     id: "business",
@@ -106,7 +106,7 @@ const CSS = `
 // The logo's envelope, faint in each card's corner.
 const MARK = `<svg class="mark" width="36" height="26" viewBox="0 0 36 26" aria-hidden="true"><path d="M1 9h5M3 13h4M1 17h5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><rect x="8" y="3" width="27" height="20" rx="4" fill="currentColor"/><path d="M11 6.5 21.5 14 32 6.5" fill="none" stroke="var(--card)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-const LABEL: Record<ProductId, string> = { postcard_4x6: "Postcard 4×6", postcard_6x9: "Postcard 6×9", letter: "Letter" };
+const LABEL: Record<ProductId, string> = { postcard_4x6: "Postcard 4×6", postcard_6x9: "Postcard 6×9", letter: "Letter", letter_certified: "Certified letter", letter_certified_rr: "Certified + return receipt" };
 
 export function useCasesPage() {
   return page(
