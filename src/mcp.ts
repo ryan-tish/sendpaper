@@ -38,8 +38,9 @@ function build(client: string | undefined) {
   const server = new McpServer({ name: "sendpaper", version: "1.0.0", websiteUrl: BASE_URL }, { instructions: INSTRUCTIONS });
   // Count every tool call per agent (analytics only; the handler runs unchanged).
   const register = server.registerTool.bind(server) as typeof server.registerTool;
+  // Also mirror each tool's title into annotations.title (Anthropic's directory reads it from there).
   server.registerTool = ((name: string, config: any, cb: any) =>
-    register(name, config, (async (...args: any[]) => {
+    register(name, { ...config, annotations: { title: config.title, ...config.annotations } }, (async (...args: any[]) => {
       track("mcp_tool_called", `agent:${client ?? "unknown"}`, { tool: name, client: client ?? "unknown" });
       recordToolCall(name, client ?? "unknown");
       return cb(...args);
