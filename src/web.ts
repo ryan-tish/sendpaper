@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { Router } from "express";
+import express, { Router } from "express";
 import { readFileSync } from "node:fs";
 import { BASE_URL, BRAND, DOCS_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL, env } from "./config.ts";
 import { pool } from "./db.ts";
@@ -10,6 +10,7 @@ import { QUICK_EXAMPLE, QUICK_PARAMS } from "./quick.ts";
 import { page } from "./layout.ts";
 import { getOrder, publicOrder } from "./orders.ts";
 import { checkoutUrlFor, confirmFromRedirect } from "./payments.ts";
+import { OFFER_LIMIT, OfferError, addReview, claimFree, listReviews, offerFor, offerRemaining, reviewFor } from "./offer.ts";
 import { addressBlock, esc, printSheet } from "./render.ts";
 
 export const web = Router();
@@ -30,8 +31,8 @@ const installSnippets = () => `
     <p class="soft">In Claude or ChatGPT apps, add <code>${esc(MCP_URL)}</code> as a custom connector.</p></div>
 </div>`;
 
-web.get("/", (_req, res) => {
-  res.send(landing());
+web.get("/", async (_req, res) => {
+  res.send(landing(await offerRemaining().catch(() => 0)));
 });
 
 web.get("/agents", (_req, res) => {
@@ -64,8 +65,8 @@ web.get("/use-cases", (_req, res) => {
   res.send(useCasesPage());
 });
 
-web.get("/send", (req, res) => {
-  res.send(sendPage(String(req.query.product ?? "")));
+web.get("/send", async (req, res) => {
+  res.send(sendPage(String(req.query.product ?? ""), await offerRemaining().catch(() => 0)));
 });
 
 web.get("/o/:id", async (req, res) => {
@@ -75,14 +76,44 @@ web.get("/o/:id", async (req, res) => {
   if (!o) return res.status(404).send(page("Not found", `<section><h1>No such order</h1></section>`, { noindex: true }));
   const p = publicOrder(o);
   const paid = o.status !== "awaiting_payment";
+  const offer = await offerFor(o);
+  const review = o.status === "mailed" ? await reviewFor(o.id) : null;
+  const stars = [5, 4, 3, 2, 1].map((n) => `<label class="star"><input type="radio" name="rating" value="${n}" required> ${"★".repeat(n)}</label>`).join("");
   res.send(
     page(
       `Order ${o.id} — ${BRAND}`,
       `<section><span class="eyebrow">Order ${esc(o.id)}</span>
         <h1>${esc(p.product_name)} to ${esc(o.to_address.name)}</h1>
-        <div><span class="pill${paid ? " ok" : ""}">${esc(o.status.replace("_", " "))}</span></div>
-        <p>${esc(p.status_detail)}</p>
-        ${o.status === "awaiting_payment" ? `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><a class="btn" href="/o/${esc(o.id)}/pay">Pay ${esc(p.price.display)}</a><span class="soft">Secure checkout by Stripe.</span></div>` : ""}
+        <div><span class="pill${paid || offer.eligible ? " ok" : ""}">${offer.eligible ? "free · ready to send" : esc(o.status.replace("_", " "))}</span></div>
+        <p>${offer.eligible ? "This one's free with the launch offer. Confirm below and we'll print and mail it." : esc(p.status_detail)}</p>
+        ${o.free_offer ? `<p><span class="pill ok">Free · launch offer</span> This one's on us.</p>` : ""}
+        ${o.status === "awaiting_payment" && offer.eligible
+          ? `<form id="free" method="post" action="/o/${esc(o.id)}/claim" class="card offer-card">
+              <span class="eyebrow">Launch offer · ${offer.remaining} of ${OFFER_LIMIT} left</span>
+              <h2 style="margin:0">Your first postcard is free</h2>
+              <p class="soft">No card, no checkout. We'll print it and mail it via USPS First-Class after a quick review.</p>
+              <label for="email">Email <span class="soft">(optional, so we can follow up and ask how it went)</span></label>
+              <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
+              <div><button class="btn green" type="submit">Send it free</button></div>
+              <p class="soft" style="font-size:.85rem">One free postcard per return address while the ${OFFER_LIMIT} last.</p>
+            </form>`
+          : o.status === "awaiting_payment"
+            ? `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><a class="btn" href="/o/${esc(o.id)}/pay">Pay ${esc(p.price.display)}</a><span class="soft">Secure checkout by Stripe.</span></div>`
+            : ""}
+        ${o.status === "mailed"
+          ? review
+            ? `<div class="card"><b>Thanks for your review!</b><p class="soft">We read every one.</p></div>`
+            : `<form method="post" action="/o/${esc(o.id)}/review" class="card offer-card">
+                <span class="eyebrow">How did it go?</span><h2 style="margin:0">Leave a review</h2>
+                <fieldset class="stars"><legend>Rating</legend>${stars}</fieldset>
+                <label for="body">What did you send, and how did it land?</label>
+                <textarea id="body" name="body" required maxlength="1000" rows="4"></textarea>
+                <label for="name">Name to show <span class="soft">(for example "Alex, Denver")</span></label>
+                <input id="name" name="name" required maxlength="60">
+                <div><button class="btn" type="submit">Send review</button></div>
+                ${o.free_offer ? `<p class="soft" style="font-size:.85rem">Your review will note that this postcard was free. Honest reviews only, good or bad.</p>` : ""}
+              </form>`
+          : ""}
         <div class="grid">
           <div class="card"><span class="eyebrow">To</span><div>${addressBlock(o.to_address)}</div></div>
           <div class="card"><span class="eyebrow">From</span><div>${addressBlock(o.from_address)}</div></div>
@@ -100,12 +131,52 @@ web.get("/o/:id/pay", async (req, res) => {
   const o = await getOrder(String(req.params.id));
   if (!o) return res.status(404).send("No such order");
   if (o.status !== "awaiting_payment") return res.redirect(`/o/${o.id}`);
+  // A free launch-offer postcard never goes to Stripe: send them to the claim form.
+  if ((await offerFor(o)).eligible) return res.redirect(303, `/o/${o.id}#free`);
   try {
     res.redirect(303, await checkoutUrlFor(o));
   } catch (e) {
     console.error(e);
     res.status(503).send(page("Checkout unavailable", `<section><h1>Checkout is unavailable right now</h1><p>Your order ${esc(o.id)} is saved. Try again in a few minutes, or email ${esc(SUPPORT_EMAIL)}.</p></section>`, { noindex: true }));
   }
+});
+
+web.post("/o/:id/claim", express.urlencoded({ extended: false, limit: "4kb" }), async (req, res) => {
+  const id = String(req.params.id);
+  const email = String(req.body?.email ?? "").trim().slice(0, 200);
+  try {
+    await claimFree(id, /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : null);
+    res.redirect(303, `/o/${id}`);
+  } catch (e) {
+    if (!(e instanceof OfferError)) throw e;
+    res.status(409).send(page("Not eligible", `<section><h1>This one isn't free</h1><p>${esc(e.message)} You can still <a href="/o/${esc(id)}/pay">pay for it</a>.</p></section>`, { noindex: true }));
+  }
+});
+
+web.post("/o/:id/review", express.urlencoded({ extended: false, limit: "8kb" }), async (req, res) => {
+  const o = await getOrder(String(req.params.id));
+  if (!o) return res.status(404).send("No such order");
+  const rating = Number(req.body?.rating);
+  const body = String(req.body?.body ?? "").trim().slice(0, 1000);
+  const name = String(req.body?.name ?? "").trim().slice(0, 60);
+  if (o.status !== "mailed" || !(rating >= 1 && rating <= 5) || !body || !name) return res.redirect(303, `/o/${o.id}`);
+  await addReview(o, Math.round(rating), body, name);
+  res.redirect(303, `/o/${o.id}`);
+});
+
+web.get("/reviews", async (_req, res) => {
+  const reviews = await listReviews(true);
+  res.send(
+    page(
+      `Reviews — ${BRAND}`,
+      `<section><span class="eyebrow">Reviews</span><h1 style="font-size:clamp(1.9rem,3.6vw,2.6rem)">What senders say</h1>
+      <p class="soft">Every review here comes from a real order. Reviews of free launch-offer postcards are marked.</p>
+      ${reviews.length
+        ? `<div class="grid">${reviews.map((r) => `<div class="card"><b aria-label="${r.rating} out of 5">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</b><p>${esc(r.body)}</p><p class="soft">${esc(r.name)}${r.free_offer ? " · received a free postcard" : ""}</p></div>`).join("")}</div>`
+        : `<p>No reviews yet. The first ones are on their way.</p>`}</section>`,
+      { description: `Reviews of ${BRAND} from people who mailed real postcards and letters.` },
+    ),
+  );
 });
 
 web.get("/o/:id/preview", async (req, res) => {
@@ -160,6 +231,9 @@ ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}, 
 - It shows the exact print preview and one Pay button (Stripe Checkout; Link works). Nothing is ordered until Pay is clicked.
 - Parameters: ${Object.entries(QUICK_PARAMS).map(([k, v]) => `${k} (${v})`).join("; ")}
 - Example: ${QUICK_EXAMPLE}
+
+## Launch offer
+- Each sender's first postcard is free (any size, one per return address) until ${OFFER_LIMIT} have been claimed. It's applied automatically: create the order, and if launch_offer.eligible is true, the user just confirms at checkout_url. Don't call pay_order for those.
 
 ## Payment
 - Agents can pay with a Stripe shared payment token (spt_…) the user approved, scoped to the order amount in USD: call pay_order, or POST /v1/orders/{id}/pay with {"shared_payment_token": "spt_…"}.${env.stripeNetworkId ? `\n- Sendpaper's Stripe network ID: ${env.stripeNetworkId}` : ""}

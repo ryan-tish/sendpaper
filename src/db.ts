@@ -36,6 +36,18 @@ export async function migrate() {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS print_id text;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS print_status text;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS print_error text;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS free_offer boolean NOT NULL DEFAULT false;
+
+    CREATE TABLE IF NOT EXISTS reviews (
+      id          serial PRIMARY KEY,
+      order_id    text NOT NULL UNIQUE REFERENCES orders(id),
+      rating      integer NOT NULL CHECK (rating BETWEEN 1 AND 5),
+      body        text NOT NULL,
+      name        text NOT NULL,
+      free_offer  boolean NOT NULL DEFAULT false,
+      approved    boolean NOT NULL DEFAULT false,
+      created_at  timestamptz NOT NULL DEFAULT now()
+    );
 
     CREATE TABLE IF NOT EXISTS images (
       id          text PRIMARY KEY,

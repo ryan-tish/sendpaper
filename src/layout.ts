@@ -47,6 +47,13 @@ code { background: var(--tint); border: 1px solid var(--rule); border-radius: 5p
 pre code { border: 0; padding: 0; background: none; }
 .btn { display: inline-flex; align-items: center; gap: 8px; background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--btn-bg); border-radius: 8px; padding: 11px 18px; font: 600 .95rem var(--f-ui); text-decoration: none; cursor: pointer; white-space: nowrap; }
 .btn:hover { opacity: .9; }
+.btn.green { background: var(--green); border-color: var(--green); color: var(--btn-fg); }
+.card.offer-card { gap: 12px; border-color: var(--green-line); background: var(--green-soft); }
+.offer-card input, .offer-card textarea { background: var(--card); }
+.stars { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.stars legend { padding: 0; margin-bottom: 6px; font-weight: 500; }
+.star { display: inline-flex; gap: 6px; align-items: center; color: var(--green); cursor: pointer; }
+.offer-banner { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; justify-content: space-between; border: 1px solid var(--green-line); background: var(--green-soft); border-radius: 12px; padding: 12px 16px; }
 .btn.alt { background: var(--card); color: var(--ink); border-color: var(--rule); }
 .btn.alt:hover { border-color: var(--faint); opacity: 1; }
 .btn:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }

@@ -6,6 +6,7 @@ import { getOrder, listOrders, setStatus, STATUSES, type Status } from "./orders
 import { stripe } from "./payments.ts";
 import { postgridMode, printProofUrl, sendToPrint, syncPrint } from "./fulfill.ts";
 import { addressBlock, esc, printSheet } from "./render.ts";
+import { listReviews, offerRemaining, setReviewApproved, OFFER_LIMIT } from "./offer.ts";
 
 // The operator's queue: paid orders get reviewed, printed (or sent to a print partner), then marked mailed.
 export const admin = Router();
@@ -33,14 +34,14 @@ admin.get("/", async (req, res) => {
     .map(
       (o) => `<tr><td><a href="/admin/orders/${o.id}">${o.id}</a></td><td>${esc(PRODUCTS[o.product].name)}</td>
       <td>${esc(o.status)}</td><td>${esc(o.to_address.name)}, ${esc(o.to_address.city)} ${esc(o.to_address.state)}</td>
-      <td>${esc(o.source)}${o.client ? ` / ${esc(o.client)}` : ""}</td><td>$${(o.price_cents / 100).toFixed(2)}</td>
+      <td>${esc(o.source)}${o.client ? ` / ${esc(o.client)}` : ""}</td><td>${o.free_offer ? "<b>FREE</b>" : `$${(o.price_cents / 100).toFixed(2)}`}</td>
       <td>${o.created_at.toISOString().slice(0, 16).replace("T", " ")}</td></tr>`,
     )
     .join("");
   res.send(
     page(
       "Admin",
-      `<section><h1>Orders</h1><p>${tabs}</p><div class="scroll"><table>
+      `<section><h1>Orders</h1><p>${tabs}</p><p class="soft">Launch offer: ${await offerRemaining()} of ${OFFER_LIMIT} free postcards left · <a href="/admin/reviews">Reviews</a></p><div class="scroll"><table>
       <tr><th>Id</th><th>Product</th><th>Status</th><th>To</th><th>Source</th><th>Price</th><th>Created (UTC)</th></tr>
       ${rows || `<tr><td colspan="7" class="soft">No ${esc(status)} orders.</td></tr>`}</table></div></section>`,
       { noindex: true },
@@ -72,7 +73,7 @@ admin.get("/orders/:id", async (req, res) => {
     page(
       `Admin · ${o.id}`,
       `<section><h1>${esc(o.id)}</h1>
-      <p><b>${esc(PRODUCTS[o.product].name)}</b> · ${esc(o.status)} · $${(o.price_cents / 100).toFixed(2)} · ${esc(o.customer_email ?? "no email")} · via ${esc(o.source)} ${esc(o.client ?? "")}</p>
+      <p><b>${esc(PRODUCTS[o.product].name)}</b> · ${esc(o.status)} · ${o.free_offer ? `<span class="pill ok">FREE · launch offer</span> (reject with "Cancel without refund")` : `$${(o.price_cents / 100).toFixed(2)}`} · ${esc(o.customer_email ?? "no email")} · via ${esc(o.source)} ${esc(o.client ?? "")}</p>
       <div class="grid"><div class="card"><b>To</b>${addressBlock(o.to_address)}</div><div class="card"><b>From</b>${addressBlock(o.from_address)}</div></div>
       <p><a class="btn alt" href="/admin/orders/${o.id}/print" target="_blank">Open print sheet</a></p>
       ${printPanel}
@@ -87,6 +88,32 @@ admin.get("/orders/:id", async (req, res) => {
       { noindex: true },
     ),
   );
+});
+
+// Reviews come in from customers' order pages after mailing; only approved ones are shown on /reviews.
+admin.get("/reviews", async (_req, res) => {
+  const reviews = await listReviews(false);
+  const rows = reviews
+    .map(
+      (r) => `<tr><td>${"★".repeat(r.rating)}</td><td>${esc(r.body)}</td><td>${esc(r.name)}${r.free_offer ? " · free" : ""}</td>
+      <td><a href="/admin/orders/${esc(r.order_id)}">${esc(r.order_id)}</a></td><td>${r.approved ? "shown" : "hidden"}</td>
+      <td><form method="post" action="/admin/reviews/${r.id}"><input type="hidden" name="approved" value="${r.approved ? "0" : "1"}"><button class="btn${r.approved ? " alt" : ""}">${r.approved ? "Hide" : "Approve"}</button></form></td></tr>`,
+    )
+    .join("");
+  res.send(
+    page(
+      "Admin · Reviews",
+      `<section><h1>Reviews</h1><p class="soft">Approve honest reviews, good or bad; reviews of free postcards are labelled publicly. <a href="/admin">Orders</a></p>
+      <div class="scroll"><table><tr><th>Rating</th><th>Review</th><th>Name</th><th>Order</th><th>Status</th><th></th></tr>
+      ${rows || `<tr><td colspan="6" class="soft">No reviews yet.</td></tr>`}</table></div></section>`,
+      { noindex: true },
+    ),
+  );
+});
+
+admin.post("/reviews/:id", async (req, res) => {
+  await setReviewApproved(Number(req.params.id), req.body.approved === "1");
+  res.redirect(303, "/admin/reviews");
 });
 
 admin.post("/orders/:id/print-send", async (req, res) => {

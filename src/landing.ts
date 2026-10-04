@@ -1,3 +1,4 @@
+import { OFFER_LIMIT } from "./offer.ts";
 import { BASE_URL, BRAND, PRODUCTS } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
@@ -108,7 +109,6 @@ const CSS = `
 .prices dd { margin: 0; text-align: right; color: var(--ink); }
 .prices .btn { justify-content: center; }
 .prices .size { font: 600 .8rem var(--f-mono); color: var(--green); letter-spacing: .02em; margin-bottom: -10px; }
-.btn.green { background: var(--green); border-color: var(--green); color: var(--btn-fg); }
 .faq { max-width: 760px; gap: 20px; }
 details.q { border-bottom: 1px solid var(--rule); padding-block: 16px; }
 details.q summary { font-weight: 500; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
@@ -120,7 +120,7 @@ details.q p { color: var(--soft); margin-top: 10px; }
 `;
 
 
-export function landing() {
+export function landing(offerLeft = 0) {
   const docs = docsUrl();
   return page(
     `${BRAND}: physical mail for AI agents`,
@@ -129,7 +129,9 @@ export function landing() {
       <div class="art" aria-hidden="true"><canvas id="lines"></canvas></div>
       <div class="hero">
         <div class="stack">
-          <a class="stat" href="${esc(docsUrl("/guides/agent-payments"))}"><b>New</b> Your agent can now pay for you →</a>
+          ${offerLeft > 0
+            ? `<a class="stat" href="/send"><b>Launch offer</b> Your first postcard is free · ${offerLeft} of ${OFFER_LIMIT} left →</a>`
+            : `<a class="stat" href="${esc(docsUrl("/guides/agent-payments"))}"><b>New</b> Your agent can now pay for you →</a>`}
           <h1>Physical mail for AI agents</h1>
           <p class="lede">Real postcards and letters from <b>Codex</b>, <b>Muse</b> and <b>Claude</b>.</p>
           <div class="ctas"><a class="btn" href="${esc(docsUrl("/quickstart"))}">Read the quickstart ›</a><a class="btn alt" href="/send">Send from the web</a></div>
@@ -166,6 +168,7 @@ export function landing() {
 
     <section id="pricing">
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
+      ${offerLeft > 0 ? `<div class="offer-banner"><span><b>Launch offer:</b> your first postcard is free, any size. One per return address, while the ${OFFER_LIMIT} last.</span><b>${offerLeft} of ${OFFER_LIMIT} left</b></div>` : ""}
       <div class="prices">${(Object.keys(PRODUCTS) as (keyof typeof PRODUCTS)[])
         .map((id) => `<div class="card"><span class="size">${esc(SIZE[id])}</span><h3>${id === "letter" ? "Letter" : "Postcard"}</h3><div class="price">${usd(PRODUCTS[id].cents)}</div>
           <dl>${DETAILS[id].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
@@ -181,6 +184,7 @@ export function landing() {
     <section class="faq">
       <div class="section-head"><span class="eyebrow">FAQ</span><h2>Questions</h2></div>
       <div>
+        <details class="q"><summary>Is there a free trial?</summary><p>During launch, your first postcard is free, any size: one per return address until the first ${OFFER_LIMIT} are claimed. It's applied automatically, so you just confirm it on the order page with no card needed. <a href="/reviews">See what senders say</a>.</p></details>
         <details class="q"><summary>Can my agent pay for me?</summary><p>Yes, if you let it. Agents pay with a one-time Stripe token capped at the order's exact price, which you approve in your agent (for example through Stripe Link). Your card details are never shared. Or pay the checkout link yourself. Either way, nothing is mailed until it's paid.</p></details>
         <details class="q"><summary>Which agents work?</summary><p>Anything that supports remote MCP servers over Streamable HTTP: Codex, Muse Code, Claude Code, Claude Desktop, claude.ai, ChatGPT developer mode, Cursor and VS Code. Everything else can use the <a href="${esc(docsUrl("/api/introduction"))}">REST API</a>.</p></details>
         <details class="q"><summary>Where can you mail to?</summary><p>US addresses, including Puerto Rico, US territories and APO/FPO/DPO military addresses.</p></details>

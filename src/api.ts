@@ -1,6 +1,6 @@
 import express, { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
-import { LIMITS, PRODUCTS } from "./config.ts";
+import { BASE_URL, LIMITS, PRODUCTS } from "./config.ts";
 import { pool } from "./db.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import {
@@ -12,6 +12,7 @@ import {
   publicOrder,
   setStatus,
 } from "./orders.ts";
+import { offerFor, orderWithOffer } from "./offer.ts";
 
 export function apiError(res: Response, status: number, type: string, message: string, fields?: unknown) {
   return res.status(status).json({ error: { type, message, ...(fields ? { fields } : {}) } });
@@ -56,7 +57,7 @@ api.post(
       source: "api",
       client: client(req),
     });
-    res.status(existing ? 200 : 201).json(publicOrder(order));
+    res.status(existing ? 200 : 201).json(await orderWithOffer(order));
   }),
 );
 
@@ -71,7 +72,7 @@ api.post(
       source: "api",
       client: client(req),
     });
-    res.status(existing ? 200 : 201).json(publicOrder(order));
+    res.status(existing ? 200 : 201).json(await orderWithOffer(order));
   }),
 );
 
@@ -80,7 +81,7 @@ api.get(
   handle(async (req, res) => {
     const o = await getOrder(String(req.params.id));
     if (!o) return apiError(res, 404, "not_found", `No order ${req.params.id}`);
-    res.json(publicOrder(o));
+    res.json(await orderWithOffer(o));
   }),
 );
 
@@ -102,6 +103,8 @@ api.post(
     const o = await getOrder(String(req.params.id));
     if (!o) return apiError(res, 404, "not_found", `No order ${req.params.id}`);
     const token = String(req.body?.shared_payment_token ?? "");
+    if ((await offerFor(o)).eligible)
+      return apiError(res, 409, "free_with_launch_offer", `This postcard is free with the launch offer. Don't charge the user: have them confirm at ${BASE_URL}/o/${o.id}/pay.`);
     try {
       res.json(publicOrder(await payWithSharedToken(o, token)));
     } catch (e) {

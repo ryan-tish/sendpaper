@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import { BASE_URL, BRAND, PRODUCTS, env } from "./config.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
+import { OFFER_LIMIT, offerFor, offerRemaining, orderWithOffer } from "./offer.ts";
 import {
   CreateLetterSchema,
   CreatePostcardSchema,
@@ -22,7 +23,9 @@ Every order is reviewed by a person before printing; threatening, harassing, fra
 
 const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
 
-function nextStep(o: ReturnType<typeof publicOrder>) {
+function nextStep(o: Awaited<ReturnType<typeof orderWithOffer>>) {
+  if ("launch_offer" in o && o.launch_offer && "eligible" in o.launch_offer)
+    return `Order created (${o.id}). Good news: it's FREE with the launch offer (first postcard from this return address; ${o.launch_offer.remaining} of ${OFFER_LIMIT} left). Preview: ${o.preview_url}. Tell the user it's free and give them ${o.checkout_url} to confirm it; no payment or card is needed. Do not call pay_order. Track it at ${o.order_url}.`;
   return o.checkout_url
     ? `Order created (${o.id}, ${o.price.display}). Preview: ${o.preview_url}. To pay: call pay_order with a Stripe shared payment token for ${o.price.amount_cents} cents USD, or have the user pay at ${o.checkout_url}. It will not be mailed until paid. Track it at ${o.order_url}.`
     : `Order status: ${o.status_detail} Track it at ${o.order_url}.`;
@@ -46,6 +49,10 @@ function build(client: string | undefined) {
           currency: "usd",
           ...(env.stripeNetworkId ? { stripe_network_id: env.stripeNetworkId } : {}),
         },
+        launch_offer: {
+          description: `Each sender's first postcard is free (any size, one per return address) until ${OFFER_LIMIT} have been claimed. Applied automatically when the order is created; the user just confirms at checkout_url.`,
+          remaining: await offerRemaining(),
+        },
       }),
   );
 
@@ -61,7 +68,7 @@ function build(client: string | undefined) {
     async (args) => {
       const { size, content, ...rest } = CreatePostcardSchema.parse(args);
       const { order } = await createOrder({ ...rest, content, product: size === "6x9" ? "postcard_6x9" : "postcard_4x6", source: "mcp", client });
-      const o = publicOrder(order);
+      const o = await orderWithOffer(order);
       return { content: [{ type: "text", text: nextStep(o) }, ...json(o).content] };
     },
   );
@@ -78,7 +85,7 @@ function build(client: string | undefined) {
     async (args) => {
       const input = CreateLetterSchema.parse(args);
       const { order } = await createOrder({ ...input, product: "letter", source: "mcp", client });
-      const o = publicOrder(order);
+      const o = await orderWithOffer(order);
       return { content: [{ type: "text", text: nextStep(o) }, ...json(o).content] };
     },
   );
@@ -96,6 +103,8 @@ function build(client: string | undefined) {
     async ({ order_id, shared_payment_token }) => {
       const o = await getOrder(order_id);
       if (!o) return { isError: true, content: [{ type: "text", text: `No order ${order_id}` }] };
+      if ((await offerFor(o)).eligible)
+        return { isError: true, content: [{ type: "text", text: `Don't charge the user: this postcard is free with the launch offer. Have them confirm it at ${publicOrder(o).checkout_url}.` }] };
       try {
         const paid = publicOrder(await payWithSharedToken(o, shared_payment_token));
         return { content: [{ type: "text", text: `${paid.status_detail} Track it at ${paid.order_url}.` }, ...json(paid).content] };
@@ -118,7 +127,7 @@ function build(client: string | undefined) {
     async ({ order_id }) => {
       const o = await getOrder(order_id);
       if (!o) return { isError: true, content: [{ type: "text", text: `No order ${order_id}` }] };
-      return json(publicOrder(o));
+      return json(await orderWithOffer(o));
     },
   );
 

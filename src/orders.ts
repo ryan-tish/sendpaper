@@ -106,6 +106,7 @@ export type OrderRow = {
   print_id: string | null;
   print_status: string | null;
   print_error: string | null;
+  free_offer: boolean;
 };
 
 type CreateInput = {
