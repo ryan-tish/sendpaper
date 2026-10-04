@@ -23,6 +23,12 @@ function auth(req: Request, res: Response, next: NextFunction) {
   res.set("WWW-Authenticate", 'Basic realm="admin"').status(401).send("Admin login required (any username, ADMIN_TOKEN as password).");
 }
 admin.use(auth);
+// Mark the operator's browser so their own visits aren't counted (stats.ts skips it; the PostHog snippet opts out).
+// Only someone who passed admin auth ever gets this cookie.
+admin.use((_req, res, next) => {
+  res.cookie("sp_owner", "1", { maxAge: 365 * 24 * 3600 * 1000, httpOnly: false, sameSite: "lax", secure: true, path: "/" });
+  next();
+});
 admin.use(express.urlencoded({ extended: false }));
 
 admin.get("/", async (req, res) => {

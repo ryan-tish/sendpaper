@@ -34,7 +34,8 @@ function referrerHost(req: Request) {
 
 export function trackViews(req: Request, res: Response, next: NextFunction) {
   const ua = req.get("user-agent") ?? "";
-  if (req.method === "GET" && !SKIP.test(req.path) && ua && !BOT.test(ua) && (req.get("accept") ?? "").includes("text/html")) {
+  const owner = /(?:^|;\s*)sp_owner=1/.test(req.get("cookie") ?? "");
+  if (!owner && req.method === "GET" && !SKIP.test(req.path) && ua && !BOT.test(ua) && (req.get("accept") ?? "").includes("text/html")) {
     // Only pages that actually rendered (no 404s or redirects).
     res.on("finish", () => {
       if (res.statusCode !== 200) return;
