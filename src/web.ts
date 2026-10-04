@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { Router } from "express";
 import { readFileSync } from "node:fs";
 import { BASE_URL, BRAND, DOCS_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL, env } from "./config.ts";
@@ -124,6 +125,11 @@ const OPENAPI = JSON.parse(readFileSync(new URL("../docs/openapi.json", import.m
 OPENAPI.servers = [{ url: `${BASE_URL}/v1` }];
 web.get("/openapi.json", (_req, res) => {
   res.set("Access-Control-Allow-Origin", "*").json(OPENAPI);
+});
+
+// Demo walkthrough for the OpenAI plugin review (silent, captioned; built 2026-10-04 from a real Codex run).
+web.get("/review/demo.mp4", (_req, res) => {
+  res.set("Cache-Control", "public, max-age=3600").sendFile(fileURLToPath(new URL("../assets/review/demo.mp4", import.meta.url)));
 });
 
 web.get("/favicon.svg", (_req, res) => {
