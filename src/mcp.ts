@@ -26,8 +26,8 @@ Every order is reviewed by a person before printing; threatening, harassing, fra
 const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
 
 function nextStep(o: Awaited<ReturnType<typeof orderWithOffer>>) {
-  if ("launch_offer" in o && o.launch_offer && "eligible" in o.launch_offer)
-    return `Order created (${o.id}). Good news: it's FREE with the launch offer (first postcard from this return address; ${o.launch_offer.remaining} of ${OFFER_LIMIT} left). Preview: ${o.preview_url}. Tell the user it's free and give them ${o.checkout_url} to confirm it; no payment or card is needed. Do not call pay_order. Track it at ${o.order_url}.`;
+  if ("first_postcard_free" in o && o.first_postcard_free && "eligible" in o.first_postcard_free)
+    return `Order created (${o.id}). Good news: it's FREE, because the first postcard from each return address is free. Preview: ${o.preview_url}. Tell the user it's free and give them ${o.checkout_url} to confirm it; no payment or card is needed. Do not call pay_order. Track it at ${o.order_url}.`;
   return o.checkout_url
     ? `Order created (${o.id}, ${o.price.display}). Preview: ${o.preview_url}. To pay: call pay_order with a Stripe shared payment token for ${o.price.amount_cents} cents USD, or have the user pay at ${o.checkout_url}. It will not be mailed until paid. Track it at ${o.order_url}.`
     : `Order status: ${o.status_detail} Track it at ${o.order_url}.`;
@@ -59,9 +59,9 @@ function build(client: string | undefined) {
           currency: "usd",
           ...(env.stripeNetworkId ? { stripe_network_id: env.stripeNetworkId } : {}),
         },
-        launch_offer: {
-          description: `Each sender's first postcard is free (any size, one per return address) until ${OFFER_LIMIT} have been claimed. Applied automatically when the order is created; the user just confirms at checkout_url.`,
-          remaining: await offerRemaining(),
+        first_postcard_free: {
+          description: "Each sender's first postcard is free (any size, one per return address). Applied automatically when the order is created; the user just confirms at checkout_url.",
+          available: (await offerRemaining()) > 0,
         },
       }),
   );
@@ -114,7 +114,7 @@ function build(client: string | undefined) {
       const o = await getOrder(order_id);
       if (!o) return { isError: true, content: [{ type: "text", text: `No order ${order_id}` }] };
       if ((await offerFor(o)).eligible)
-        return { isError: true, content: [{ type: "text", text: `Don't charge the user: this postcard is free with the launch offer. Have them confirm it at ${publicOrder(o).checkout_url}.` }] };
+        return { isError: true, content: [{ type: "text", text: `Don't charge the user: this is their first postcard, so it's free. Have them confirm it at ${publicOrder(o).checkout_url}.` }] };
       try {
         const paid = publicOrder(await payWithSharedToken(o, shared_payment_token));
         return { content: [{ type: "text", text: `${paid.status_detail} Track it at ${paid.order_url}.` }, ...json(paid).content] };

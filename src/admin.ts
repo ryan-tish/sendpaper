@@ -48,7 +48,7 @@ admin.get("/", async (req, res) => {
   res.send(
     page(
       "Admin",
-      `<section><h1>Orders</h1><p>${tabs}</p><p class="soft">Launch offer: ${await offerRemaining()} of ${OFFER_LIMIT} free postcards left · <a href="/admin/stats"><b>Stats</b></a> · <a href="/admin/reviews">Reviews</a></p><div class="scroll"><table>
+      `<section><h1>Orders</h1><p>${tabs}</p><p class="soft">First postcard free: ${await offerRemaining()} of ${OFFER_LIMIT} free postcards left (internal; not shown publicly) · <a href="/admin/stats"><b>Stats</b></a> · <a href="/admin/reviews">Reviews</a></p><div class="scroll"><table>
       <tr><th>Id</th><th>Product</th><th>Status</th><th>To</th><th>Source</th><th>Price</th><th>Created (UTC)</th></tr>
       ${rows || `<tr><td colspan="7" class="soft">No ${esc(status)} orders.</td></tr>`}</table></div></section>`,
       { noindex: true },
@@ -80,7 +80,7 @@ admin.get("/orders/:id", async (req, res) => {
     page(
       `Admin · ${o.id}`,
       `<section><h1>${esc(o.id)}</h1>
-      <p><b>${esc(PRODUCTS[o.product].name)}</b> · ${esc(o.status)} · ${o.free_offer ? `<span class="pill ok">FREE · launch offer</span> (reject with "Cancel without refund")` : `$${(o.price_cents / 100).toFixed(2)}`} · ${esc(o.customer_email ?? "no email")} · via ${esc(o.source)} ${esc(o.client ?? "")}</p>
+      <p><b>${esc(PRODUCTS[o.product].name)}</b> · ${esc(o.status)} · ${o.free_offer ? `<span class="pill ok">FREE · first postcard</span> (reject with "Cancel without refund")` : `$${(o.price_cents / 100).toFixed(2)}`} · ${esc(o.customer_email ?? "no email")} · via ${esc(o.source)} ${esc(o.client ?? "")}</p>
       <div class="grid"><div class="card"><b>To</b>${addressBlock(o.to_address)}</div><div class="card"><b>From</b>${addressBlock(o.from_address)}</div></div>
       <p><a class="btn alt" href="/admin/orders/${o.id}/print" target="_blank">Open print sheet</a></p>
       ${printPanel}

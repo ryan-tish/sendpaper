@@ -106,7 +106,7 @@ api.post(
     if (!o) return apiError(res, 404, "not_found", `No order ${req.params.id}`);
     const token = String(req.body?.shared_payment_token ?? "");
     if ((await offerFor(o)).eligible)
-      return apiError(res, 409, "free_with_launch_offer", `This postcard is free with the launch offer. Don't charge the user: have them confirm at ${BASE_URL}/o/${o.id}/pay.`);
+      return apiError(res, 409, "free_first_postcard", `This is the sender's first postcard, so it's free. Don't charge the user: have them confirm at ${BASE_URL}/o/${o.id}/pay.`);
     try {
       res.json(publicOrder(await payWithSharedToken(o, token)));
     } catch (e) {

@@ -85,17 +85,17 @@ web.get("/o/:id", async (req, res) => {
       `<section><span class="eyebrow">Order ${esc(o.id)}</span>
         <h1>${esc(p.product_name)} to ${esc(o.to_address.name)}</h1>
         <div><span class="pill${paid || offer.eligible ? " ok" : ""}">${offer.eligible ? "free · ready to send" : esc(o.status.replace("_", " "))}</span></div>
-        <p>${offer.eligible ? "This one's free with the launch offer. Confirm below and we'll print and mail it." : esc(p.status_detail)}</p>
-        ${o.free_offer ? `<p><span class="pill ok">Free · launch offer</span> This one's on us.</p>` : ""}
+        <p>${offer.eligible ? "Your first postcard is free. Confirm below and we'll print and mail it." : esc(p.status_detail)}</p>
+        ${o.free_offer ? `<p><span class="pill ok">Free</span> Your first postcard is on us.</p>` : ""}
         ${o.status === "awaiting_payment" && offer.eligible
           ? `<form id="free" method="post" action="/o/${esc(o.id)}/claim" class="card offer-card">
-              <span class="eyebrow">Launch offer · ${offer.remaining} of ${OFFER_LIMIT} left</span>
+              <span class="eyebrow">First postcard free</span>
               <h2 style="margin:0">Your first postcard is free</h2>
               <p class="soft">No card, no checkout. We'll print it and mail it via USPS First-Class after a quick review.</p>
               <label for="email">Email <span class="soft">(optional, so we can follow up and ask how it went)</span></label>
               <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
               <div><button class="btn green" type="submit">Send it free</button></div>
-              <p class="soft" style="font-size:.85rem">One free postcard per return address while the ${OFFER_LIMIT} last.</p>
+              <p class="soft" style="font-size:.85rem">One free postcard per return address.</p>
             </form>`
           : o.status === "awaiting_payment"
             ? `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><a class="btn" href="/o/${esc(o.id)}/pay">Pay ${esc(p.price.display)}</a><span class="soft">Secure checkout by Stripe.</span></div>`
@@ -131,7 +131,7 @@ web.get("/o/:id/pay", async (req, res) => {
   const o = await getOrder(String(req.params.id));
   if (!o) return res.status(404).send("No such order");
   if (o.status !== "awaiting_payment") return res.redirect(`/o/${o.id}`);
-  // A free launch-offer postcard never goes to Stripe: send them to the claim form.
+  // A free first postcard never goes to Stripe: send them to the claim form.
   if ((await offerFor(o)).eligible) return res.redirect(303, `/o/${o.id}#free`);
   try {
     res.redirect(303, await checkoutUrlFor(o));
@@ -170,7 +170,7 @@ web.get("/reviews", async (_req, res) => {
     page(
       `Reviews — ${BRAND}`,
       `<section><span class="eyebrow">Reviews</span><h1 style="font-size:clamp(1.9rem,3.6vw,2.6rem)">What senders say</h1>
-      <p class="soft">Every review here comes from a real order. Reviews of free launch-offer postcards are marked.</p>
+      <p class="soft">Every review here comes from a real order. Reviews of free postcards are marked.</p>
       ${reviews.length
         ? `<div class="grid">${reviews.map((r) => `<div class="card"><b aria-label="${r.rating} out of 5">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</b><p>${esc(r.body)}</p><p class="soft">${esc(r.name)}${r.free_offer ? " · received a free postcard" : ""}</p></div>`).join("")}</div>`
         : `<p>No reviews yet. The first ones are on their way.</p>`}</section>`,
@@ -232,8 +232,8 @@ ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}, 
 - Parameters: ${Object.entries(QUICK_PARAMS).map(([k, v]) => `${k} (${v})`).join("; ")}
 - Example: ${QUICK_EXAMPLE}
 
-## Launch offer
-- Each sender's first postcard is free (any size, one per return address) until ${OFFER_LIMIT} have been claimed. It's applied automatically: create the order, and if launch_offer.eligible is true, the user just confirms at checkout_url. Don't call pay_order for those.
+## First postcard free
+- Each sender's first postcard is free (any size, one per return address). It's applied automatically: create the order, and if first_postcard_free.eligible is true, the user just confirms at checkout_url. Don't call pay_order for those.
 
 ## Payment
 - Agents can pay with a Stripe shared payment token (spt_…) the user approved, scoped to the order amount in USD: call pay_order, or POST /v1/orders/{id}/pay with {"shared_payment_token": "spt_…"}.${env.stripeNetworkId ? `\n- Sendpaper's Stripe network ID: ${env.stripeNetworkId}` : ""}

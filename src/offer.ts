@@ -1,4 +1,5 @@
-// Launch offer (2026-10-04, Ryan): each sender's first postcard is free until 100 have been claimed.
+// First postcard free (2026-10-04, Ryan): each sender's first postcard is free, capped at 100 in total.
+// The cap and count are internal (/admin only); public copy never mentions a number (Ryan: "too spammy").
 // Free orders never touch Stripe: /o/:id/pay sends a qualifying order to its claim form instead of Checkout,
 // and claiming marks it paid (free_offer = true) so it lands in /admin for review like any other order.
 import { pool } from "./db.ts";
@@ -6,7 +7,7 @@ import { analyticsId, getOrder, publicOrder, type Address, type OrderRow } from 
 import { track } from "./analytics.ts";
 
 export const OFFER_LIMIT = 100;
-export const OFFER_LINE = "Launch offer: your first postcard is free";
+export const OFFER_LINE = "First postcard free";
 
 const CLAIMED = "free_offer AND status IN ('paid','printing','mailed')";
 
@@ -50,7 +51,7 @@ export async function claimFree(id: string, email: string | null) {
     const { eligible } = await offerFor(o);
     if (!eligible) throw new OfferError("This order doesn't qualify for the free postcard.");
     // Mark it paid in the same transaction, so the count the next claim sees already includes this one.
-    const event = { at: new Date().toISOString(), status: "paid", note: "launch offer: first postcard free" };
+    const event = { at: new Date().toISOString(), status: "paid", note: "first postcard free" };
     await client.query(
       `UPDATE orders SET free_offer = true, status = 'paid', paid_at = now(), events = events || $2::jsonb,
          customer_email = COALESCE(customer_email, $3) WHERE id = $1`,
@@ -64,7 +65,7 @@ export async function claimFree(id: string, email: string | null) {
     client.release();
   }
   const o = await getOrder(id);
-  if (o) track("order_paid", analyticsId(o), { order_id: o.id, product: o.product, source: o.source, client: o.client, free: true, price_cents: 0, method: "launch_offer" });
+  if (o) track("order_paid", analyticsId(o), { order_id: o.id, product: o.product, source: o.source, client: o.client, free: true, price_cents: 0, method: "first_postcard_free" });
   return o;
 }
 
@@ -108,15 +109,15 @@ export async function setReviewApproved(id: number, approved: boolean) {
 // API/MCP order shape plus the offer, so agents can tell the user the postcard is free before they pay anything.
 export async function orderWithOffer(o: OrderRow) {
   const base = publicOrder(o);
-  if (o.free_offer) return { ...base, launch_offer: { applied: true } };
+  if (o.free_offer) return { ...base, first_postcard_free: { applied: true } };
   if (o.status !== "awaiting_payment" || o.product === "letter") return base;
-  const { eligible, remaining } = await offerFor(o);
+  const { eligible } = await offerFor(o);
   return eligible
     ? {
         ...base,
-        launch_offer: {
+        // Public wording is just "first postcard free"; the 100 cap is tracked in /admin, never shown.
+        first_postcard_free: {
           eligible: true,
-          remaining,
           how: "This is the first postcard from this return address, so it's free. The user opens checkout_url and confirms; no payment or card. Do not call pay_order.",
         },
       }

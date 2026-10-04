@@ -195,7 +195,7 @@ export async function statsPage() {
       ${barTable("Tools used", ["Tool", "Calls"], tools.map((t) => ({ label: t.tool, value: n(t.calls) })), "No tool calls yet.")}
     </div>
     <div class="two">
-      <div class="card" style="gap:10px"><h3>Launch offer</h3><p><b>${claimed}</b> of ${OFFER_LIMIT} free postcards claimed · ${offerLeft} left</p>
+      <div class="card" style="gap:10px"><h3>First postcard free (internal cap)</h3><p><b>${claimed}</b> of ${OFFER_LIMIT} free postcards claimed · ${offerLeft} left</p>
         <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="${OFFER_LIMIT}" aria-valuenow="${claimed}" aria-label="Free postcards claimed"><i style="--w:${(claimed / OFFER_LIMIT) * 100}%"></i></div></div>
       <div class="card" style="gap:6px"><h3>Reviews</h3><p><b>${fmt(n(r?.total))}</b> total${n(r?.total) ? ` · average ${r.avg} ★` : ""} · ${fmt(n(r?.pending))} waiting for approval</p><p><a href="/admin/reviews">Review queue →</a></p></div>
     </div>

@@ -130,7 +130,7 @@ export function landing(offerLeft = 0) {
       <div class="hero">
         <div class="stack">
           ${offerLeft > 0
-            ? `<a class="stat" href="/send"><b>Launch offer</b> Your first postcard is free · ${offerLeft} of ${OFFER_LIMIT} left →</a>`
+            ? `<a class="stat" href="/send"><b>Free</b> Send your first postcard free →</a>`
             : `<a class="stat" href="${esc(docsUrl("/guides/agent-payments"))}"><b>New</b> Your agent can now pay for you →</a>`}
           <h1>Physical mail for AI agents</h1>
           <p class="lede">Real postcards and letters from <b>Codex</b>, <b>Muse</b> and <b>Claude</b>.</p>
@@ -168,7 +168,7 @@ export function landing(offerLeft = 0) {
 
     <section id="pricing">
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
-      ${offerLeft > 0 ? `<div class="offer-banner"><span><b>Launch offer:</b> your first postcard is free, any size. One per return address, while the ${OFFER_LIMIT} last.</span><b>${offerLeft} of ${OFFER_LIMIT} left</b></div>` : ""}
+      ${offerLeft > 0 ? `<div class="offer-banner"><span><b>First postcard free.</b> Any size, no card needed. One per return address.</span><a href="/send" class="more">Send one →</a></div>` : ""}
       <div class="prices">${(Object.keys(PRODUCTS) as (keyof typeof PRODUCTS)[])
         .map((id) => `<div class="card"><span class="size">${esc(SIZE[id])}</span><h3>${id === "letter" ? "Letter" : "Postcard"}</h3><div class="price">${usd(PRODUCTS[id].cents)}</div>
           <dl>${DETAILS[id].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
@@ -184,7 +184,7 @@ export function landing(offerLeft = 0) {
     <section class="faq">
       <div class="section-head"><span class="eyebrow">FAQ</span><h2>Questions</h2></div>
       <div>
-        <details class="q"><summary>Is there a free trial?</summary><p>During launch, your first postcard is free, any size: one per return address until the first ${OFFER_LIMIT} are claimed. It's applied automatically, so you just confirm it on the order page with no card needed. <a href="/reviews">See what senders say</a>.</p></details>
+        <details class="q"><summary>Is there a free trial?</summary><p>Your first postcard is free, any size: one per return address. It's applied automatically, so you just confirm it on the order page with no card needed. <a href="/reviews">See what senders say</a>.</p></details>
         <details class="q"><summary>Can my agent pay for me?</summary><p>Yes, if you let it. Agents pay with a one-time Stripe token capped at the order's exact price, which you approve in your agent (for example through Stripe Link). Your card details are never shared. Or pay the checkout link yourself. Either way, nothing is mailed until it's paid.</p></details>
         <details class="q"><summary>Which agents work?</summary><p>Anything that supports remote MCP servers over Streamable HTTP: Codex, Muse Code, Claude Code, Claude Desktop, claude.ai, ChatGPT developer mode, Cursor and VS Code. Everything else can use the <a href="${esc(docsUrl("/api/introduction"))}">REST API</a>.</p></details>
         <details class="q"><summary>Where can you mail to?</summary><p>US addresses, including Puerto Rico, US territories and APO/FPO/DPO military addresses.</p></details>
