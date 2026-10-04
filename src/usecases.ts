@@ -10,8 +10,8 @@ export const USE_CASES: UseCase[] = [
   {
     id: "birthdays",
     title: "Birthdays and holidays",
-    why: "A card on the fridge beats a text. Your agent already knows the dates.",
-    prompt: "Every year on Mom's birthday, send her a 6×9 postcard with a recent photo of the kids and a short note from me.",
+    why: "A card on the fridge beats a text, and your agent can write it in a minute.",
+    prompt: "Send Mom a 6×9 birthday postcard with this photo of the kids and a short note from me.",
     product: "postcard_6x9",
   },
   {
