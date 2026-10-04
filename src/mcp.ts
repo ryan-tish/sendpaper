@@ -36,7 +36,7 @@ function build(client: string | undefined) {
     {
       title: "Get prices",
       description: "List mail products and prices (USD, printing + USPS First-Class postage included, US addresses only).",
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     },
     async () =>
       json({
@@ -56,7 +56,7 @@ function build(client: string | undefined) {
       description:
         "Create a postcard order (4x6 or 6x9) and get a payment link. The front is an image URL or a big headline; the back carries the message and addresses. Mails only after the user pays.",
       inputSchema: CreatePostcardSchema.shape,
-      annotations: { destructiveHint: false, openWorldHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
     async (args) => {
       const { size, content, ...rest } = CreatePostcardSchema.parse(args);
@@ -73,7 +73,7 @@ function build(client: string | undefined) {
       description:
         "Create a printed letter order (up to 3 pages, 8.5x11, mailed in a #10 envelope) and get a payment link. Mails only after the user pays.",
       inputSchema: CreateLetterSchema.shape,
-      annotations: { destructiveHint: false, openWorldHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
     async (args) => {
       const input = CreateLetterSchema.parse(args);
@@ -90,7 +90,8 @@ function build(client: string | undefined) {
       description:
         "Pay for an unpaid order with a Stripe shared payment token (spt_…) the user approved, scoped to at least the order amount in USD. On success the order is paid and goes to print. Use only after the user approved the purchase.",
       inputSchema: { order_id: z.string(), shared_payment_token: z.string().describe("Stripe shared payment token, spt_…") },
-      annotations: { destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      // A payment that sends physical mail is irreversible, so it is marked destructive.
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
     async ({ order_id, shared_payment_token }) => {
       const o = await getOrder(order_id);
@@ -112,7 +113,7 @@ function build(client: string | undefined) {
       title: "Check an order",
       description: "Get the status of a postcard or letter order by id (ord_...).",
       inputSchema: { order_id: z.string() },
-      annotations: { readOnlyHint: true },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     },
     async ({ order_id }) => {
       const o = await getOrder(order_id);
@@ -127,7 +128,7 @@ function build(client: string | undefined) {
       title: "Cancel an unpaid order",
       description: "Cancel an order that has not been paid yet. Paid orders can be cancelled by emailing support before they are printed.",
       inputSchema: { order_id: z.string() },
-      annotations: { destructiveHint: true, idempotentHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     },
     async ({ order_id }) => {
       const o = await getOrder(order_id);

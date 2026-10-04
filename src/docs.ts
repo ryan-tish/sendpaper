@@ -99,7 +99,8 @@ docs.get("/privacy", (_req, res) => {
       "Privacy",
       `<h1>Privacy policy</h1>
       <p>We collect what we need to mail your order: sender and recipient names and addresses, the content of the mail, any photo you upload, and your email address. Payments are handled by Stripe; we never see your card number.</p>
-      <p>We use this information only to print, mail and support your order, and to prevent abuse. We may use a print-and-mail partner to produce the piece; they receive only what is needed to print and mail it. We do not sell personal information or use it for advertising.</p>
+      <p>We use this information only to print, mail and support your order, and to prevent abuse. A person at ${esc(BRAND)} reviews each piece before it is printed.</p>
+      <p>Who receives it: Stripe (payments), PostGrid, our print-and-mail partner (only what is needed to print and address the piece), and the US Postal Service (the printed piece itself). When you order through an AI agent such as ChatGPT, Codex or Claude, that agent's provider handles your conversation under its own privacy policy; we receive only the order details the agent sends us. We do not sell personal information or use it for advertising.</p>
       <p>We keep order records for up to 2 years for support, refunds and abuse investigations. To delete your data sooner, email ${esc(SUPPORT_EMAIL)}.</p>`,
     ),
   );
