@@ -26,7 +26,7 @@ export async function checkoutUrlFor(o: OrderRow): Promise<string> {
     button_color: "#0f7a52",
     border_style: "rounded",
     font_family: "inter",
-    icon: { type: "url", url: "https://docs.sendmypaper.com/logo/icon-512.png" },
+    icon: { type: "url", url: "https://docs.sendmypaper.com/logo/stripe-icon.png" },
     logo: { type: "url", url: "https://docs.sendmypaper.com/logo/wordmark.png" },
   };
   const note = certified
