@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { BASE_URL, BRAND, EXTRA_SERVICE, PRODUCTS, env } from "./config.ts";
+import { BASE_URL, BRAND, EXTRA_SERVICE, PRODUCTS, env, isLetter } from "./config.ts";
 import { attachSession, getOrder, setStatus, type OrderRow } from "./orders.ts";
 import { notifyPaid } from "./notify.ts";
 
@@ -16,8 +16,22 @@ export async function checkoutUrlFor(o: OrderRow): Promise<string> {
   if (!stripe) throw new Error("Payments are not configured (STRIPE_SECRET_KEY missing).");
   const p = PRODUCTS[o.product];
   const via = EXTRA_SERVICE[o.product] === "certified_return_receipt" ? "USPS Certified Mail with a return receipt" : EXTRA_SERVICE[o.product] ? "USPS Certified Mail" : "USPS First-Class";
-  const inline = { name: `${p.name} to ${o.to_address.name}`, description: `${p.blurb} Printed and mailed by ${BRAND} via ${via}.` };
+  const inline = { name: `${p.name} to ${o.to_address.name}`, description: EXTRA_SERVICE[o.product] ? `${p.blurb} Printed and mailed by ${BRAND}.` : `${p.blurb} Printed and mailed by ${BRAND} via ${via}.` };
   const catalogId = `sendpaper_${o.product}`;
+  const certified = EXTRA_SERVICE[o.product];
+  // Brand the hosted page (Stripe allows this per session; receipts use the Dashboard's account branding instead).
+  const branding = {
+    display_name: BRAND,
+    background_color: "#ffffff",
+    button_color: "#0f7a52",
+    border_style: "rounded",
+    font_family: "inter",
+    icon: { type: "url", url: "https://docs.sendmypaper.com/logo/icon-512.png" },
+    logo: { type: "url", url: "https://docs.sendmypaper.com/logo/wordmark.png" },
+  };
+  const note = certified
+    ? `A person reviews every piece before it's printed. It goes out by USPS Certified Mail${certified === "certified_return_receipt" ? " with a return receipt" : ""}, and the tracking number appears on your order page.`
+    : "A person reviews every piece before it's printed. It's usually mailed within one business day via USPS First-Class.";
   const create = (useCatalog: boolean) =>
     stripe!.checkout.sessions.create({
     mode: "payment",
@@ -30,9 +44,15 @@ export async function checkoutUrlFor(o: OrderRow): Promise<string> {
       },
     ],
     customer_email: o.customer_email ?? undefined,
+    // Typed loosely: branding_settings is newer than some SDK typings.
+    ...({ branding_settings: branding } as object),
+    custom_text: { submit: { message: note } },
+    // A fresh session is made on every /pay visit, so a short expiry costs nothing and avoids stale sessions.
+    expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
     client_reference_id: o.id,
     metadata: { order_id: o.id, product: o.product },
-    payment_intent_data: { metadata: { order_id: o.id, product: o.product } },
+    // Card statements read SENDPAPER* POSTCARD / LETTER / CERTIFIED.
+    payment_intent_data: { metadata: { order_id: o.id, product: o.product }, statement_descriptor_suffix: certified ? "CERTIFIED" : isLetter(o.product) ? "LETTER" : "POSTCARD" },
     success_url: `${BASE_URL}/o/${o.id}?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${BASE_URL}/o/${o.id}`,
   });
