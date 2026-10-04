@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { BASE_URL, LIMITS, PRODUCTS, US_STATES, type ProductId } from "./config.ts";
 import { pool } from "./db.ts";
+import { track } from "./analytics.ts";
 
 export const STATUSES = ["awaiting_payment", "paid", "printing", "mailed", "cancelled", "refunded"] as const;
 export type Status = (typeof STATUSES)[number];
@@ -107,6 +108,7 @@ export type OrderRow = {
   print_status: string | null;
   print_error: string | null;
   free_offer: boolean;
+  analytics_id: string | null;
 };
 
 type CreateInput = {
@@ -118,6 +120,8 @@ type CreateInput = {
   idempotency_key?: string;
   source: "web" | "api" | "mcp";
   client?: string;
+  // The website visitor's PostHog id, so the order's events join their browsing funnel.
+  analytics_id?: string;
 };
 
 export async function createOrder(input: CreateInput): Promise<{ order: OrderRow; existing: boolean }> {
@@ -129,8 +133,8 @@ export async function createOrder(input: CreateInput): Promise<{ order: OrderRow
   const events = [{ at: new Date().toISOString(), status: "awaiting_payment" }];
   const { rows } = await pool.query<OrderRow>(
     `INSERT INTO orders (id, product, to_address, from_address, content, price_cents, customer_email,
-                         source, client, idempotency_key, events)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+                         source, client, idempotency_key, events, analytics_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
     [
       id,
       input.product,
@@ -143,9 +147,12 @@ export async function createOrder(input: CreateInput): Promise<{ order: OrderRow
       input.client?.slice(0, 120) ?? null,
       input.idempotency_key ?? null,
       JSON.stringify(events),
+      input.analytics_id?.slice(0, 120) ?? null,
     ],
   );
-  return { order: rows[0], existing: false };
+  const o = rows[0];
+  track("order_created", analyticsId(o), { order_id: o.id, product: o.product, source: o.source, client: o.client });
+  return { order: o, existing: false };
 }
 
 export async function getOrder(id: string) {
@@ -173,8 +180,12 @@ export async function setStatus(id: string, status: Status, note?: string, extra
      WHERE id = $1 RETURNING *`,
     [id, status, JSON.stringify([event]), note ?? null, extra.stripe_payment ?? null, extra.customer_email ?? null],
   );
-  return rows[0] ?? null;
+  const o = rows[0];
+  if (o) track(`order_${status}`, analyticsId(o), { order_id: o.id, product: o.product, source: o.source, client: o.client, free: o.free_offer, price_cents: o.free_offer ? 0 : o.price_cents });
+  return o ?? null;
 }
+
+export const analyticsId = (o: OrderRow) => o.analytics_id ?? (o.client ? `agent:${o.client}` : `order:${o.id}`);
 
 export async function attachSession(id: string, sessionId: string) {
   await pool.query("UPDATE orders SET stripe_session = $2 WHERE id = $1", [id, sessionId]);

@@ -2,7 +2,8 @@
 // Free orders never touch Stripe: /o/:id/pay sends a qualifying order to its claim form instead of Checkout,
 // and claiming marks it paid (free_offer = true) so it lands in /admin for review like any other order.
 import { pool } from "./db.ts";
-import { getOrder, publicOrder, type Address, type OrderRow } from "./orders.ts";
+import { analyticsId, getOrder, publicOrder, type Address, type OrderRow } from "./orders.ts";
+import { track } from "./analytics.ts";
 
 export const OFFER_LIMIT = 100;
 export const OFFER_LINE = "Launch offer: your first postcard is free";
@@ -62,7 +63,9 @@ export async function claimFree(id: string, email: string | null) {
   } finally {
     client.release();
   }
-  return getOrder(id);
+  const o = await getOrder(id);
+  if (o) track("order_paid", analyticsId(o), { order_id: o.id, product: o.product, source: o.source, client: o.client, free: true, price_cents: 0, method: "launch_offer" });
+  return o;
 }
 
 // Reviews: one per order, only after it's mailed, shown publicly only once Ryan approves it.
@@ -83,6 +86,7 @@ export async function addReview(o: OrderRow, rating: number, body: string, name:
      ON CONFLICT (order_id) DO NOTHING`,
     [o.id, rating, body, name, o.free_offer],
   );
+  track("review_submitted", analyticsId(o), { order_id: o.id, rating, free: o.free_offer });
 }
 
 export async function reviewFor(orderId: string) {

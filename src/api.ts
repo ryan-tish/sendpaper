@@ -56,6 +56,7 @@ api.post(
       product: size === "6x9" ? "postcard_6x9" : "postcard_4x6",
       source: "api",
       client: client(req),
+      analytics_id: req.get("x-analytics-id") || undefined,
     });
     res.status(existing ? 200 : 201).json(await orderWithOffer(order));
   }),
@@ -71,6 +72,7 @@ api.post(
       product: "letter",
       source: "api",
       client: client(req),
+      analytics_id: req.get("x-analytics-id") || undefined,
     });
     res.status(existing ? 200 : 201).json(await orderWithOffer(order));
   }),

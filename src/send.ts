@@ -333,7 +333,7 @@ export function sendPage(initial: string, offerLeft = 0) {
           body = { size: product === "postcard_6x9" ? "6x9" : "4x6", content };
         }
         Object.assign(body, { to: addr("to"), from: addr("from"), customer_email: $("email").value.trim() || undefined });
-        const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "X-Client": "web" }, body: JSON.stringify(body) });
+        const r = await fetch(url, { method: "POST", headers: Object.assign({ "Content-Type": "application/json", "X-Client": "web" }, window.posthog && posthog.get_distinct_id ? { "X-Analytics-Id": String(posthog.get_distinct_id()) } : {}), body: JSON.stringify(body) });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error.fields ? j.error.fields.map(f => (f.field || "form").replace(/^to\\./, "Send to: ").replace(/^from\\./, "From: ").replace(/^content\\./, "") + " " + f.message.toLowerCase()).join(" · ") : j.error.message);
         location.href = "/o/" + j.id;

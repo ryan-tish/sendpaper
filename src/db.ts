@@ -37,6 +37,7 @@ export async function migrate() {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS print_status text;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS print_error text;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS free_offer boolean NOT NULL DEFAULT false;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS analytics_id text;
 
     CREATE TABLE IF NOT EXISTS reviews (
       id          serial PRIMARY KEY,

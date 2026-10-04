@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import { BASE_URL, BRAND, PRODUCTS, env } from "./config.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
+import { track } from "./analytics.ts";
 import { OFFER_LIMIT, offerFor, offerRemaining, orderWithOffer } from "./offer.ts";
 import {
   CreateLetterSchema,
@@ -33,6 +34,13 @@ function nextStep(o: Awaited<ReturnType<typeof orderWithOffer>>) {
 
 function build(client: string | undefined) {
   const server = new McpServer({ name: "sendpaper", version: "1.0.0", websiteUrl: BASE_URL }, { instructions: INSTRUCTIONS });
+  // Count every tool call per agent (analytics only; the handler runs unchanged).
+  const register = server.registerTool.bind(server) as typeof server.registerTool;
+  server.registerTool = ((name: string, config: any, cb: any) =>
+    register(name, config, (async (...args: any[]) => {
+      track("mcp_tool_called", `agent:${client ?? "unknown"}`, { tool: name, client: client ?? "unknown" });
+      return cb(...args);
+    }) as any)) as typeof server.registerTool;
 
   server.registerTool(
     "get_pricing",

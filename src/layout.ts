@@ -1,3 +1,4 @@
+import { analyticsSnippet } from "./analytics.ts";
 import { BRAND, DOCS_URL, SUPPORT_EMAIL } from "./config.ts";
 import { readFileSync } from "node:fs";
 import { esc } from "./render.ts";
@@ -112,7 +113,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
 <script>try { if (localStorage.getItem("theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch {}</script>
-<style>${CSS}</style></head><body>
+<style>${CSS}</style>${analyticsSnippet()}</head><body>
 <header class="site"><div class="wrap"><nav>
   <a class="logo" href="/">${LOGO_FULL}</a>
   <div class="links"><a href="/use-cases">Use cases</a><a href="${docsUrl()}">Docs</a><a href="/#pricing">Pricing</a><a href="/send">Send from the web</a><button class="theme" type="button" id="theme" aria-label="Toggle dark mode"><svg class="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><a class="btn" href="${docsUrl("/quickstart")}">Connect your agent</a></div>
