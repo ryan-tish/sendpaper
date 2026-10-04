@@ -39,6 +39,22 @@ export async function migrate() {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS free_offer boolean NOT NULL DEFAULT false;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS analytics_id text;
 
+    CREATE TABLE IF NOT EXISTS page_views (
+      id             bigserial PRIMARY KEY,
+      at             timestamptz NOT NULL DEFAULT now(),
+      path           text NOT NULL,
+      referrer_host  text,
+      visitor        text NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS page_views_at_idx ON page_views (at);
+    CREATE TABLE IF NOT EXISTS mcp_calls (
+      id      bigserial PRIMARY KEY,
+      at      timestamptz NOT NULL DEFAULT now(),
+      tool    text NOT NULL,
+      client  text NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS mcp_calls_at_idx ON mcp_calls (at);
+
     CREATE TABLE IF NOT EXISTS reviews (
       id          serial PRIMARY KEY,
       order_id    text NOT NULL UNIQUE REFERENCES orders(id),

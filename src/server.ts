@@ -9,6 +9,7 @@ import { handleWebhook } from "./payments.ts";
 import { startPrintSync } from "./fulfill.ts";
 import { web } from "./web.ts";
 import { quick } from "./quick.ts";
+import { trackViews } from "./stats.ts";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -70,6 +71,8 @@ app.get("/.well-known/openai-apps-challenge", (_req, res) => {
   res.type("text/plain").send(process.env.OPENAI_APPS_CHALLENGE ?? "");
 });
 
+// Count page views for /admin/stats (pages only: no API, MCP, assets, admin or bots).
+app.use(trackViews);
 app.use(docs);
 app.use(quick);
 app.use(web);

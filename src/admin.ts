@@ -7,6 +7,7 @@ import { stripe } from "./payments.ts";
 import { postgridMode, printProofUrl, sendToPrint, syncPrint } from "./fulfill.ts";
 import { addressBlock, esc, printSheet } from "./render.ts";
 import { listReviews, offerRemaining, setReviewApproved, OFFER_LIMIT } from "./offer.ts";
+import { statsPage } from "./stats.ts";
 
 // The operator's queue: paid orders get reviewed, printed (or sent to a print partner), then marked mailed.
 export const admin = Router();
@@ -41,7 +42,7 @@ admin.get("/", async (req, res) => {
   res.send(
     page(
       "Admin",
-      `<section><h1>Orders</h1><p>${tabs}</p><p class="soft">Launch offer: ${await offerRemaining()} of ${OFFER_LIMIT} free postcards left · <a href="/admin/reviews">Reviews</a></p><div class="scroll"><table>
+      `<section><h1>Orders</h1><p>${tabs}</p><p class="soft">Launch offer: ${await offerRemaining()} of ${OFFER_LIMIT} free postcards left · <a href="/admin/stats"><b>Stats</b></a> · <a href="/admin/reviews">Reviews</a></p><div class="scroll"><table>
       <tr><th>Id</th><th>Product</th><th>Status</th><th>To</th><th>Source</th><th>Price</th><th>Created (UTC)</th></tr>
       ${rows || `<tr><td colspan="7" class="soft">No ${esc(status)} orders.</td></tr>`}</table></div></section>`,
       { noindex: true },
@@ -88,6 +89,10 @@ admin.get("/orders/:id", async (req, res) => {
       { noindex: true },
     ),
   );
+});
+
+admin.get("/stats", async (_req, res) => {
+  res.send(page("Admin · Stats", await statsPage(), { noindex: true }));
 });
 
 // Reviews come in from customers' order pages after mailing; only approved ones are shown on /reviews.

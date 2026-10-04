@@ -5,6 +5,7 @@ import { z } from "zod";
 import { BASE_URL, BRAND, PRODUCTS, env } from "./config.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import { track } from "./analytics.ts";
+import { recordToolCall } from "./stats.ts";
 import { OFFER_LIMIT, offerFor, offerRemaining, orderWithOffer } from "./offer.ts";
 import {
   CreateLetterSchema,
@@ -39,6 +40,7 @@ function build(client: string | undefined) {
   server.registerTool = ((name: string, config: any, cb: any) =>
     register(name, config, (async (...args: any[]) => {
       track("mcp_tool_called", `agent:${client ?? "unknown"}`, { tool: name, client: client ?? "unknown" });
+      recordToolCall(name, client ?? "unknown");
       return cb(...args);
     }) as any)) as typeof server.registerTool;
 
