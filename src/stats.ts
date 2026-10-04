@@ -121,7 +121,7 @@ export async function statsPage() {
              count(*) FILTER (WHERE status IN ('paid','printing','mailed')) AS paid,
              count(*) FILTER (WHERE free_offer AND status IN ('paid','printing','mailed')) AS free,
              count(*) FILTER (WHERE status = 'mailed') AS mailed
-      FROM orders WHERE created_at > now() - interval '30 days' GROUP BY source`),
+      FROM orders WHERE created_at > now() - interval '30 days' AND NOT is_test GROUP BY source`),
     offerRemaining(),
     q<{ client: string; calls: string; days: string }>(`SELECT split_part(client, '/', 1) AS client, count(*) AS calls, count(DISTINCT (at AT TIME ZONE 'UTC')::date) AS days FROM mcp_calls WHERE at > now() - interval '30 days' GROUP BY 1 ORDER BY calls DESC LIMIT 10`),
     q<{ tool: string; calls: string }>(`SELECT tool, count(*) AS calls FROM mcp_calls WHERE at > now() - interval '30 days' GROUP BY tool ORDER BY calls DESC`),

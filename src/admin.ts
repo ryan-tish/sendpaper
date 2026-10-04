@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import express, { Router, type NextFunction, type Request, type Response } from "express";
 import { PRODUCTS, env } from "./config.ts";
 import { page } from "./layout.ts";
-import { getOrder, listOrders, setStatus, STATUSES, type Status } from "./orders.ts";
+import { getOrder, listOrders, setStatus, setTest, STATUSES, type Status } from "./orders.ts";
 import { stripe } from "./payments.ts";
 import { postgridMode, printProofUrl, sendToPrint, syncPrint } from "./fulfill.ts";
 import { addressBlock, esc, printSheet } from "./render.ts";
@@ -34,7 +34,7 @@ admin.use(express.urlencoded({ extended: false }));
 admin.get("/", async (req, res) => {
   const status = typeof req.query.status === "string" ? req.query.status : "paid";
   const orders = await listOrders(status === "all" ? undefined : status);
-  const tabs = ["paid", "printing", "mailed", "awaiting_payment", "cancelled", "refunded", "all"]
+  const tabs = ["paid", "printing", "mailed", "awaiting_payment", "cancelled", "refunded", "all", "tests"]
     .map((s) => (s === status ? `<b>${s}</b>` : `<a href="?status=${s}">${s}</a>`))
     .join(" · ");
   const rows = orders
@@ -90,6 +90,8 @@ admin.get("/orders/:id", async (req, res) => {
         ${btn("refunded", "Reject & refund via Stripe", `<label style="flex:1">Reason<input name="note" required></label>`)}
         ${btn("cancelled", "Cancel without refund")}
       </div>
+      <form method="post" action="/admin/orders/${o.id}/test"><input type="hidden" name="is_test" value="${o.is_test ? "0" : "1"}">
+        <button class="btn alt">${o.is_test ? "Unmark as test (show in lists and stats)" : "Mark as test (hide from lists and stats)"}</button></form>
       <h2>History</h2><pre><code>${esc(JSON.stringify(o.events, null, 2))}</code></pre>
       <h2>Content</h2><pre><code>${esc(JSON.stringify(o.content, null, 2))}</code></pre></section>`,
       { noindex: true },
@@ -147,6 +149,11 @@ admin.get("/orders/:id/print", async (req, res) => {
   const o = await getOrder(String(req.params.id));
   if (!o) return res.status(404).send("No such order");
   res.send(printSheet(o, { operator: true }));
+});
+
+admin.post("/orders/:id/test", async (req, res) => {
+  await setTest(String(req.params.id), req.body.is_test === "1");
+  res.redirect(303, `/admin/orders/${req.params.id}`);
 });
 
 admin.post("/orders/:id/status", async (req, res) => {

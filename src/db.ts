@@ -38,6 +38,10 @@ export async function migrate() {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS print_error text;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS free_offer boolean NOT NULL DEFAULT false;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS analytics_id text;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_test boolean NOT NULL DEFAULT false;
+    -- Orders created while building and testing Sendpaper (2026-10-01..04); hidden from /admin lists and stats.
+    UPDATE orders SET is_test = true WHERE id IN ('ord_tbzmm78n5x6k2pnn','ord_p880an9yghhqjq60','ord_sg875bgv28ke739q',
+      'ord_d7n76m5f8dxvpfte','ord_b6rb3v37d2s2ybab','ord_3revxzgtj5v6pyrx','ord_fvkdkwgt2p2bs84b','ord_7rwe3j586rrdh0ew') AND NOT is_test;
 
     CREATE TABLE IF NOT EXISTS page_views (
       id             bigserial PRIMARY KEY,

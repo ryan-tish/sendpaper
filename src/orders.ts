@@ -109,6 +109,7 @@ export type OrderRow = {
   print_error: string | null;
   free_offer: boolean;
   analytics_id: string | null;
+  is_test: boolean;
 };
 
 type CreateInput = {
@@ -160,11 +161,19 @@ export async function getOrder(id: string) {
   return rows[0] ?? null;
 }
 
+// Test orders are hidden from every tab except "tests".
 export async function listOrders(status?: string) {
-  const { rows } = status
-    ? await pool.query<OrderRow>("SELECT * FROM orders WHERE status = $1 ORDER BY created_at DESC LIMIT 500", [status])
-    : await pool.query<OrderRow>("SELECT * FROM orders ORDER BY created_at DESC LIMIT 500");
+  const { rows } =
+    status === "tests"
+      ? await pool.query<OrderRow>("SELECT * FROM orders WHERE is_test ORDER BY created_at DESC LIMIT 500")
+      : status
+        ? await pool.query<OrderRow>("SELECT * FROM orders WHERE status = $1 AND NOT is_test ORDER BY created_at DESC LIMIT 500", [status])
+        : await pool.query<OrderRow>("SELECT * FROM orders WHERE NOT is_test ORDER BY created_at DESC LIMIT 500");
   return rows;
+}
+
+export async function setTest(id: string, isTest: boolean) {
+  await pool.query("UPDATE orders SET is_test = $2 WHERE id = $1", [id, isTest]);
 }
 
 export async function setStatus(id: string, status: Status, note?: string, extra: Partial<OrderRow> = {}) {
