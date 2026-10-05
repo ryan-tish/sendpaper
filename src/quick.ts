@@ -18,7 +18,12 @@ export const QUICK_PARAMS = {
   size: "postcards: 4x6 (default), 6x9 or 6x11",
   headline: "postcard front text (or use image)",
   image: "postcard front photo, or a photo at the top of a letter (prints in color), https URL",
-  theme: "ink, sky, sunset or forest (text fronts)",
+  theme: "ink, sky, sunset, forest, rose, sand, night or mint (text fronts)",
+  layout: "postcards: headline, photo, photo_caption or collage (inferred when omitted)",
+  caption: "photo_caption: short text over the bottom of the photo",
+  images: "collage: 2-4 https photo URLs, comma-separated",
+  headline_font: "serif, sans or script",
+  message_font: "back of the card: handwriting, serif or sans",
   message: "postcard back, up to 600 characters",
   body: "letter text; blank lines between paragraphs",
   font: "letters: serif or sans",
@@ -53,6 +58,11 @@ const PARAM_FOR: Record<string, string> = {
   "content.message": "message",
   "content.body": "body",
   "content.font": "font",
+  "content.caption": "caption",
+  "content.front_images": "images",
+  "content.layout": "layout",
+  "content.headline_font": "headline_font",
+  "content.message_font": "message_font",
   certified: "certified",
   content: "headline or image",
   customer_email: "email",
@@ -72,6 +82,11 @@ export function parseQuick(q: Q) {
           ...(q.image ? { front_image_url: q.image } : {}),
           ...(q.headline ? { front_headline: q.headline } : {}),
           ...(q.theme ? { front_theme: q.theme } : {}),
+          ...(q.layout ? { layout: q.layout } : {}),
+          ...(q.caption ? { caption: q.caption } : {}),
+          ...(q.images ? { front_images: q.images.split(",").map((s) => s.trim()).filter(Boolean) } : {}),
+          ...(q.headline_font ? { headline_font: q.headline_font } : {}),
+          ...(q.message_font ? { message_font: q.message_font } : {}),
         },
       });
   if (!parsed.success)
@@ -116,7 +131,7 @@ quick.get("/quick", (req, res) => {
     );
     return;
   }
-  const preview = { product: r.product, content: r.data.content as Record<string, string>, to_address: r.data.to, from_address: r.data.from, created_at: new Date() };
+  const preview = { product: r.product, content: r.data.content as Record<string, any>, to_address: r.data.to, from_address: r.data.from, created_at: new Date() };
   const pieces =
     isLetter(r.product)
       ? letterPages(preview)

@@ -79,6 +79,7 @@ export const letterProduct = (c: Certified | undefined): ProductId =>
 export const LIMITS = {
   postcardMessage: 600,
   postcardHeadline: 60,
+  postcardCaption: 80,
   letterBody: 9000, // roughly 3 single-spaced pages
   imageBytes: 6 * 1024 * 1024,
   // Letters from a customer's own PDF: normalized to 8.5×11, plus the blank address page PostGrid adds.

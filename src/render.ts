@@ -6,12 +6,69 @@ import type { Address, OrderRow } from "./orders.ts";
 export const esc = (s: unknown) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
+// Text-front color themes: [background, text]. The schema's front_theme enum is built from these keys.
 export const THEMES: Record<string, [string, string]> = {
   ink: ["#1d2433", "#f4efe6"],
   sky: ["#2f6fb3", "#ffffff"],
   sunset: ["#e2603f", "#fff6e8"],
   forest: ["#2f5d46", "#f1f5ec"],
+  rose: ["#b8475f", "#fff4f6"],
+  sand: ["#e9dcc4", "#2b2420"],
+  night: ["#111827", "#fde68a"],
+  mint: ["#cfeee0", "#0f4f3a"],
 };
+export const THEME_NAMES = Object.keys(THEMES) as [string, ...string[]];
+
+// Postcard fronts (2026-10-05): headline on a color, one photo, a photo with a caption band, or a 2-4 photo collage.
+export type PostcardLayout = "headline" | "photo" | "photo_caption" | "collage";
+export const postcardLayout = (c: Record<string, any>): PostcardLayout =>
+  c.layout ?? (Array.isArray(c.front_images) && c.front_images.length ? "collage" : c.front_image_url ? (c.caption ? "photo_caption" : "photo") : "headline");
+
+// Font stacks shared by the preview and the print (the print page loads these Google fonts; the preview falls back).
+export const HEADLINE_FONTS: Record<string, string> = {
+  serif: "'Source Serif 4', Georgia, serif",
+  sans: "Inter, Helvetica, Arial, sans-serif",
+  script: "Caveat, 'Bradley Hand', cursive",
+};
+export const MESSAGE_FONTS: Record<string, string> = {
+  handwriting: "Caveat, 'Segoe Print', 'Bradley Hand', cursive",
+  serif: "'Source Serif 4', Georgia, serif",
+  sans: "Inter, Helvetica, Arial, sans-serif",
+};
+
+// The front at any size (inches): the preview passes the trim size, the print passes trim + bleed. `src` maps an
+// image path to a URL (the print needs absolute URLs). Everything is absolutely sized so preview and print match.
+export function frontMarkup(c: Record<string, any>, w: number, h: number, src: (u: string) => string = (u) => u) {
+  const img = (u: string, style = "") => `<img src="${esc(src(u))}" alt="" style="display:block;width:100%;height:100%;object-fit:cover;${style}">`;
+  const big = h >= 6;
+  const layout = postcardLayout(c);
+  // Absolute positions in inches only: PostGrid's print renderer ignores CSS grid, left+right stretching and
+  // unprefixed gradients (all three broke the first proofs, 2026-10-05).
+  const box = (x: number, y: number, bw: number, bh: number, inner: string) =>
+    `<div style="position:absolute;left:${x}in;top:${y}in;width:${bw}in;height:${bh}in;overflow:hidden">${inner}</div>`;
+  if (layout === "collage") {
+    const pics: string[] = (c.front_images ?? []).slice(0, 4);
+    const g = 0.06; // white gutter between photos
+    const half = (len: number) => (len - g) / 2;
+    const cells: [number, number, number, number][] =
+      pics.length === 2 ? [[0, 0, half(w), h], [half(w) + g, 0, half(w), h]]
+      : pics.length === 3 ? (() => { const lw = (w - g) * 0.58, rw = w - g - lw; return [[0, 0, lw, h], [lw + g, 0, rw, half(h)], [lw + g, half(h) + g, rw, half(h)]] as [number, number, number, number][]; })()
+      : [[0, 0, half(w), half(h)], [half(w) + g, 0, half(w), half(h)], [0, half(h) + g, half(w), half(h)], [half(w) + g, half(h) + g, half(w), half(h)]];
+    return `<div style="position:relative;width:${w}in;height:${h}in;overflow:hidden;background:#fff">${pics.map((u, k) => box(...cells[k], img(u))).join("")}</div>`;
+  }
+  if (layout === "photo" || layout === "photo_caption") {
+    let caption = "";
+    if (layout === "photo_caption" && c.caption) {
+      const bandH = big ? 1.35 : 1.0;
+      caption = `<div style="position:absolute;left:0;top:${h - bandH}in;width:${w}in;height:${bandH}in;background:rgba(0,0,0,0.42)"></div>`
+        + `<div style="position:absolute;left:${big ? 0.5 : 0.36}in;top:${h - bandH}in;width:${w - (big ? 1 : 0.72)}in;height:${bandH - (big ? 0.32 : 0.24)}in;display:-webkit-box;display:flex;-webkit-box-align:end;align-items:flex-end;color:#fff;font:600 ${c.headline_font === "script" ? (big ? 44 : 32) : big ? 34 : 24}px/1.1 ${HEADLINE_FONTS[c.headline_font ?? "serif"]}">${esc(c.caption)}</div>`;
+    }
+    return `<div style="position:relative;width:${w}in;height:${h}in;overflow:hidden">${box(0, 0, w, h, img(c.front_image_url))}${caption}</div>`;
+  }
+  const [bg, fg] = THEMES[c.front_theme ?? "ink"] ?? THEMES.ink;
+  const size = c.headline_font === "script" ? (big ? 58 : 44) : big ? 46 : 34;
+  return `<div style="width:${w}in;height:${h}in;background:${bg};color:${fg};display:flex;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;padding:0.6in;font:600 ${size}px/1.1 ${HEADLINE_FONTS[c.headline_font ?? "serif"]}">${esc(c.front_headline)}</div>`;
+}
 
 export function addressBlock(a: Address) {
   return [a.name, a.company, a.line1, a.line2, `${a.city}, ${a.state} ${a.zip}`]
@@ -28,18 +85,13 @@ const paragraphs = (text: string) =>
 
 export function postcardFront(o: Pick<OrderRow, "product" | "content">) {
   const { w, h } = postcardSpec(o.product);
-  const c = o.content;
-  const [bg, fg] = THEMES[c.front_theme ?? "ink"] ?? THEMES.ink;
-  const inner = c.front_image_url
-    ? `<img src="${esc(c.front_image_url)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">`
-    : `<div style="height:100%;display:grid;place-items:center;padding:0.5in;background:${bg};color:${fg};text-align:center;font:700 ${w > 6 ? 40 : 30}px/1.1 Georgia,serif">${esc(c.front_headline)}</div>`;
-  return `<div class="piece" style="width:${w}in;height:${h}in">${inner}</div>`;
+  return `<div class="piece" style="width:${w}in;height:${h}in">${frontMarkup(o.content, w, h)}</div>`;
 }
 
 export function postcardBack(o: Pick<OrderRow, "product" | "content" | "to_address" | "from_address">) {
   const { w, h } = postcardSpec(o.product);
   return `<div class="piece back" style="width:${w}in;height:${h}in">
-    <div class="msg">${paragraphs(o.content.message ?? "")}</div>
+    <div class="msg" style="font-family:${MESSAGE_FONTS[o.content.message_font ?? "handwriting"] ?? MESSAGE_FONTS.handwriting}">${paragraphs(o.content.message ?? "")}</div>
     <div class="addr">
       <div class="stamp">USPS<br>FIRST-CLASS</div>
       <div class="from">${addressBlock(o.from_address)}</div>
@@ -95,6 +147,7 @@ export function printSheet(o: OrderRow, opts: { operator?: boolean } = {}) {
     ? `<p class="noprint" style="font:14px system-ui">Order <b>${esc(o.id)}</b> · ${esc(o.product)} · ${esc(o.status)}. Print at 100% scale (no "fit to page").</p>`
     : "";
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(o.id)} · ${esc(BRAND)}</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;600&display=swap">
   <style>body{margin:0;padding:24px;background:#e9e7e2;display:grid;gap:24px;justify-items:start} ${PRINT_CSS}</style></head>
   <body>${note}${pieces}</body></html>`;
 }

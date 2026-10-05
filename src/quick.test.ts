@@ -23,7 +23,7 @@ test("order link: errors name the URL parameter to fix", () => {
   const params = r.errors.map((e) => e.param);
   assert.ok(params.includes("to_line1"));
   assert.ok(params.includes("from_name"));
-  assert.ok(params.includes("headline or image"));
+  assert.ok(params.includes("headline"));
 });
 
 test("order link: letters", () => {

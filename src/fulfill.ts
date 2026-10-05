@@ -11,12 +11,12 @@
 import { BASE_URL, BRAND, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
 import { pool } from "./db.ts";
 import { getOrder, printsInColor, setStatus, type Address, type OrderRow } from "./orders.ts";
-import { esc, THEMES } from "./render.ts";
+import { esc, frontMarkup, MESSAGE_FONTS } from "./render.ts";
 
 const API = "https://api.postgrid.com/print-mail/v1";
 export const postgridMode = () => (env.postgridKey.startsWith("live_") ? "live" : env.postgridKey ? "test" : "off");
 
-const FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;600&display=swap" rel="stylesheet">`;
+const FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;600&display=swap" rel="stylesheet">`;
 
 function contact(a: Address) {
   return {
@@ -38,16 +38,14 @@ export function postcardHtml(o: OrderRow) {
   const big = spec.h >= 6;
   const [w, h] = [spec.w + 0.25, spec.h + 0.25];
   const c = o.content;
-  const [bg, fg] = THEMES[c.front_theme ?? "ink"] ?? THEMES.ink;
   const page = `margin:0;padding:0;width:${w}in;height:${h}in;overflow:hidden;`;
-  const frontHTML = `<html><head>${FONTS}</head><body style="${page}">${
-    c.front_image_url
-      ? `<img src="${esc(absolute(c.front_image_url))}" style="width:${w}in;height:${h}in;object-fit:cover;display:block">`
-      : `<div style="width:${w}in;height:${h}in;background:${bg};color:${fg};display:flex;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;padding:0.6in;font:600 ${big ? 46 : 34}px/1.1 'Source Serif 4',Georgia,serif">${esc(c.front_headline)}</div>`
-  }</body></html>`;
+  // Same layout code as the customer's preview, drawn at print size (trim + bleed) with absolute image URLs.
+  const frontHTML = `<html><head>${FONTS}</head><body style="${page}">${frontMarkup(c, w, h, absolute)}</body></html>`;
   // Left half only; PostGrid owns the right half (addresses + postage).
   const msgWidth = w / 2 - 0.55;
-  const backHTML = `<html><head>${FONTS}</head><body style="${page}"><div style="position:absolute;left:0.4in;top:0.4in;width:${msgWidth}in;height:${h - 0.8}in;overflow:hidden;font:500 ${big ? 22 : 18}px/1.3 Caveat,cursive;color:#1b1b1b;white-space:pre-wrap;word-break:break-word">${esc(c.message)}</div></body></html>`;
+  const handwriting = (c.message_font ?? "handwriting") === "handwriting";
+  const font = MESSAGE_FONTS[c.message_font ?? "handwriting"] ?? MESSAGE_FONTS.handwriting;
+  const backHTML = `<html><head>${FONTS}</head><body style="${page}"><div style="position:absolute;left:0.4in;top:0.4in;width:${msgWidth}in;height:${h - 0.8}in;overflow:hidden;font:${handwriting ? 500 : 400} ${handwriting ? (big ? 22 : 18) : big ? 16 : 13}px/${handwriting ? 1.3 : 1.45} ${font};color:#1b1b1b;white-space:pre-wrap;word-break:break-word">${esc(c.message)}</div></body></html>`;
   return { frontHTML, backHTML };
 }
 

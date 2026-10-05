@@ -134,14 +134,19 @@ export function sendPage(initial: string) {
         <div class="step"><div class="step-h"><span>01</span><h2>Choose</h2></div><div class="choices" role="radiogroup" aria-label="Product">${choices}</div></div>
 
         <div class="step" id="pc"><div class="step-h"><span>02</span><h2>Design the front</h2></div>
-          <div class="seg" role="radiogroup" aria-label="Front style"><label><input type="radio" name="front" value="text" checked>Text</label><label><input type="radio" name="front" value="photo">Photo</label></div>
+          <div class="seg seg-wrap" role="radiogroup" aria-label="Front style"><label><input type="radio" name="front" value="text" checked>Text</label><label><input type="radio" name="front" value="photo">Photo</label><label><input type="radio" name="front" value="caption">Photo + caption</label><label><input type="radio" name="front" value="collage">Collage</label></div>
           <label class="drop" id="drop" hidden><input id="photo" type="file" accept="image/jpeg,image/png,image/webp"><span id="dropText"><b>Drop a photo</b> or click to choose<br><small>JPG, PNG or WebP, up to 25 MB. You can crop it next.</small></span></label>
           <button type="button" class="linkbtn" id="recrop" hidden>Adjust crop</button>
+          <div class="field" id="captionBox" hidden><div class="top"><label for="caption">Caption</label><span class="count" id="cc">0/${LIMITS.postcardCaption}</span></div><input id="caption" maxlength="${LIMITS.postcardCaption}" placeholder="Greetings from Lisbon"></div>
+          <label class="drop" id="cdrop" hidden><input id="cphotos" type="file" accept="image/jpeg,image/png,image/webp" multiple><span id="cdropText"><b>Choose 2 to 4 photos</b> for the collage<br><small>They're arranged in a grid and trimmed to fit each spot.</small></span></label>
+          <button type="button" class="linkbtn" id="cclear" hidden>Start the collage over</button>
+          <div class="field" id="fontBox"><div class="top">Headline font</div><div class="seg" role="radiogroup" aria-label="Headline font"><label><input type="radio" name="hfont" value="serif" checked>Serif</label><label><input type="radio" name="hfont" value="sans">Sans</label><label><input type="radio" name="hfont" value="script">Script</label></div></div>
           <div id="textFront" style="display:grid;gap:12px">
             <div class="field"><div class="top"><label for="headline">Big text</label><span class="count" id="hc">0/${LIMITS.postcardHeadline}</span></div><input id="headline" maxlength="${LIMITS.postcardHeadline}" placeholder="Greetings from Lisbon!"></div>
             <div class="field"><div class="top">Color</div><div class="swatches" role="radiogroup" aria-label="Color">${swatches}</div></div>
           </div>
           <div class="field"><div class="top"><label for="message">Message on the back</label><span class="count" id="mc">0/${LIMITS.postcardMessage}</span></div><textarea id="message" maxlength="${LIMITS.postcardMessage}" placeholder="Wish you were here…"></textarea></div>
+          <div class="field"><div class="top">Message font</div><div class="seg" role="radiogroup" aria-label="Message font"><label><input type="radio" name="mfont" value="handwriting" checked>Handwriting</label><label><input type="radio" name="mfont" value="serif">Serif</label><label><input type="radio" name="mfont" value="sans">Sans</label></div></div>
           <div class="field"><div class="top">Delivery</div>
             <div class="seg" role="radiogroup" aria-label="Postcard delivery"><label><input type="radio" name="pdeliv" value="first" checked>First-Class · included</label><label><input type="radio" name="pdeliv" value="express">Express · +${usd(EXPRESS_CENTS)}</label></div>
             <p class="note" style="margin:0">Express goes by USPS Priority Mail, usually 2–3 days, with tracking.</p></div>
@@ -224,9 +229,14 @@ export function sendPage(initial: string) {
       return [a.name, a.line1, a.line2, [a.city, a.state].filter(Boolean).join(", ") + (a.zip ? " " + a.zip : "")].filter(Boolean).join("\\n");
     }
     function render() {
-      const product = effectiveProduct(), letter = val("product") === "letter", photo = val("front") === "photo";
+      const product = effectiveProduct(), letter = val("product") === "letter", front = val("front"), photo = front === "photo" || front === "caption";
       $("pc").hidden = letter; $("lt").hidden = !letter;
-      $("drop").hidden = !photo; $("textFront").hidden = photo; $("recrop").hidden = !photo || !photoFile;
+      $("drop").hidden = !photo; $("textFront").hidden = front !== "text"; $("recrop").hidden = !photo || !photoFile;
+      $("captionBox").hidden = front !== "caption"; $("cdrop").hidden = front !== "collage"; $("cclear").hidden = front !== "collage" || !collage.length;
+      $("fontBox").hidden = !(front === "text" || front === "caption");
+      $("cc").textContent = $("caption").value.length + "/${LIMITS.postcardCaption}";
+      // The preview card takes the chosen size's shape (6×11 is wider than 4×6 and 6×9).
+      if (!letter && SHEET[product]) $("pvCard").style.aspectRatio = (SHEET[product][0] - 0.25) + " / " + (SHEET[product][1] - 0.25);
       $("pvName").textContent = PRODUCTS[product].name;
       $("postageLine").textContent = product === "letter_certified" ? "Printing, envelope, Certified Mail" : product === "letter_certified_rr" ? "Printing, envelope, Certified Mail + return receipt" : isExpress() ? (letter ? "Printing, envelope, Express (USPS Priority)" : "Printing, Express (USPS Priority)") : (letter ? "Printing, envelope, First-Class postage" : "Printing, First-Class postage");
       const color = letter && (isPdf() ? $("pdfColor").checked : Boolean(letterPhoto));
@@ -247,16 +257,33 @@ export function sendPage(initial: string) {
       }
       const card = $("pvCard");
       if (side === "front") {
-        if (photo && photoUrl) card.innerHTML = '<div class="front"><img alt="" src="' + photoUrl + '"></div>';
-        else if (photo) card.innerHTML = '<div class="front" style="background:var(--tint);color:var(--faint);font:500 .9rem var(--f-ui)">Your photo here</div>';
+        const hf = HFONT[val("hfont")];
+        if (front === "collage") {
+          const n = Math.max(2, collage.length), areas = n === 2 ? '"a b"' : n === 3 ? '"a b" "a c"' : '"a b" "c d"';
+          card.innerHTML = '<div class="front" style="padding:0;display:grid;gap:2px;background:#fff;grid-template-areas:' + areas + ';grid-template-columns:' + (n === 3 ? "1.4fr 1fr" : "1fr 1fr") + ';grid-template-rows:' + (n === 2 ? "1fr" : "1fr 1fr") + '"></div>';
+          for (let i = 0; i < n; i++) {
+            const cell = document.createElement("div"); cell.style.cssText = "grid-area:" + "abcd"[i] + ";overflow:hidden;min-width:0;min-height:0;background:var(--tint)";
+            if (collage[i]) cell.innerHTML = '<img alt="" src="' + collage[i].url + '">';
+            card.firstChild.appendChild(cell);
+          }
+        } else if (photo && photoUrl) {
+          card.innerHTML = '<div class="front" style="padding:0;position:relative"><img alt="" src="' + photoUrl + '"></div>';
+          if (front === "caption") {
+            const band = document.createElement("div");
+            band.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:5% 7% 6%;background:rgba(0,0,0,.42);color:#fff;text-align:left;font:600 clamp(.9rem,2.2vw,1.3rem)/1.15 " + hf;
+            band.textContent = $("caption").value || "Your caption";
+            card.firstChild.appendChild(band);
+          }
+        } else if (photo) card.innerHTML = '<div class="front" style="background:var(--tint);color:var(--faint);font:500 .9rem var(--f-ui)">Your photo here</div>';
         else {
           const [bg, fg] = THEMES[val("theme")];
-          card.innerHTML = '<div class="front" style="background:' + bg + ';color:' + fg + '"></div>';
+          card.innerHTML = '<div class="front" style="background:' + bg + ';color:' + fg + ';font-family:' + hf + '"></div>';
           card.firstChild.textContent = $("headline").value || "Your big text";
         }
       } else {
         card.innerHTML = '<div class="back"><div class="msg"></div><div class="to"></div></div>';
         card.querySelector(".msg").textContent = $("message").value || "Your message…";
+        card.querySelector(".msg").style.fontFamily = MFONT[val("mfont")];
         card.querySelector(".to").textContent = to;
       }
     }
@@ -389,6 +416,45 @@ export function sendPage(initial: string) {
       letterPhoto = null; if (letterPhotoUrl) URL.revokeObjectURL(letterPhotoUrl); letterPhotoUrl = null;
       $("ldropText").innerHTML = '<b>Add a photo</b> (optional)<br><small>Printed at the top of the letter, in color.</small>'; render();
     });
+    // Fonts for the preview (the print uses the same families via Google Fonts).
+    const HFONT = { serif: "'Source Serif 4', Georgia, serif", sans: "Inter, Helvetica, Arial, sans-serif", script: "Caveat, 'Bradley Hand', cursive" };
+    const MFONT = { handwriting: "Caveat, 'Segoe Print', 'Bradley Hand', cursive", serif: "'Source Serif 4', Georgia, serif", sans: "Inter, Helvetica, Arial, sans-serif" };
+    // Collage photos aren't cropped (each is trimmed to its spot when printed); they're scaled to at most 2000 px.
+    let collage = [];
+    function scaleImage(file, maxW, maxH) {
+      return new Promise((resolve, reject) => {
+        const img = new Image(), src = URL.createObjectURL(file);
+        img.onload = () => {
+          const k = Math.min(1, maxW / img.naturalWidth, maxH / img.naturalHeight);
+          const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+          const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(src);
+          c.toBlob((b) => (b && b.size <= MAX_IMG ? resolve(new File([b], "photo.jpg", { type: "image/jpeg" })) : reject(new Error("Couldn't use one of those photos."))), "image/jpeg", 0.9);
+        };
+        img.onerror = () => { URL.revokeObjectURL(src); reject(new Error("One of those photos couldn't be opened.")); };
+        img.src = src;
+      });
+    }
+    async function takeCollage(files) {
+      const list = Array.from(files || []).filter((f) => /^image.(jpeg|png|webp)$/.test(f.type)).slice(0, 4 - collage.length);
+      if (!list.length) { $("err").textContent = collage.length >= 4 ? "A collage holds up to 4 photos." : "Use JPG, PNG or WebP photos."; return; }
+      try {
+        for (const f of list) { const file = await scaleImage(f, 2000, 2000); collage.push({ file, url: URL.createObjectURL(file) }); }
+        $("err").textContent = "";
+      } catch (e) { $("err").textContent = e.message; }
+      $("cdropText").innerHTML = "<b>" + collage.length + " of 4 photos</b><br><small>" + (collage.length < 4 ? "Add more, or keep these." : "The collage is full.") + "</small>";
+      $("cphotos").value = ""; side = "front"; render();
+    }
+    $("cphotos").addEventListener("change", (e) => takeCollage(e.target.files));
+    const cdrop = $("cdrop");
+    ["dragenter", "dragover"].forEach(t => cdrop.addEventListener(t, (e) => { e.preventDefault(); cdrop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach(t => cdrop.addEventListener(t, () => cdrop.classList.remove("over")));
+    cdrop.addEventListener("drop", (e) => { e.preventDefault(); takeCollage(e.dataTransfer.files); });
+    $("cclear").addEventListener("click", () => {
+      collage.forEach((c) => URL.revokeObjectURL(c.url)); collage = [];
+      $("cdropText").innerHTML = "<b>Choose 2 to 4 photos</b> for the collage<br><small>They're arranged in a grid and trimmed to fit each spot.</small>"; render();
+    });
+
     // PDFs upload as soon as they're chosen, so the page count (or what's wrong with the file) shows right away.
     async function takePdf(file) {
       if (!file) return;
@@ -440,10 +506,24 @@ export function sendPage(initial: string) {
         } else {
           url = "/v1/postcards";
           const content = { message: $("message").value, front_theme: val("theme") };
-          if (val("front") === "photo") {
+          const front = val("front");
+          content.message_font = val("mfont"); content.headline_font = val("hfont");
+          if (front === "photo" || front === "caption") {
             if (!photoFile) throw new Error("Add a photo for the front, or switch to Text.");
             content.front_image_url = await upload(photoFile);
-          } else if ($("headline").value.trim()) content.front_headline = $("headline").value.trim();
+            content.layout = front === "caption" ? "photo_caption" : "photo";
+            if (front === "caption") {
+              if (!$("caption").value.trim()) throw new Error("Add a caption, or switch to Photo.");
+              content.caption = $("caption").value.trim();
+            }
+          } else if (front === "collage") {
+            if (collage.length < 2) throw new Error("Choose at least 2 photos for the collage.");
+            content.layout = "collage";
+            content.front_images = await Promise.all(collage.map((c) => upload(c.file)));
+          } else {
+            content.layout = "headline";
+            if ($("headline").value.trim()) content.front_headline = $("headline").value.trim();
+          }
           body = { size: SIZE_OF[product] || "4x6", content, express: isExpress() };
         }
         Object.assign(body, { to: addr("to"), from: addr("from"), customer_email: $("email").value.trim() || undefined });

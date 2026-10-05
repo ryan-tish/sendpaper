@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { BASE_URL, COLOR_LETTER_CENTS, EXPRESS_CENTS, EXTRA_SERVICE, FIRST_ORDER_DISCOUNT_CENTS, LIMITS, POSTCARD_SIZE_NAMES, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
 import { pool } from "./db.ts";
+import { postcardLayout, THEME_NAMES } from "./render.ts";
 import { track } from "./analytics.ts";
 
 export const STATUSES = ["awaiting_payment", "paid", "printing", "mailed", "cancelled", "refunded"] as const;
@@ -50,17 +51,32 @@ const imageUrl = z
 
 export const PostcardContentSchema = z
   .object({
-    front_image_url: imageUrl.optional().describe("https URL of a photo or design for the front (JPG or PNG)"),
+    layout: z
+      .enum(["headline", "photo", "photo_caption", "collage"])
+      .optional()
+      .describe("Front layout: headline (big text on a color), photo (one full-bleed photo), photo_caption (photo with a caption band), collage (2-4 photos). Inferred from the fields when omitted."),
+    front_image_url: imageUrl.optional().describe("https URL of a photo or design for the front (JPG or PNG); for photo and photo_caption"),
+    front_images: z.array(imageUrl).min(2).max(4).optional().describe("Collage: 2 to 4 https photo URLs, laid out in a grid"),
+    caption: z.string().trim().min(1).max(LIMITS.postcardCaption).optional().describe("photo_caption: short text over a band at the bottom of the photo"),
     front_headline: z
       .string()
       .trim()
       .max(LIMITS.postcardHeadline)
       .optional()
-      .describe("Big text for the front if there is no image, e.g. 'Happy birthday, Sam!'"),
-    front_theme: z.enum(["ink", "sky", "sunset", "forest"]).default("ink").describe("Color theme for a text-only front"),
-    message: z.string().trim().min(1).max(LIMITS.postcardMessage).describe("Handwritten-style message on the back"),
+      .describe("headline layout: big text for the front, e.g. 'Happy birthday, Sam!'"),
+    front_theme: z.enum(THEME_NAMES).default("ink").describe("headline layout: color theme (ink, sky, sunset, forest, rose, sand, night, mint)"),
+    headline_font: z.enum(["serif", "sans", "script"]).default("serif").describe("Font for the headline or caption: serif, sans or script (handwritten)"),
+    message: z.string().trim().min(1).max(LIMITS.postcardMessage).describe("The message on the back"),
+    message_font: z.enum(["handwriting", "serif", "sans"]).default("handwriting").describe("Font for the message on the back"),
   })
-  .refine((c) => c.front_image_url || c.front_headline, "Give the front either an image URL or a headline");
+  .superRefine((c, ctx) => {
+    const layout = postcardLayout(c);
+    const need = (ok: unknown, path: string, message: string) => { if (!ok) ctx.addIssue({ code: "custom", path: [path], message }); };
+    if (layout === "headline") need(c.front_headline, "front_headline", "Give the front a headline (or choose a photo layout)");
+    if (layout === "photo" || layout === "photo_caption") need(c.front_image_url, "front_image_url", "Add a front photo (front_image_url)");
+    if (layout === "photo_caption") need(c.caption, "caption", "Add a caption for the photo_caption layout");
+    if (layout === "collage") need((c.front_images ?? []).length >= 2, "front_images", "A collage needs 2 to 4 photos (front_images)");
+  });
 
 // A letter is either text we lay out (body, optional photo) or the customer's own PDF (pdf_url).
 const pdfUrl = z
