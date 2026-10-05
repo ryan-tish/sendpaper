@@ -5,13 +5,25 @@ import { esc } from "./render.ts";
 // Real reasons people still need paper mail, each with a prompt an agent can run as-is (Ryan, 2026-10-05: lead
 // with professional, proof-of-delivery mail; personal cards follow). Keep caveats honest, never imply scheduling or
 // legal/tax advice: we print and mail what the customer or their agent writes.
-export type UseCase = { id: string; group: "proof" | "personal"; title: string; why: string; prompt: string; product: ProductId; note?: string; href?: string };
+// Topics the use-case page is divided into, in page order (Ryan, 2026-10-05: six sections with filter chips).
+export const TOPICS = [
+  ["taxes-government", "Taxes & government"],
+  ["housing", "Housing"],
+  ["money-credit", "Money & credit"],
+  ["contracts-documents", "Contracts & documents"],
+  ["celebrations", "Celebrations"],
+  ["life-community", "Life & community"],
+] as const;
+export type Topic = (typeof TOPICS)[number][0];
+
+export type UseCase = { id: string; topic: Topic; group: "proof" | "personal"; title: string; why: string; prompt: string; product: ProductId; note?: string; href?: string };
 
 export const GUARDRAIL = `${BRAND} prints and mails what you or your agent writes. We're not a law firm or tax preparer and don't give legal or tax advice; for deadlines and the right address, check the notice itself, the agency, or a professional.`;
 
 export const USE_CASES: UseCase[] = [
   {
     id: "taxes",
+    topic: "taxes-government",
     group: "proof",
     title: "Reply to an IRS or state tax notice",
     why: "Notices give a deadline and an address. A certified reply proves when you answered, and you can mail the documents they ask for as a PDF.",
@@ -21,6 +33,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "landlord",
+    topic: "housing",
     group: "proof",
     title: "Notice to your landlord",
     why: "Leases usually require written notice for move-outs, renewals and repairs, and a dated delivery record settles arguments later.",
@@ -30,6 +43,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "security-deposit",
+    topic: "housing",
     group: "proof",
     title: "Ask for your security deposit back",
     why: "If your deposit hasn't come back, a clear written demand with proof it arrived is usually the next step.",
@@ -39,6 +53,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "credit-dispute",
+    topic: "money-credit",
     group: "proof",
     title: "Dispute an error on your credit report",
     why: "You can dispute errors with the credit bureaus by mail, and a certified letter with copies of your evidence leaves a clear record.",
@@ -48,6 +63,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "debt-validation",
+    topic: "money-credit",
     group: "proof",
     title: "Ask a collector to validate a debt",
     why: "If a collector contacts you about a debt you don't recognize, asking in writing for proof of the debt, with a delivery record, keeps things documented.",
@@ -56,6 +72,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "unpaid-invoice",
+    topic: "money-credit",
     group: "proof",
     title: "Chase an unpaid invoice",
     why: "When emails go unanswered, a formal demand letter with proof of delivery often gets an invoice paid, and it's the record you'll need if it escalates.",
@@ -64,6 +81,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "cancel-notice",
+    topic: "contracts-documents",
     group: "proof",
     title: "Cancel a contract or membership",
     why: "Some contracts and memberships only accept cancellation in writing. A certified letter proves you sent it and when.",
@@ -72,6 +90,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "documents",
+    topic: "contracts-documents",
     group: "proof",
     title: "Mail a signed form or document",
     why: "Signed forms, applications and statements still go by mail. Upload the PDF and it's printed and mailed, with Certified Mail if you need proof.",
@@ -82,6 +101,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "birthdays",
+    topic: "celebrations",
     group: "personal",
     title: "Birthdays and holidays",
     why: "A card on the fridge beats a text, and your agent can write it in a minute.",
@@ -90,6 +110,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "thank-you",
+    topic: "celebrations",
     group: "personal",
     title: "Thank-you notes",
     why: "After an interview, a favor, or a job well done, a handwritten-style note gets remembered.",
@@ -98,6 +119,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "business",
+    topic: "life-community",
     group: "personal",
     title: "Small business",
     why: "A postcard to a first-time customer or a lapsed regular stands out in a way email can't.",
@@ -107,6 +129,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "condolences",
+    topic: "life-community",
     group: "personal",
     title: "Condolences and get-well wishes",
     why: "Some moments deserve paper. Your agent can help with the words, but the card is real.",
@@ -115,6 +138,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "representatives",
+    topic: "taxes-government",
     group: "personal",
     title: "Writing to your representatives",
     why: "Offices count physical letters. A short, personal one is read.",
@@ -123,6 +147,7 @@ export const USE_CASES: UseCase[] = [
   },
   {
     id: "moving",
+    topic: "housing",
     group: "personal",
     title: "Moving and address changes",
     why: "Tell the people who still send you paper where to find you.",
@@ -134,6 +159,10 @@ export const USE_CASES: UseCase[] = [
 
 const CSS = `
 .uc-head { display: grid; gap: 12px; padding-block: 56px 16px; max-width: 720px; }
+.uc-chips { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 8px 4px; }
+.chip { font: 500 .88rem var(--f-ui); color: var(--soft); text-decoration: none; border: 1px solid var(--rule); background: var(--card); border-radius: 999px; padding: 7px 14px; transition: border-color .15s, color .15s; }
+.chip:hover { border-color: var(--green); color: var(--ink); }
+.chip.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .uc-head h1 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); }
 .uc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; padding-block: 24px 8px; }
 .uc { scroll-margin-top: 90px; display: grid; }
@@ -182,19 +211,25 @@ const card = (u: UseCase) => `<article class="uc" id="${u.id}"><div class="uc-in
 export function useCasesPage() {
   return page(
     `Use cases — ${BRAND}`,
-    `<style>${CSS}.uc-sec { display: grid; gap: 10px; padding-block: 28px 0; } .uc-sec h2 { font-size: 1.35rem; } .guard { font-size: .88rem; color: var(--faint); max-width: 760px; margin: 8px 0 0; }</style>
+    `<style>${CSS}.uc-sec { display: grid; gap: 10px; padding-block: 28px 0; scroll-margin-top: 80px; } .uc-sec h2 { font-size: 1.35rem; } .uc-sec[hidden] { display: none; } .guard { font-size: .88rem; color: var(--faint); max-width: 760px; margin: 32px 0 0; }</style>
     <div class="uc-head"><span class="eyebrow">Use cases</span><h1>What people send</h1>
       <p class="soft">Copy a prompt into your agent, or send from the web.</p></div>
-    <section class="uc-sec" aria-labelledby="proofH"><h2 id="proofH">Certified mail use cases</h2>
-      <div class="uc-grid">${USE_CASES.filter((u) => u.group === "proof").map(card).join("")}</div>
-      <p class="guard">${esc(GUARDRAIL)}</p>
-</section>
-
-    <section class="uc-sec" aria-labelledby="personalH"><h2 id="personalH">Personal mail use cases</h2>
-      <div class="uc-grid">${USE_CASES.filter((u) => u.group === "personal").map(card).join("")}</div></section>
+    <nav class="uc-chips" aria-label="Filter use cases"><a href="#all" class="chip on" data-topic="">All</a>${TOPICS.map(([id, name]) => `<a href="#${id}" class="chip" data-topic="${id}">${esc(name)}</a>`).join("")}</nav>
+    ${TOPICS.map(([id, name]) => `<section class="uc-sec" id="${id}" aria-labelledby="${id}-h"><h2 id="${id}-h">${esc(name)}</h2>
+      <div class="uc-grid">${USE_CASES.filter((u) => u.topic === id).map(card).join("")}</div></section>`).join("\n    ")}
+    <p class="guard">${esc(GUARDRAIL)}</p>
     <script>
     (function () {
       document.querySelectorAll(".uc-grid").forEach((g) => g.classList.add("flip"));
+      // Topic chips filter the sections (without JS they're plain jump links).
+      const chips = [...document.querySelectorAll(".uc-chips .chip")], secs = [...document.querySelectorAll(".uc-sec")];
+      function show(topic) {
+        chips.forEach((c) => { const on = c.dataset.topic === topic; c.classList.toggle("on", on); c.setAttribute("aria-current", on ? "true" : "false"); });
+        secs.forEach((s) => (s.hidden = !!topic && s.id !== topic));
+      }
+      chips.forEach((c) => c.addEventListener("click", (e) => { e.preventDefault(); show(c.dataset.topic); history.replaceState(null, "", c.dataset.topic ? "#" + c.dataset.topic : location.pathname); }));
+      const fromHash = () => { if (secs.some((s) => "#" + s.id === location.hash)) show(location.hash.slice(1)); };
+      fromHash(); addEventListener("hashchange", fromHash);
       // A gentle tour so people notice the cards have a back: while cards are on screen, flip the next visible one,
       // hold it, flip it back. Stops for good once the visitor touches a card; pauses in hidden tabs; never with
       // reduced motion. Focus never moves.
