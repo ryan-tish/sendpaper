@@ -35,6 +35,7 @@ nav .links { display: flex; gap: 26px; align-items: center; font-size: .93rem; }
 nav .links a { color: var(--soft); text-decoration: none; font-weight: 500; }
 nav .links a:hover { color: var(--ink); }
 nav .links a.btn { color: var(--btn-fg); padding: 8px 14px; font-size: .9rem; }
+nav .links a.btn.alt { color: var(--ink); margin-right: -14px; }
 h1, h2, h3 { font-family: var(--f-ui); text-wrap: balance; margin: 0; color: var(--ink); }
 h1 { font-size: clamp(2.3rem, 5vw, 3.6rem); font-weight: 600; letter-spacing: -0.035em; line-height: 1.04; }
 h2 { font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: 600; letter-spacing: -0.025em; line-height: 1.15; }
@@ -88,6 +89,7 @@ th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var
 th { font-weight: 500; color: var(--soft); }
 .scroll { overflow-x: auto; }
 @media (max-width: 720px) { nav .links a:not(.btn) { display: none; } }
+@media (max-width: 560px) { nav .links a.btn.alt { display: none; } }
 @media (max-width: 440px) { nav .links { gap: 10px; } nav .links a.btn { padding: 7px 11px; font-size: .84rem; } .logo svg { height: 22px; width: auto; } }
 `;
 
@@ -128,7 +130,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 ${OFFER_ACTIVE ? `<a class="promo" href="/send"><b>${esc(OFFER_LINE)}</b><span>Taken off automatically · any postcard or letter</span><i aria-hidden="true">→</i></a>` : ""}
 <header class="site"><div class="wrap"><nav>
   <a class="logo" href="/">${LOGO_FULL}</a>
-  <div class="links"><a href="/use-cases">Use cases</a><a href="/guides">Guides</a><a href="${docsUrl()}">Docs</a><a href="/#pricing">Pricing</a><a href="/send">Send from the web</a><button class="theme" type="button" id="theme" aria-label="Toggle dark mode"><svg class="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><a class="btn" href="${docsUrl("/quickstart")}">Connect your agent</a></div>
+  <div class="links"><a href="/use-cases">Use cases</a><a href="/guides">Guides</a><a href="${docsUrl()}">Docs</a><a href="/#pricing">Pricing</a><button class="theme" type="button" id="theme" aria-label="Toggle dark mode"><svg class="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><a class="btn alt" href="/send">Send from the web</a><a class="btn" href="${docsUrl("/quickstart")}">Connect your agent</a></div>
 </nav></div></header>
 <div class="wrap">
 ${body}
