@@ -13,6 +13,7 @@ const CERT = usd(PRODUCTS.letter_certified.cents), RR = usd(PRODUCTS.letter_cert
 
 type Guide = {
   slug: string;
+  kicker: string; // topic label above the headline and in the index
   title: string; // <title> and h1
   description: string; // meta description
   blurb: string; // one line for guide cards
@@ -27,6 +28,7 @@ type Guide = {
 export const GUIDES: Guide[] = [
   {
     slug: "certified-mail-online",
+    kicker: "Certified mail",
     blurb: "Tracking and proof of delivery, without the post office.",
     title: "Send certified mail online",
     description: `Send a letter by USPS Certified Mail without going to the post office: tracking and proof of delivery from ${CERT}, return receipt ${RR}. Write it, upload a PDF, or ask your AI agent.`,
@@ -48,6 +50,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "irs-notice-response",
+    kicker: "Taxes",
     blurb: "Answer a tax notice with a dated delivery record.",
     title: "Reply to an IRS notice by certified mail",
     description: "Answer an IRS or state tax notice by USPS Certified Mail with tracking and proof of delivery. Write the reply with your AI agent or upload your documents as a PDF; no post office trip.",
@@ -69,6 +72,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "security-deposit-demand-letter",
+    kicker: "Housing",
     blurb: "Ask for your deposit back, with a signed receipt.",
     title: "Send a security deposit demand letter",
     description: `Ask a former landlord to return your security deposit with a letter sent by USPS Certified Mail with return receipt (${RR}). Your AI agent drafts it; we print and mail it with proof of delivery.`,
@@ -89,6 +93,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "credit-report-dispute-letter",
+    kicker: "Credit",
     blurb: "Dispute a credit report error by mail, with proof.",
     title: "Mail a credit report dispute by certified mail",
     description: `Dispute an error on your credit report by mail with USPS Certified Mail (${CERT}) for tracking and proof of delivery. Your AI agent drafts the letter; upload a PDF with your evidence.`,
@@ -109,6 +114,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "demand-letter-unpaid-invoice",
+    kicker: "Small business",
     blurb: "A formal payment demand when emails go unanswered.",
     title: "Send a demand letter for an unpaid invoice",
     description: `Chase an overdue invoice with a formal demand letter sent by USPS Certified Mail (${CERT}) for proof of delivery. Your AI agent drafts it from the invoice; we print and mail it.`,
@@ -129,6 +135,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "mail-a-pdf",
+    kicker: "Documents",
     blurb: "Upload a document; we print, envelope and mail it.",
     title: "Mail a PDF as a letter",
     description: `Upload a PDF and we print and mail it: ${LETTER} by First-Class Mail, ${CERT} by Certified Mail, express available. Any page size, up to ${LIMITS.pdfPages} pages, US addresses.`,
@@ -151,26 +158,43 @@ export const GUIDES: Guide[] = [
 
 export const GUIDE_PATHS = GUIDES.map((g) => `/${g.slug}`);
 
+// Guides read as articles (Ryan, 2026-10-05: "more article-like, more different from the use cases"): serif type,
+// a narrow reading column, written-out steps and Q&A, an "On this page" rail on wide screens. Use cases stay cards.
+const UPDATED = "October 2026"; // bump when guide copy changes
+const SERIF_FONT = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">`;
+const minutes = (g: Guide) => Math.max(2, Math.round([g.lede, ...g.steps.flat(), ...g.include, g.prompt, ...g.faqs.flat()].join(" ").split(/\s+/).length / 200));
+const priceFor = (g: Guide) => (g.send.includes("certified") ? `Certified letter from ${CERT}` : `Letters from ${LETTER}`);
+
 const CSS = `
-.g { display: grid; gap: 28px; max-width: 760px; padding-block: 52px 8px; }
-.g section { padding-block: 0; margin: 0; }
-.g h1 { font-size: clamp(1.9rem, 4vw, 2.7rem); text-wrap: balance; }
-.g .lede { font-size: 1.1rem; color: var(--soft); }
-.g h2 { font-size: 1.3rem; }
-.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; counter-reset: s; }
-.steps li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; counter-increment: s; }
-.steps li::before { content: counter(s); font: 600 .9rem var(--f-mono); color: var(--green); background: var(--green-soft); border-radius: 999px; width: 30px; height: 30px; display: grid; place-items: center; }
-.steps b { display: block; }
-.g ul.inc { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--soft); }
-.g .prompt { font: .9rem/1.6 var(--f-mono); background: var(--tint); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; }
-.g .prompt::before { content: "› "; color: var(--green); }
-.g .ctas { display: flex; flex-wrap: wrap; gap: 10px; }
-.g details { border-bottom: 1px solid var(--rule); padding-block: 12px; }
-.g summary { font-weight: 600; cursor: pointer; }
-.g details p { color: var(--soft); margin: 8px 0 0; }
-.g .guard { font-size: .88rem; color: var(--faint); }
-.g .more { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: .92rem; }
+.art { --f-serif: "Source Serif 4", Georgia, serif; display: grid; grid-template-columns: minmax(0, 680px) 200px; justify-content: space-between; gap: 56px; padding-block: 44px 8px; }
+@media (max-width: 960px) { .art { grid-template-columns: minmax(0, 680px); } .toc { display: none; } }
+.art .crumbs { font-size: .88rem; color: var(--faint); } .art .crumbs a { color: var(--soft); text-decoration: none; } .art .crumbs a:hover { color: var(--green); }
+.art header { display: grid; gap: 14px; padding-bottom: 28px; border-bottom: 1px solid var(--rule); }
+.art h1 { font: 600 clamp(2.1rem, 4.6vw, 3.1rem)/1.1 var(--f-serif); letter-spacing: -0.02em; }
+.art .dek { font: 400 1.28rem/1.5 var(--f-serif); color: var(--soft); margin: 0; }
+.art .meta { font: 500 .78rem var(--f-mono); color: var(--faint); letter-spacing: .02em; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.prose { font: 400 1.1rem/1.75 var(--f-serif); color: var(--ink); }
+.prose h2 { font: 600 1.55rem/1.25 var(--f-serif); letter-spacing: -0.01em; margin: 44px 0 12px; scroll-margin-top: 90px; }
+.prose h3 { font: 600 1.15rem/1.35 var(--f-ui); margin: 26px 0 6px; }
+.prose p { margin: 0 0 14px; }
+.prose .num { font: 500 .8rem var(--f-mono); color: var(--green); margin-right: 8px; }
+.prose ul.check { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
+.prose ul.check li { padding-left: 30px; position: relative; }
+.prose ul.check li::before { content: "✓"; position: absolute; left: 4px; color: var(--green); font: 600 1rem var(--f-ui); }
+.prose .prompt { font: .9rem/1.6 var(--f-mono); background: var(--tint); border-left: 3px solid var(--green); border-radius: 0 10px 10px 0; padding: 14px 18px; margin: 4px 0 14px; }
+.prose .prompt::before { content: "› "; color: var(--green); }
+.cta-box { font-family: var(--f-ui); margin: 36px 0 8px; padding: 22px 24px; border: 1px solid var(--rule); border-radius: 14px; background: var(--card); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; }
+.cta-box b { display: block; font-size: 1.05rem; } .cta-box span { color: var(--soft); font-size: .92rem; }
+.cta-box .ctas { display: flex; flex-wrap: wrap; gap: 10px; }
+.prose .guard { font: italic 400 .95rem/1.6 var(--f-serif); color: var(--faint); border-top: 1px solid var(--rule); padding-top: 18px; margin-top: 36px; }
+.toc { position: sticky; top: 96px; align-self: start; display: grid; gap: 8px; font-size: .88rem; padding-top: 6px; }
+.toc span { font: 500 .72rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+.toc a { color: var(--soft); text-decoration: none; } .toc a:hover { color: var(--green); }
+.keep { grid-column: 1 / -1; border-top: 1px solid var(--rule); padding-top: 28px; margin-top: 12px; display: grid; gap: 4px; }
+.keep > span { font: 500 .74rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
 `;
+
+const SECTIONS = [["how", "How it works"], ["include", "What to include"], ["agent", "Ask your agent"], ["questions", "Common questions"]];
 
 export function guidePage(slug: string) {
   const g = GUIDES.find((x) => x.slug === slug);
@@ -180,47 +204,60 @@ export function guidePage(slug: string) {
     "@type": "FAQPage",
     mainEntity: g.faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
   };
-  const others = GUIDES.filter((x) => x.slug !== slug);
+  const others = GUIDES.filter((x) => x.slug !== slug).slice(0, 3);
   return page(
     `${g.title} — ${BRAND}`,
-    `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script><style>${CSS}</style>
-    <article class="g">
-      <div style="display:grid;gap:12px"><span class="eyebrow">Guide</span><h1>${esc(g.title)}</h1><p class="lede">${esc(g.lede)}</p>
-        <div class="ctas"><a class="btn green" href="${esc(g.send)}">Send it from the web</a><a class="btn alt" href="${esc(docsUrl("/quickstart"))}">Use your AI agent</a></div></div>
-      <section style="display:grid;gap:14px"><h2>How it works</h2><ol class="steps">${g.steps.map(([t, d]) => `<li><div><b>${esc(t)}</b><span class="soft">${esc(d)}</span></div></li>`).join("")}</ol></section>
-      <section style="display:grid;gap:10px"><h2>What to include</h2><ul class="inc">${g.include.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></section>
-      <section style="display:grid;gap:10px"><h2>Ask your agent</h2><p class="soft" style="margin:0">With ${esc(BRAND)} connected to Codex, Muse or Claude, paste this and fill in the brackets:</p><div class="prompt">${esc(g.prompt)}</div></section>
-      <section style="display:grid;gap:4px"><h2>Questions</h2>${g.faqs.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("")}</section>
-      <p class="guard">${esc(GUARDRAIL)}</p>
-      <nav class="more" aria-label="More guides"><b>More guides:</b>${others.map((o) => `<a href="/${o.slug}">${esc(o.title)}</a>`).join("")}<a href="/use-cases">All use cases</a></nav>
-    </article>`,
+    `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>${SERIF_FONT}<style>${CSS}${INDEX_CSS}</style>
+    <div class="art">
+      <article>
+        <header><div class="crumbs"><a href="/guides">Guides</a> › ${esc(g.kicker)}</div><h1>${esc(g.title)}</h1><p class="dek">${esc(g.lede)}</p>
+          <div class="meta"><span>${esc(BRAND)} guide</span><span>${minutes(g)} min read</span><span>Updated ${UPDATED}</span></div></header>
+        <div class="prose">
+          <h2 id="how">How it works</h2>
+          ${g.steps.map(([t, d], i) => `<h3><span class="num">0${i + 1}</span>${esc(t)}</h3><p>${esc(d)}</p>`).join("")}
+          <div class="cta-box"><div><b>Ready to send?</b><span>${priceFor(g)}, printing and postage included.</span></div>
+            <div class="ctas"><a class="btn green" href="${esc(g.send)}">Send it from the web</a><a class="btn alt" href="${esc(docsUrl("/quickstart"))}">Use your AI agent</a></div></div>
+          <h2 id="include">What to include</h2>
+          <ul class="check">${g.include.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>
+          <h2 id="agent">Ask your agent</h2>
+          <p>With ${esc(BRAND)} connected to Codex, Muse or Claude, paste this and fill in the brackets:</p>
+          <div class="prompt">${esc(g.prompt)}</div>
+          <h2 id="questions">Common questions</h2>
+          ${g.faqs.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join("")}
+          <p class="guard">${esc(GUARDRAIL)}</p>
+        </div>
+      </article>
+      <nav class="toc" aria-label="On this page"><span>On this page</span>${SECTIONS.map(([id, t]) => `<a href="#${id}">${t}</a>`).join("")}</nav>
+      <nav class="keep" aria-label="More guides"><span>Keep reading</span>${guideList(others)}<a href="/guides" style="color:var(--green);text-decoration:none;font-weight:500;margin-top:8px">All guides →</a></nav>
+    </div>`,
     { description: g.description },
   );
 }
 
 export const guideUrl = (slug: string) => `${BASE_URL}/${slug}`;
 
-// /guides: every guide as a card, so they're easy to find (Ryan, 2026-10-05: "make the guides more visible").
-export function guideCards(list: Guide[] = GUIDES) {
-  return `<div class="gcards">${list.map((g) => `<a class="gcard" href="/${g.slug}"><b>${esc(g.title)}</b><span>${esc(g.blurb)}</span><i aria-hidden="true">Read the guide →</i></a>`).join("")}</div>`;
+// /guides is an article index (a reading list), deliberately unlike the use-case cards.
+export function guideList(list: Guide[] = GUIDES) {
+  return `<div class="glist">${list.map((g) => `<a class="gitem" href="/${g.slug}"><span class="gk">${esc(g.kicker)} · ${minutes(g)} min read</span><b>${esc(g.title)}</b><span class="gb">${esc(g.blurb)}</span></a>`).join("")}</div>`;
 }
-export const GUIDE_CARD_CSS = `
-.gcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
-.gcard { display: grid; gap: 6px; align-content: start; padding: 18px 20px; border: 1px solid var(--rule); border-radius: 14px; background: var(--card); color: var(--ink); text-decoration: none; transition: border-color .15s, transform .15s; }
-.gcard:hover { border-color: var(--green); transform: translateY(-1px); }
-.gcard b { font-size: 1.02rem; letter-spacing: -0.01em; }
-.gcard span { color: var(--soft); font-size: .9rem; }
-.gcard i { font-style: normal; color: var(--green); font-size: .85rem; font-weight: 500; margin-top: 4px; }
-@media (prefers-reduced-motion: reduce) { .gcard { transition: none; } .gcard:hover { transform: none; } }
+const INDEX_CSS = `
+.glist { display: grid; }
+.gitem { display: grid; gap: 6px; padding: 22px 0; border-bottom: 1px solid var(--rule); color: var(--ink); text-decoration: none; }
+.glist .gitem:first-child { padding-top: 6px; }
+.gitem .gk { font: 500 .74rem var(--f-mono); color: var(--green); text-transform: uppercase; letter-spacing: .06em; }
+.gitem b { font: 600 1.45rem/1.25 "Source Serif 4", Georgia, serif; letter-spacing: -0.01em; transition: color .15s; }
+.gitem:hover b { color: var(--green); }
+.gitem .gb { color: var(--soft); font: 400 1.05rem/1.55 "Source Serif 4", Georgia, serif; }
+.keep .gitem b { font-size: 1.15rem; } .keep .gitem { padding: 14px 0; }
 `;
 
 export function guidesIndexPage() {
   return page(
     `Guides — ${BRAND}`,
-    `<style>${GUIDE_CARD_CSS} .gi { display: grid; gap: 24px; padding-block: 52px 8px; } .gi h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); }</style>
-    <section class="gi"><div style="display:grid;gap:10px;max-width:680px"><span class="eyebrow">Guides</span><h1>Mail that needs proof</h1>
-      <p class="soft" style="margin:0">Step-by-step help for certified letters, tax replies, disputes and demands, each with a prompt for your agent.</p></div>
-      ${guideCards()}
+    `${SERIF_FONT}<style>${INDEX_CSS} .gi { display: grid; gap: 28px; max-width: 760px; padding-block: 52px 8px; } .gi h1 { font: 600 clamp(2.1rem, 4.6vw, 3rem)/1.1 "Source Serif 4", Georgia, serif; letter-spacing: -0.02em; } .gi .dek { font: 400 1.22rem/1.5 "Source Serif 4", Georgia, serif; color: var(--soft); margin: 0; }</style>
+    <section class="gi"><div style="display:grid;gap:12px;padding-bottom:20px;border-bottom:1px solid var(--rule)"><span class="eyebrow">Guides</span><h1>Mail that needs proof</h1>
+      <p class="dek">Plain-English guides to certified letters, tax replies, disputes and demands: what to send, what to include, and how to prove it arrived.</p></div>
+      ${guideList()}
       <p class="soft" style="font-size:.88rem;margin:0">${esc(GUARDRAIL)}</p></section>`,
     { description: `Guides to sending certified mail online: IRS notice replies, security deposit and unpaid invoice demand letters, credit report disputes and mailing a PDF, with ${BRAND}.` },
   );
