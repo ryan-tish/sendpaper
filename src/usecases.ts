@@ -155,8 +155,44 @@ export const USE_CASES: UseCase[] = [
     product: "postcard_4x6",
     note: "One order per recipient.",
   },
+  {
+    id: "records-request",
+    topic: "taxes-government",
+    group: "proof",
+    title: "Request records from an agency",
+    why: "Records requests often go by mail, and the response clock starts when they receive it. A certified letter shows the date.",
+    prompt: "Draft a public records request to the city clerk at 200 Center St, Springfield IL 62701, asking for the 2025 building permits on my street, and mail it certified.",
+    product: "letter_certified",
+  },
+  {
+    id: "complaint",
+    topic: "contracts-documents",
+    group: "proof",
+    title: "Send a formal complaint to a company",
+    why: "When chat and email go nowhere, a dated letter to the company's address puts the complaint on record.",
+    prompt: "Write a firm, polite complaint to Acme Appliances, 50 Market St, Columbus OH 43215, about the dishwasher that failed twice under warranty, asking for a replacement, and mail it certified.",
+    product: "letter_certified",
+  },
+  {
+    id: "announcements",
+    topic: "celebrations",
+    group: "personal",
+    title: "Weddings, babies and big news",
+    why: "Announcements are the mail people stick on the fridge. Add a photo and send one to each person on your list.",
+    prompt: "Make a 6×9 postcard with this photo of the baby, the caption \"Hello, world: Maya, born June 2\", and mail one to my grandmother at 8 Elm St, Dayton OH 45402.",
+    product: "postcard_6x9",
+    note: "One order per recipient.",
+  },
+  {
+    id: "keep-in-touch",
+    topic: "life-community",
+    group: "personal",
+    title: "Staying in touch with family",
+    why: "Grandparents and relatives who aren't online still check the mailbox. A regular letter keeps them in the loop.",
+    prompt: "Turn these notes about our month into a one-page letter to Grandpa Joe at 31 Lake Rd, Duluth MN 55802, in a warm, newsy tone, and mail it.",
+    product: "letter",
+  },
 ];
-
 const CSS = `
 .uc-head { display: grid; gap: 12px; padding-block: 56px 16px; max-width: 720px; }
 .uc-chips { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 8px 4px; }
@@ -164,7 +200,9 @@ const CSS = `
 .chip:hover { border-color: var(--green); color: var(--ink); }
 .chip.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .uc-head h1 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); }
-.uc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; padding-block: 24px 8px; }
+.uc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding-block: 24px 8px; }
+@media (max-width: 980px) { .uc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .uc-grid { grid-template-columns: minmax(0, 1fr); } }
 .uc { scroll-margin-top: 90px; display: grid; }
 .face { display: flex; flex-direction: column; gap: 12px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 22px; min-width: 0; }
 .face h3 { font-size: 1.2rem; letter-spacing: -0.015em; }

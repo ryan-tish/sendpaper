@@ -108,11 +108,25 @@ export type SendKind = "postcard" | "letter" | "certified";
 export const SEND_KINDS: SendKind[] = ["postcard", "letter", "certified"];
 
 // /send with nothing chosen yet (Ryan, 2026-10-05): pick what you're sending, then get one page with every field.
-const KIND_INFO: Record<SendKind, { title: string; h1: string; cents: number; purpose: string; detail: string }> = {
-  postcard: { title: "Postcard", h1: "Send a postcard", cents: PRODUCTS.postcard_4x6.cents, purpose: "For photos and quick notes", detail: "4×6, 6×9 or 6×11. A photo or big text on the front, your note on the back." },
-  letter: { title: "Letter", h1: "Send a letter", cents: PRODUCTS.letter.cents, purpose: "For documents and correspondence", detail: "Up to 3 pages you write, or a PDF you upload, in a #10 envelope." },
-  certified: { title: "Certified letter", h1: "Send a certified letter", cents: PRODUCTS.letter_certified.cents, purpose: "For mail that needs delivery documentation", detail: "USPS Certified Mail with tracking and proof of delivery. Return receipt optional." },
+// One definition for the /send tiles and the homepage pricing cards, so their wording can't drift apart. Keep each
+// spec value short enough for one line in a 240px card (Ryan dislikes wrapped lines here).
+export const KIND_INFO: Record<SendKind, { title: string; h1: string; cta: string; cents: number; purpose: string; format: string; included: string; delivery: string }> = {
+  postcard: { title: "Postcard", h1: "Send a postcard", cta: "Send a postcard", cents: PRODUCTS.postcard_4x6.cents, purpose: "For photos and quick notes", format: "4×6, 6×9 or 6×11 card", included: "Printing and postage", delivery: "First-Class or express" },
+  letter: { title: "Letter", h1: "Send a letter", cta: "Send a letter", cents: PRODUCTS.letter.cents, purpose: "For documents and correspondence", format: "Up to 3 pages, 8.5×11", included: "Printing, envelope, postage", delivery: "First-Class or express" },
+  certified: { title: "Certified letter", h1: "Send a certified letter", cta: "Send a certified letter", cents: PRODUCTS.letter_certified.cents, purpose: "For mail that needs delivery documentation", format: "Up to 3 pages, 8.5×11", included: "Printing, envelope, postage", delivery: "Tracked, proof of delivery" },
 };
+
+export const kindSpec = (k: SendKind) => {
+  const i = KIND_INFO[k];
+  return `<dl class="spec"><div><dt>Format</dt><dd>${i.format}</dd></div><div><dt>Included</dt><dd>${i.included}</dd></div><div><dt>Delivery</dt><dd>${i.delivery}</dd></div></dl>`;
+};
+
+export const SPEC_CSS = `
+.spec { margin: 0; font-size: .88rem; border-bottom: 1px solid var(--rule); }
+.spec > div { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: baseline; gap: 10px; padding: 9px 0; border-top: 1px solid var(--rule); }
+.spec dt { font: 500 .7rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
+.spec dd { margin: 0; color: var(--ink); }
+`;
 
 // Old /send?… links (order links, guides, use cases) name a product; map them to the page for that kind.
 export function kindFromQuery(q: Record<string, unknown>): SendKind | null {
@@ -127,18 +141,20 @@ export function kindFromQuery(q: Record<string, unknown>): SendKind | null {
 export function sendChooser() {
   const tiles = SEND_KINDS.map((k) => {
     const i = KIND_INFO[k];
-    return `<a class="kind" href="/send/${k}"><span class="kt">${i.title}</span><span class="kp"><small>from</small> ${usd(i.cents)}</span><b>${i.purpose}</b><span class="kd">${i.detail}</span><span class="go">Start →</span></a>`;
+    return `<a class="kind" href="/send/${k}"><span class="kt">${i.title}</span><span class="kp"><small>from</small> ${usd(i.cents)}</span><b>${i.purpose}</b>${kindSpec(k)}<span class="go">Start →</span></a>`;
   }).join("");
   return page(
     `Send a postcard or letter — ${BRAND}`,
-    `<style>
+    `<style>${SPEC_CSS}
     .pick { display: grid; gap: 28px; padding-block: 48px 24px; }
     .pick-head { display: grid; gap: 10px; max-width: 640px; } .pick h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
     .kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; }
     .kind { display: flex; flex-direction: column; gap: 10px; padding: 24px; border: 1px solid var(--rule); border-radius: 14px; background: var(--card); color: var(--ink); text-decoration: none; transition: border-color .15s, box-shadow .15s, transform .15s; }
     .kind:hover, .kind:focus-visible { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
     .kt { font-weight: 600; font-size: 1.15rem; } .kp { font: 600 1.6rem var(--f-ui); letter-spacing: -0.02em; } .kp small { font: 500 .85rem var(--f-ui); color: var(--faint); margin-right: 4px; }
-    .kind b { font-weight: 500; } .kd { color: var(--soft); font-size: .92rem; } .kind .go { margin-top: auto; padding-top: 8px; color: var(--green); font-weight: 600; }
+    .kind b { font-weight: 500; } .kind .go { margin-top: auto; padding-top: 8px; color: var(--green); font-weight: 600; }
+    /* Same row alignment as the pricing cards: each tile is a subgrid, so specs line up even when a purpose line wraps. */
+    @supports (grid-template-rows: subgrid) { .kinds { row-gap: 0; } .kind { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 12px; margin-bottom: 16px; } }
     </style>
     <div class="pick">
       <div class="pick-head"><span class="eyebrow">Send mail now</span><h1>What are you sending?</h1><p class="soft">We print it and mail it to any US address. You see the exact print before you pay.${OFFER_ACTIVE ? ` <b style="color:var(--green)">${esc(OFFER_LINE)}.</b>` : ""}</p></div>

@@ -1,6 +1,7 @@
 import { BASE_URL, BRAND, EXPRESS_CENTS, FIRST_ORDER_DISCOUNT_PCT, LIMITS, OFFER_ACTIVE, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
+import { KIND_INFO, SEND_KINDS, SPEC_CSS, kindSpec } from "./send.ts";
 
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 
@@ -71,10 +72,6 @@ const CSS = `
 .pcard { display: flex; flex-direction: column; gap: 12px; padding: 26px; }
 .pcard h3 { margin: 0; font-size: 1.15rem; }
 .pcard .purpose { color: var(--ink); font-weight: 500; }
-.pcard dl { margin: 0; font-size: .88rem; border-bottom: 1px solid var(--rule); }
-.pcard dl > div { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: baseline; gap: 10px; padding: 9px 0; border-top: 1px solid var(--rule); }
-.pcard dt { font: 500 .7rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
-.pcard dd { margin: 0; color: var(--ink); }
 /* Each card is a subgrid row-span, so the name, price, purpose line, spec table and button line up across cards
    even when one purpose line wraps. */
 @supports (grid-template-rows: subgrid) {
@@ -125,7 +122,7 @@ export function landing() {
   const docs = docsUrl();
   return page(
     `${BRAND}: physical mail for AI agents`,
-    `${structuredData()}<style>${CSS}</style>
+    `${structuredData()}<style>${CSS}${SPEC_CSS}</style>
     <div class="hero-wrap">
       <div class="art" aria-hidden="true"><canvas id="lines"></canvas></div>
       <div class="hero">
@@ -161,14 +158,10 @@ export function landing() {
     <section id="pricing">
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
       <div class="prices three">
-${[
-          ["Postcard", PRODUCTS.postcard_4x6.cents, "For photos and quick notes", "4×6, 6×9 or 6×11 card", "Printing and postage", "First-Class or express", "/send/postcard", "Send a postcard"],
-          ["Letter", PRODUCTS.letter.cents, "For documents and correspondence", "Up to 3 pages, 8.5×11", "Printing, envelope, postage", "First-Class or express", "/send/letter", "Send a letter"],
-          ["Certified letter", PRODUCTS.letter_certified.cents, "For mail that needs delivery documentation", "Up to 3 pages, 8.5×11", "Printing, envelope, postage", "Tracked, proof of delivery", "/send/certified", "Send a certified letter"],
-        ].map(([name, cents, purpose, format, incl, delivery, href, cta]) => `<div class="card pcard"><h3>${name}</h3><div class="price"><small>from</small> ${usd(cents as number)}</div>
-          <p class="purpose">${purpose}</p>
-          <dl><div><dt>Format</dt><dd>${format}</dd></div><div><dt>Included</dt><dd>${incl}</dd></div><div><dt>Delivery</dt><dd>${delivery}</dd></div></dl>
-          <a class="btn green" href="${href}">${cta}</a></div>`).join("")}
+${SEND_KINDS.map((k) => `<div class="card pcard"><h3>${KIND_INFO[k].title}</h3><div class="price"><small>from</small> ${usd(KIND_INFO[k].cents)}</div>
+          <p class="purpose">${KIND_INFO[k].purpose}</p>
+          ${kindSpec(k)}
+          <a class="btn green" href="/send/${k}">${KIND_INFO[k].cta}</a></div>`).join("")}
       </div>
       <div class="pay-band"><div><h3>Your agent can pay, with your OK.</h3><p>Sendpaper accepts Stripe's one-time agent payment tokens. You approve the amount and your card is never shared. Prefer to pay yourself? Every order has a checkout link too.</p></div>
       <a class="more" href="${esc(docsUrl("/guides/agent-payments"))}">How it works →</a></div>
