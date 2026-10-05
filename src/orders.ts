@@ -24,19 +24,21 @@ export function newId(prefix: string) {
 
 export const AddressSchema = z.object({
   name: z.string().trim().min(1).max(60).describe("Recipient or sender full name"),
-  company: z.string().trim().max(60).optional(),
+  company: z.string().trim().max(60).optional().describe("Company name, printed under the person's name"),
   line1: z.string().trim().min(3).max(64).describe("Street address"),
   line2: z.string().trim().max(64).optional().describe("Apartment, suite, unit"),
-  city: z.string().trim().min(2).max(40),
+  city: z.string().trim().min(2).max(40).describe("City"),
   state: z
     .string()
     .trim()
     .transform((s) => s.toUpperCase())
-    .refine((s) => US_STATES.includes(s), "Use a two-letter US state code, e.g. CA"),
+    .refine((s) => US_STATES.includes(s), "Use a two-letter US state code, e.g. CA")
+    .describe("Two-letter US state code, e.g. NY"),
   zip: z
     .string()
     .trim()
-    .regex(/^\d{5}(-\d{4})?$/, "Use a 5-digit US ZIP code (or ZIP+4)"),
+    .regex(/^\d{5}(-\d{4})?$/, "Use a 5-digit US ZIP code (or ZIP+4)")
+    .describe("5-digit US ZIP code, or ZIP+4"),
 });
 export type Address = z.infer<typeof AddressSchema>;
 
@@ -67,24 +69,29 @@ export const LetterContentSchema = z.object({
     .min(1)
     .max(LIMITS.letterBody)
     .describe("Full letter text. Plain text; blank lines separate paragraphs."),
-  font: z.enum(["serif", "sans"]).default("serif"),
+  font: z.enum(["serif", "sans"]).default("serif").describe("Typeface for the letter body"),
 });
 
 const common = {
-  to: AddressSchema,
+  to: AddressSchema.describe("Recipient's US mailing address"),
   from: AddressSchema.describe("Return address; printed on the mail piece"),
   customer_email: z.string().trim().email().optional().describe("Where to send the receipt and status updates"),
-  idempotency_key: z.string().trim().max(120).optional(),
+  idempotency_key: z
+    .string()
+    .trim()
+    .max(120)
+    .optional()
+    .describe("Any unique string; retrying with the same key returns the original order instead of creating a duplicate"),
 };
 
 export const CreatePostcardSchema = z.object({
-  size: z.enum(["4x6", "6x9"]).default("4x6"),
+  size: z.enum(["4x6", "6x9"]).default("4x6").describe("Postcard size: 4x6 ($2.99) or 6x9 ($3.99)"),
   ...common,
-  content: PostcardContentSchema,
+  content: PostcardContentSchema.describe("Front (an image URL or a headline) and the message on the back"),
 });
 export const CreateLetterSchema = z.object({
   ...common,
-  content: LetterContentSchema,
+  content: LetterContentSchema.describe("The letter text and font"),
   certified: z
     .enum(["none", "certified", "certified_return_receipt"])
     .default("none")
