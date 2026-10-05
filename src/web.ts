@@ -6,7 +6,7 @@ import { pool } from "./db.ts";
 import { landing } from "./landing.ts";
 import { sendPage } from "./send.ts";
 import { useCasesPage } from "./usecases.ts";
-import { GUIDES, guidePage } from "./guides.ts";
+import { GUIDES, guidePage, guidesIndexPage } from "./guides.ts";
 import { QUICK_EXAMPLE, QUICK_PARAMS } from "./quick.ts";
 import { page } from "./layout.ts";
 import { getOrder, publicOrder } from "./orders.ts";
@@ -67,6 +67,7 @@ web.get("/use-cases", (_req, res) => {
 });
 
 // Search pages for professional, proof-of-delivery mail (src/guides.ts).
+web.get("/guides", (_req, res) => res.send(guidesIndexPage()));
 for (const g of GUIDES) web.get(`/${g.slug}`, (_req, res) => res.send(guidePage(g.slug)));
 
 web.get("/send", async (req, res) => {

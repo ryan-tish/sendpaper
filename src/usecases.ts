@@ -1,6 +1,7 @@
 import { BRAND, type ProductId } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
+import { GUIDE_CARD_CSS, guideCards } from "./guides.ts";
 
 // Real reasons people still need paper mail, each with a prompt an agent can run as-is (Ryan, 2026-10-05: lead
 // with professional, proof-of-delivery mail; personal cards follow). Keep caveats honest, never imply scheduling or
@@ -17,7 +18,7 @@ export const USE_CASES: UseCase[] = [
     why: "Notices give a deadline and an address. A certified reply proves when you answered, and you can mail the documents they ask for as a PDF.",
     prompt: "I got IRS notice CP2000 about income I already reported. Draft a short response citing the notice number and explaining it's on my Schedule C, and mail it certified with a return receipt to the address on the notice.",
     product: "letter_certified_rr",
-    note: "Certified Mail gives you a USPS tracking number and proof of delivery; the return receipt adds a signature. Use the address printed on your notice. Sending supporting documents too? Combine the letter and documents into one PDF and mail that.",
+    note: "Use the address on your notice. Including documents? Combine them with your letter into one PDF.",
   },
   {
     id: "landlord",
@@ -26,7 +27,7 @@ export const USE_CASES: UseCase[] = [
     why: "Leases usually require written notice for move-outs, renewals and repairs, and a dated delivery record settles arguments later.",
     prompt: "Send my landlord this 30-day notice that I'm not renewing the lease, by certified mail with a return receipt. Return address is my apartment.",
     product: "letter_certified_rr",
-    note: "The return receipt comes back with the recipient's signature, which is the proof many leases and courts ask for.",
+    note: "The return receipt adds the landlord's signature.",
   },
   {
     id: "security-deposit",
@@ -44,7 +45,7 @@ export const USE_CASES: UseCase[] = [
     why: "You can dispute errors with the credit bureaus by mail, and a certified letter with copies of your evidence leaves a clear record.",
     prompt: "Draft a dispute letter to the credit bureau about the late payment on my report that was actually paid on time, and mail it certified to the dispute address on the bureau's website.",
     product: "letter_certified",
-    note: "Use the mailing address the bureau lists for disputes. To include evidence, combine the letter and copies of your documents into one PDF and mail that. Send copies, never originals.",
+    note: "Use the bureau's dispute address. Including evidence? Combine it with your letter into one PDF.",
   },
   {
     id: "debt-validation",
@@ -182,19 +183,41 @@ const card = (u: UseCase) => `<article class="uc" id="${u.id}"><div class="uc-in
 export function useCasesPage() {
   return page(
     `Use cases — ${BRAND}`,
-    `<style>${CSS}.uc-sec { display: grid; gap: 6px; padding-block: 28px 0; } .uc-sec h2 { font-size: 1.35rem; } .guard { font-size: .88rem; color: var(--faint); max-width: 760px; margin: 8px 0 0; }</style>
+    `<style>${CSS}${GUIDE_CARD_CSS}.uc-sec { display: grid; gap: 10px; padding-block: 28px 0; } .uc-sec h2 { font-size: 1.35rem; } .guard { font-size: .88rem; color: var(--faint); max-width: 760px; margin: 8px 0 0; }</style>
     <div class="uc-head"><span class="eyebrow">Use cases</span><h1>What people send</h1>
-      <p class="soft">Paper still matters when you need proof: tax replies, lease notices, disputes and formal demands. And for the moments that deserve more than a text. Copy a prompt into your agent, or send it from the web.</p></div>
+      <p class="soft">Letters that need proof, and cards that deserve paper. Copy a prompt into your agent, or send from the web.</p></div>
     <section class="uc-sec" aria-labelledby="proofH"><h2 id="proofH">When you need proof it arrived</h2>
-      <p class="soft" style="margin:0">Letters by USPS Certified Mail come with a tracking number and proof of delivery; add a return receipt for the recipient's signature. Write it with your agent, or upload your own PDF.</p>
+      <p class="soft" style="margin:0">Certified Mail with tracking and proof of delivery. Write it with your agent, or upload a PDF.</p>
       <div class="uc-grid">${USE_CASES.filter((u) => u.group === "proof").map(card).join("")}</div>
       <p class="guard">${esc(GUARDRAIL)}</p>
-      <p style="margin:6px 0 0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.92rem"><b>Step-by-step guides:</b><a href="/certified-mail-online">Send certified mail online</a><a href="/irs-notice-response">Reply to an IRS notice</a><a href="/security-deposit-demand-letter">Security deposit demand</a><a href="/credit-report-dispute-letter">Credit report dispute</a><a href="/demand-letter-unpaid-invoice">Unpaid invoice demand</a><a href="/mail-a-pdf">Mail a PDF</a></p></section>
+</section>
+    <section class="uc-sec" aria-labelledby="guidesH"><div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px"><h2 id="guidesH">Step-by-step guides</h2><a href="/guides" style="font-size:.92rem">All guides →</a></div>
+      ${guideCards()}</section>
     <section class="uc-sec" aria-labelledby="personalH"><h2 id="personalH">Personal mail</h2>
       <div class="uc-grid">${USE_CASES.filter((u) => u.group === "personal").map(card).join("")}</div></section>
     <script>
     (function () {
       document.querySelectorAll(".uc-grid").forEach((g) => g.classList.add("flip"));
+      // A gentle tour so people notice the cards have a back: while cards are on screen, flip the next visible one,
+      // hold it, flip it back. Stops for good once the visitor touches a card; pauses in hidden tabs; never with
+      // reduced motion. Focus never moves.
+      let tour = null, touring = true;
+      function stopTour() { touring = false; clearTimeout(tour); document.querySelectorAll(".uc.auto").forEach((c) => c.classList.remove("flipped", "auto")); }
+      const seen = new Set();
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches && "IntersectionObserver" in window) {
+        const io = new IntersectionObserver((es) => es.forEach((e) => (e.isIntersecting && e.intersectionRatio > 0.6 ? seen.add(e.target) : seen.delete(e.target))), { threshold: [0, 0.6, 1] });
+        const cards = [...document.querySelectorAll(".uc")];
+        cards.forEach((c) => io.observe(c));
+        let next = 0;
+        (function step() {
+          if (!touring) return;
+          const visible = cards.filter((c) => seen.has(c) && !c.classList.contains("flipped"));
+          if (document.hidden || !visible.length) { tour = setTimeout(step, 1200); return; }
+          const c = visible[next++ % visible.length];
+          c.classList.add("flipped", "auto");
+          tour = setTimeout(() => { c.classList.remove("flipped", "auto"); if (touring) tour = setTimeout(step, 1100); }, 2600);
+        })();
+      }
       document.querySelectorAll(".uc").forEach((card) => {
         const front = card.querySelector(".front"), back = card.querySelector(".back"), show = card.querySelector(".uc-show");
         function set(open, focus) {
@@ -204,6 +227,7 @@ export function useCasesPage() {
         set(location.hash === "#" + card.id);
         show.addEventListener("click", () => set(true, true));
         card.querySelector(".uc-back").addEventListener("click", () => set(false, true));
+        card.addEventListener("pointerdown", stopTour); card.addEventListener("focusin", stopTour);
         const copy = card.querySelector(".uc-copy");
         copy.addEventListener("click", async () => {
           try { await navigator.clipboard.writeText(copy.dataset.text); copy.textContent = "Copied ✓"; } catch { copy.textContent = "Select and copy above"; }

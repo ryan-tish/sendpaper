@@ -2,19 +2,8 @@ import { BASE_URL, BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, PRODUCTS, S
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
 
-const MCP_URL = `${BASE_URL}/mcp`;
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
-const slug = BRAND.toLowerCase();
 
-// One-line install per client; the picker swaps the command and the "full setup" link.
-const INSTALL: { id: string; label: string; cmd: string; doc: string }[] = [
-  { id: "codex", label: "Codex", cmd: `codex mcp add ${slug} --url ${MCP_URL}`, doc: "/agents/codex" },
-  { id: "claude", label: "Claude Code", cmd: `claude mcp add --transport http ${slug} ${MCP_URL}`, doc: "/agents/claude" },
-  { id: "muse", label: "Muse Code", cmd: `"mcp_servers": { "${slug}": { "transport": "streamable_http", "url": "${MCP_URL}" } }`, doc: "/agents/muse-code" },
-  { id: "cursor", label: "Cursor", cmd: `{ "mcpServers": { "${slug}": { "url": "${MCP_URL}" } } }`, doc: "/agents/other-clients" },
-  { id: "vscode", label: "VS Code", cmd: `code --add-mcp '{"name":"${slug}","type":"http","url":"${MCP_URL}"}'`, doc: "/agents/other-clients" },
-  { id: "url", label: "Any MCP client", cmd: MCP_URL, doc: "/agents/other-clients" },
-];
 
 // Setup lives in the docs (one source of truth); the homepage keeps one copyable command and these links.
 const CLIENTS: [string, string][] = [
@@ -49,25 +38,9 @@ const CSS = `
 .shot.anim .you .rest { visibility: hidden; }
 .shot.anim .you .caret { display: inline-block; width: 1px; height: 1em; margin-left: 1px; vertical-align: -2px; background: currentColor; animation: blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
-.copy.ok { color: var(--green); background: var(--green-soft); border-color: var(--green-line); }
 .ctas { display: flex; gap: 10px; flex-wrap: wrap; }
 .cmd { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; max-width: 600px; }
-.cmd-row { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; border: 1px solid var(--rule); background: var(--tint); border-radius: 10px; padding: 4px; }
-.picker { position: relative; flex: none; }
-.picker-btn { display: inline-flex; align-items: center; gap: 8px; font: 500 .84rem var(--f-ui); color: var(--ink); background: var(--card); border: 1px solid var(--rule); border-radius: 7px; padding: 6px 10px; cursor: pointer; }
-.picker-btn:hover { border-color: var(--faint); }
-.picker-btn svg { color: var(--faint); transition: transform .15s; }
-.picker-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
-.menu { position: absolute; z-index: 30; outline: none; transform-origin: top left; animation: pop .14s ease-out; top: calc(100% + 6px); left: 0; min-width: 196px; margin: 0; padding: 5px; list-style: none; background: var(--card); border: 1px solid var(--rule); border-radius: 10px; box-shadow: 0 16px 40px -18px rgba(13, 21, 18, .35), 0 2px 6px rgba(13, 21, 18, .06); }
 @keyframes pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
-@media (prefers-reduced-motion: reduce) { .menu { animation: none; } }
-.menu li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 10px; border-radius: 7px; font-size: .88rem; color: var(--ink); cursor: pointer; }
-.menu li.active, .menu li:hover { background: var(--tint); }
-.menu li svg { color: var(--green); visibility: hidden; }
-.menu li[aria-selected="true"] { font-weight: 500; }
-.menu li[aria-selected="true"] svg { visibility: visible; }
-.cmd-row code { flex: 1; border: 0; background: none; padding: 0; font-size: .82rem; white-space: nowrap; overflow-x: auto; min-width: 0; scrollbar-width: none; }
-.copy { flex: none; font: 500 .76rem var(--f-ui); background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
 .cmd a { font-size: .85rem; color: var(--green); text-decoration: none; font-weight: 500; }
 .cmd a:hover { color: var(--ink); }
 .steps { display: grid; gap: 6px; font-size: .84rem; }
@@ -94,12 +67,23 @@ const CSS = `
 .section-head .soft { font-size: 1.05rem; }
 .prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
 .prices.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.pcard { display: flex; flex-direction: column; gap: 12px; padding: 26px; }
+.prices .pcard .size { margin-bottom: 0; }
+.pcard p { margin: 0; font-size: .92rem; }
+.pcard .btn { margin-top: auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 500 .82rem var(--f-mono); color: var(--soft); background: var(--tint); border: 1px solid var(--rule); border-radius: 999px; padding: 5px 11px; }
+.chip b { color: var(--ink); font-weight: 600; }
+.certband { margin-top: 0; display: grid; grid-template-columns: minmax(0, 1.5fr) auto auto; align-items: center; gap: 20px 40px; padding: 28px; border-color: var(--green-line); background: var(--green-soft); }
+.certband h3 { margin: 2px 0 6px; font-size: 1.35rem; }
+.certband p { margin: 0; }
+.cb-opts { display: flex; gap: 28px; }
+.cb-opts > div { display: grid; gap: 2px; }
+.cb-opts .price { font: 600 1.6rem var(--f-ui); letter-spacing: -0.02em; }
+.cb-cta { display: grid; gap: 8px; justify-items: start; }
+@media (max-width: 860px) { .certband { grid-template-columns: minmax(0, 1fr); } }
 .prices .price small { font: 500 .85rem var(--f-ui); color: var(--faint); margin-right: 4px; }
 .prices .card { padding: 24px; gap: 14px; }
-.prices dl { margin: 0; display: grid; gap: 0; border-top: 1px solid var(--rule); }
-.prices dl div { display: flex; justify-content: space-between; gap: 12px; padding-block: 9px; border-bottom: 1px solid var(--rule); font-size: .9rem; }
-.prices dt { color: var(--faint); }
-.prices dd { margin: 0; text-align: right; color: var(--ink); }
 .prices .btn { justify-content: center; }
 .prices .size { font: 600 .8rem var(--f-mono); color: var(--green); letter-spacing: .02em; margin-bottom: -10px; }
 .faq { max-width: 760px; gap: 20px; }
@@ -150,14 +134,7 @@ export function landing() {
           <p class="lede">Real postcards and letters from <b>Codex</b>, <b>Muse</b> and <b>Claude</b>.</p>
           <div class="ctas"><a class="btn" href="${esc(docsUrl("/quickstart"))}">Read the quickstart ›</a><a class="btn alt" href="/send">Send from the web</a></div>
           <div class="cmd">
-            <div class="cmd-row">
-              <div class="picker">
-                <button class="picker-btn" id="agentBtn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Choose your agent"><span id="agentLabel">${esc(INSTALL[0].label)}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
-                <ul class="menu" id="agentMenu" role="listbox" tabindex="-1" aria-label="Agents" hidden>${INSTALL.map((o, i) => `<li role="option" id="opt-${o.id}" data-id="${o.id}" aria-selected="${i === 0}">${esc(o.label)}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></li>`).join("")}</ul>
-              </div>
-              <code id="cmd">${esc(INSTALL[0].cmd)}</code><button class="copy" type="button" data-copy="cmd">Copy</button>
-            </div>
-            <a id="setup" href="${esc(docsUrl(INSTALL[0].doc))}">Full setup for Codex in the docs →</a>
+            <a id="setup" href="${esc(docsUrl("/agents/codex"))}">Full setup for Codex in the docs →</a>
           </div>
         </div>
       </div>
@@ -184,28 +161,24 @@ export function landing() {
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
       <div class="offer-banner"><span><b>$1 off your first order.</b> Any postcard or letter. Taken off automatically, one per return address.</span><a href="/send" class="more">Send one →</a></div>
       <div class="prices two">
-        <div class="card"><span class="size">4×6 · 6×9 · 6×11</span><h3>Postcard</h3><div class="price"><small>from</small> ${usd(PRODUCTS.postcard_4x6.cents)}</div>
-          <dl>
-            <div><dt>4×6</dt><dd>${usd(PRODUCTS.postcard_4x6.cents)}</dd></div>
-            <div><dt>6×9</dt><dd>${usd(PRODUCTS.postcard_6x9.cents)}</dd></div>
-            <div><dt>6×11</dt><dd>${usd(PRODUCTS.postcard_6x11.cents)}</dd></div>
-            <div><dt>Front</dt><dd>Text, photo, photo + caption, or collage</dd></div>
-            <div><dt>Express delivery</dt><dd>+${usd(EXPRESS_CENTS)}</dd></div>
-            <div><dt>Postage</dt><dd>First-Class, included</dd></div>
-          </dl>
+        <div class="card pcard"><span class="size">Postcard</span><div class="price"><small>from</small> ${usd(PRODUCTS.postcard_4x6.cents)}</div>
+          <div class="chips">${(["postcard_4x6", "postcard_6x9", "postcard_6x11"] as const).map((id) => `<span class="chip">${esc(PRODUCTS[id].size.replace(/ in$/, "").replace(/ /g, ""))} <b>${usd(PRODUCTS[id].cents)}</b></span>`).join("")}</div>
+          <p class="soft">Text, photo, caption or collage front. First-Class postage included.</p>
           <a class="btn green" href="/send?product=postcard_4x6">Send a postcard</a></div>
-        <div class="card"><span class="size">8.5×11 · #10 envelope</span><h3>Letter</h3><div class="price"><small>from</small> ${usd(PRODUCTS.letter.cents)}</div>
-          <dl>
-            <div><dt>First-Class</dt><dd>${usd(PRODUCTS.letter.cents)}</dd></div>
-            <div><dt>Certified Mail</dt><dd>${usd(PRODUCTS.letter_certified.cents)}</dd></div>
-            <div><dt>Certified + return receipt</dt><dd>${usd(PRODUCTS.letter_certified_rr.cents)}</dd></div>
-            <div><dt>Write it or upload a PDF</dt><dd>Up to ${LIMITS.pdfPages} pages</dd></div>
-            <div><dt>Color (photo or PDF)</dt><dd>+${usd(COLOR_LETTER_CENTS)}</dd></div>
-            <div><dt>Express delivery</dt><dd>+${usd(EXPRESS_CENTS)}</dd></div>
-          </dl>
+        <div class="card pcard"><span class="size">Letter</span><div class="price"><small>from</small> ${usd(PRODUCTS.letter.cents)}</div>
+          <div class="chips"><span class="chip">Color <b>+${usd(COLOR_LETTER_CENTS)}</b></span><span class="chip">Express <b>+${usd(EXPRESS_CENTS)}</b></span></div>
+          <p class="soft">Up to 3 pages you write, or your own PDF (up to ${LIMITS.pdfPages} pages). Envelope and postage included.</p>
           <a class="btn green" href="/send?product=letter">Send a letter</a></div>
       </div>
-      <p class="soft" style="margin:0;font-size:.9rem">Certified Mail gives you a USPS tracking number and proof of delivery; the return receipt adds the recipient's signature. Express goes by USPS Priority Mail (usually 2–3 days, tracked). You choose options when you order. <a href="/certified-mail-online">How certified mail works →</a></p>
+      <div class="card certband">
+        <div class="cb-copy"><span class="eyebrow">USPS Certified Mail</span><h3>Need proof it arrived?</h3>
+          <p class="soft">Any letter can go by Certified Mail: a USPS tracking number and proof of delivery, plus the recipient's signature with a return receipt. For tax replies, lease notices and disputes.</p></div>
+        <div class="cb-opts">
+          <div><span class="price">${usd(PRODUCTS.letter_certified.cents)}</span><span class="soft">Certified</span></div>
+          <div><span class="price">${usd(PRODUCTS.letter_certified_rr.cents)}</span><span class="soft">+ return receipt</span></div>
+        </div>
+        <div class="cb-cta"><a class="btn green" href="/send?product=letter_certified">Send certified</a><a class="more" href="/certified-mail-online">How it works →</a></div>
+      </div>
     </section>
 
     <section class="pay-line">
@@ -230,44 +203,6 @@ export function landing() {
     </section>
 
     <script>
-    const INSTALL = ${JSON.stringify(INSTALL.map((o) => ({ ...o, doc: docsUrl(o.doc) })))};
-    const btn = document.getElementById("agentBtn"), menu = document.getElementById("agentMenu");
-    const opts = [...menu.querySelectorAll('[role="option"]')];
-    let active = 0;
-    function pick(id, save) {
-      const o = INSTALL.find((x) => x.id === id) || INSTALL[0];
-      document.getElementById("cmd").textContent = o.cmd;
-      document.getElementById("agentLabel").textContent = o.label;
-      const a = document.getElementById("setup"); a.href = o.doc; a.textContent = "Full setup for " + o.label + " in the docs →";
-      opts.forEach((li) => li.setAttribute("aria-selected", String(li.dataset.id === o.id)));
-      if (save) try { localStorage.setItem("agent", o.id); } catch {}
-    }
-    function setActive(i) {
-      active = (i + opts.length) % opts.length;
-      opts.forEach((li, j) => li.classList.toggle("active", j === active));
-      menu.setAttribute("aria-activedescendant", opts[active].id);
-    }
-    function open() { menu.hidden = false; btn.setAttribute("aria-expanded", "true"); setActive(Math.max(0, opts.findIndex((li) => li.getAttribute("aria-selected") === "true"))); menu.focus({ preventScroll: true }); }
-    function close(focusBtn) { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); if (focusBtn) btn.focus(); }
-    btn.addEventListener("click", () => (menu.hidden ? open() : close()));
-    btn.addEventListener("keydown", (e) => { if (["ArrowDown", "ArrowUp"].includes(e.key)) { e.preventDefault(); open(); } });
-    menu.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowDown") { e.preventDefault(); setActive(active + 1); }
-      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(active - 1); }
-      else if (e.key === "Home") { e.preventDefault(); setActive(0); }
-      else if (e.key === "End") { e.preventDefault(); setActive(opts.length - 1); }
-      else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(opts[active].dataset.id, true); close(true); }
-      else if (e.key === "Escape" || e.key === "Tab") close(e.key === "Escape");
-    });
-    opts.forEach((li, i) => { li.addEventListener("mousemove", () => setActive(i)); li.addEventListener("click", () => { pick(li.dataset.id, true); close(true); }); });
-    document.addEventListener("click", (e) => { if (!menu.hidden && !e.target.closest(".picker")) close(); });
-    try { const saved = localStorage.getItem("agent"); if (saved) pick(saved); } catch {}
-    document.querySelectorAll(".copy").forEach((b) => b.addEventListener("click", async () => {
-      const el = document.getElementById(b.dataset.copy);
-      try { await navigator.clipboard.writeText(el.textContent); b.textContent = "Copied ✓"; b.classList.add("ok"); }
-      catch { const r = document.createRange(); r.selectNodeContents(el); getSelection().removeAllRanges(); getSelection().addRange(r); b.textContent = "Press ⌘C"; }
-      setTimeout(() => { b.textContent = "Copy"; b.classList.remove("ok"); }, 1600);
-    }));
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
       // Hero: cycle the agent name ("from Codex" → "Muse" → …). Screen readers keep the full static sentence.
       const lede = document.querySelector(".lede");

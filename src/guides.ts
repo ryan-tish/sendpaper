@@ -15,6 +15,7 @@ type Guide = {
   slug: string;
   title: string; // <title> and h1
   description: string; // meta description
+  blurb: string; // one line for guide cards
   lede: string;
   steps: [string, string][];
   include: string[];
@@ -26,6 +27,7 @@ type Guide = {
 export const GUIDES: Guide[] = [
   {
     slug: "certified-mail-online",
+    blurb: "Tracking and proof of delivery, without the post office.",
     title: "Send certified mail online",
     description: `Send a letter by USPS Certified Mail without going to the post office: tracking and proof of delivery from ${CERT}, return receipt ${RR}. Write it, upload a PDF, or ask your AI agent.`,
     lede: `Skip the post office line. Write your letter or upload a PDF, choose Certified Mail, and we print it, mail it by USPS Certified Mail, and give you the tracking number. ${CERT}, or ${RR} with a return receipt.`,
@@ -46,6 +48,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "irs-notice-response",
+    blurb: "Answer a tax notice with a dated delivery record.",
     title: "Reply to an IRS notice by certified mail",
     description: "Answer an IRS or state tax notice by USPS Certified Mail with tracking and proof of delivery. Write the reply with your AI agent or upload your documents as a PDF; no post office trip.",
     lede: "Tax notices list a response date and an address. Replying by Certified Mail gives you a dated tracking record and proof the agency received it, without a trip to the post office.",
@@ -66,6 +69,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "security-deposit-demand-letter",
+    blurb: "Ask for your deposit back, with a signed receipt.",
     title: "Send a security deposit demand letter",
     description: `Ask a former landlord to return your security deposit with a letter sent by USPS Certified Mail with return receipt (${RR}). Your AI agent drafts it; we print and mail it with proof of delivery.`,
     lede: "If your security deposit hasn't come back, a clear written request sent with proof of delivery is usually the next step. Your agent can draft it in a minute; we mail it by Certified Mail with a return receipt.",
@@ -85,6 +89,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "credit-report-dispute-letter",
+    blurb: "Dispute a credit report error by mail, with proof.",
     title: "Mail a credit report dispute by certified mail",
     description: `Dispute an error on your credit report by mail with USPS Certified Mail (${CERT}) for tracking and proof of delivery. Your AI agent drafts the letter; upload a PDF with your evidence.`,
     lede: "You can dispute errors on your credit report with the credit bureaus by mail. A certified letter with copies of your evidence gives you a clear, dated record of exactly what you sent.",
@@ -104,6 +109,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "demand-letter-unpaid-invoice",
+    blurb: "A formal payment demand when emails go unanswered.",
     title: "Send a demand letter for an unpaid invoice",
     description: `Chase an overdue invoice with a formal demand letter sent by USPS Certified Mail (${CERT}) for proof of delivery. Your AI agent drafts it from the invoice; we print and mail it.`,
     lede: "When emails go unanswered, a formal demand letter sent with proof of delivery often gets an invoice paid, and it's the record you'll want if the dispute goes further.",
@@ -123,6 +129,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "mail-a-pdf",
+    blurb: "Upload a document; we print, envelope and mail it.",
     title: "Mail a PDF as a letter",
     description: `Upload a PDF and we print and mail it: ${LETTER} by First-Class Mail, ${CERT} by Certified Mail, express available. Any page size, up to ${LIMITS.pdfPages} pages, US addresses.`,
     lede: `Have a signed form, an application or a letter you already wrote? Upload the PDF and we print it, put it in an envelope and mail it. ${LETTER} First-Class, ${CERT} Certified, or express for ${usd(EXPRESS_CENTS)} more.`,
@@ -192,3 +199,29 @@ export function guidePage(slug: string) {
 }
 
 export const guideUrl = (slug: string) => `${BASE_URL}/${slug}`;
+
+// /guides: every guide as a card, so they're easy to find (Ryan, 2026-10-05: "make the guides more visible").
+export function guideCards(list: Guide[] = GUIDES) {
+  return `<div class="gcards">${list.map((g) => `<a class="gcard" href="/${g.slug}"><b>${esc(g.title)}</b><span>${esc(g.blurb)}</span><i aria-hidden="true">Read the guide →</i></a>`).join("")}</div>`;
+}
+export const GUIDE_CARD_CSS = `
+.gcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
+.gcard { display: grid; gap: 6px; align-content: start; padding: 18px 20px; border: 1px solid var(--rule); border-radius: 14px; background: var(--card); color: var(--ink); text-decoration: none; transition: border-color .15s, transform .15s; }
+.gcard:hover { border-color: var(--green); transform: translateY(-1px); }
+.gcard b { font-size: 1.02rem; letter-spacing: -0.01em; }
+.gcard span { color: var(--soft); font-size: .9rem; }
+.gcard i { font-style: normal; color: var(--green); font-size: .85rem; font-weight: 500; margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) { .gcard { transition: none; } .gcard:hover { transform: none; } }
+`;
+
+export function guidesIndexPage() {
+  return page(
+    `Guides — ${BRAND}`,
+    `<style>${GUIDE_CARD_CSS} .gi { display: grid; gap: 24px; padding-block: 52px 8px; } .gi h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); }</style>
+    <section class="gi"><div style="display:grid;gap:10px;max-width:680px"><span class="eyebrow">Guides</span><h1>Mail that needs proof</h1>
+      <p class="soft" style="margin:0">Step-by-step help for certified letters, tax replies, disputes and demands, each with a prompt for your agent.</p></div>
+      ${guideCards()}
+      <p class="soft" style="font-size:.88rem;margin:0">${esc(GUARDRAIL)}</p></section>`,
+    { description: `Guides to sending certified mail online: IRS notice replies, security deposit and unpaid invoice demand letters, credit report disputes and mailing a PDF, with ${BRAND}.` },
+  );
+}
