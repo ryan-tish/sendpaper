@@ -184,7 +184,7 @@ export function useCasesPage() {
     `Use cases — ${BRAND}`,
     `<style>${CSS}.uc-sec { display: grid; gap: 10px; padding-block: 28px 0; } .uc-sec h2 { font-size: 1.35rem; } .guard { font-size: .88rem; color: var(--faint); max-width: 760px; margin: 8px 0 0; }</style>
     <div class="uc-head"><span class="eyebrow">Use cases</span><h1>What people send</h1>
-      <p class="soft">Letters that need proof, and cards that deserve paper. Copy a prompt into your agent, or send from the web.</p></div>
+      <p class="soft">Copy a prompt into your agent, or send from the web.</p></div>
     <section class="uc-sec" aria-labelledby="proofH"><h2 id="proofH">Certified mail use cases</h2>
       <div class="uc-grid">${USE_CASES.filter((u) => u.group === "proof").map(card).join("")}</div>
       <p class="guard">${esc(GUARDRAIL)}</p>

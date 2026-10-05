@@ -70,9 +70,16 @@ const CSS = `
 .pcard { display: flex; flex-direction: column; gap: 12px; padding: 26px; }
 .pcard h3 { margin: 0; font-size: 1.15rem; }
 .pcard .purpose { color: var(--ink); font-weight: 500; }
-.pcard dl { margin: 0; display: grid; gap: 8px; font-size: .9rem; }
-.pcard dt { font: 600 .72rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
-.pcard dd { margin: 2px 0 0; color: var(--soft); }
+.pcard dl { margin: 0; font-size: .88rem; border-bottom: 1px solid var(--rule); }
+.pcard dl > div { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: baseline; gap: 10px; padding: 9px 0; border-top: 1px solid var(--rule); }
+.pcard dt { font: 500 .7rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
+.pcard dd { margin: 0; color: var(--ink); }
+/* Each card is a subgrid row-span, so the name, price, purpose line, spec table and button line up across cards
+   even when one purpose line wraps. */
+@supports (grid-template-rows: subgrid) {
+  .prices.three { row-gap: 0; }
+  .prices.three .pcard { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 12px; margin-bottom: 16px; }
+}
 .pcard p { margin: 0; font-size: .92rem; }
 .pcard .btn { margin-top: auto; }
 .prices .price small { font: 500 .85rem var(--f-ui); color: var(--faint); margin-right: 4px; }
@@ -154,9 +161,9 @@ export function landing() {
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
       <div class="prices three">
 ${[
-          ["Postcard", PRODUCTS.postcard_4x6.cents, "For photos and quick notes", "4×6, 6×9 or 6×11 card, photo or text front", "Printing and postage", "USPS First-Class, express available", "/send?product=postcard_4x6", "Send a postcard"],
-          ["Letter", PRODUCTS.letter.cents, "For documents and correspondence", "Up to 3 printed pages on 8.5×11", "Printing, envelope and postage", "USPS First-Class, express available", "/send?product=letter", "Send a letter"],
-          ["Certified letter", PRODUCTS.letter_certified.cents, "For mail that needs delivery documentation", "Up to 3 printed pages on 8.5×11", "Printing, envelope, postage and USPS tracking", "Proof of delivery, return receipt available", "/send?product=letter_certified", "Send a certified letter"],
+          ["Postcard", PRODUCTS.postcard_4x6.cents, "For photos and quick notes", "4×6, 6×9 or 6×11 card", "Printing and postage", "First-Class or express", "/send?product=postcard_4x6", "Send a postcard"],
+          ["Letter", PRODUCTS.letter.cents, "For documents and correspondence", "Up to 3 pages, 8.5×11", "Printing, envelope, postage", "First-Class or express", "/send?product=letter", "Send a letter"],
+          ["Certified letter", PRODUCTS.letter_certified.cents, "For mail that needs delivery documentation", "Up to 3 pages, 8.5×11", "Printing, envelope, postage", "Tracked, proof of delivery", "/send?product=letter_certified", "Send a certified letter"],
         ].map(([name, cents, purpose, format, incl, delivery, href, cta]) => `<div class="card pcard"><h3>${name}</h3><div class="price"><small>from</small> ${usd(cents as number)}</div>
           <p class="purpose">${purpose}</p>
           <dl><div><dt>Format</dt><dd>${format}</dd></div><div><dt>Included</dt><dd>${incl}</dd></div><div><dt>Delivery</dt><dd>${delivery}</dd></div></dl>
