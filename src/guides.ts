@@ -158,23 +158,23 @@ export const GUIDES: Guide[] = [
 
 export const GUIDE_PATHS = GUIDES.map((g) => `/${g.slug}`);
 
-// Guides read as articles (Ryan, 2026-10-05: "more article-like, more different from the use cases"): serif type,
+// Guides read as articles (Ryan, 2026-10-05: "more article-like, more different from the use cases"): the site font
+// (Geist; a serif was tried and dropped the same day for consistency),
 // a narrow reading column, written-out steps and Q&A, an "On this page" rail on wide screens. Use cases stay cards.
 const UPDATED = "October 2026"; // bump when guide copy changes
-const SERIF_FONT = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">`;
 const minutes = (g: Guide) => Math.max(2, Math.round([g.lede, ...g.steps.flat(), ...g.include, g.prompt, ...g.faqs.flat()].join(" ").split(/\s+/).length / 200));
 const priceFor = (g: Guide) => (g.send.includes("certified") ? `Certified letter from ${CERT}` : `Letters from ${LETTER}`);
 
 const CSS = `
-.art { --f-serif: "Source Serif 4", Georgia, serif; display: grid; grid-template-columns: minmax(0, 680px) 200px; justify-content: space-between; gap: 56px; padding-block: 44px 8px; }
+.art { display: grid; grid-template-columns: minmax(0, 680px) 200px; justify-content: space-between; gap: 56px; padding-block: 44px 8px; }
 @media (max-width: 960px) { .art { grid-template-columns: minmax(0, 680px); } .toc { display: none; } }
 .art .crumbs { font-size: .88rem; color: var(--faint); } .art .crumbs a { color: var(--soft); text-decoration: none; } .art .crumbs a:hover { color: var(--green); }
 .art header { display: grid; gap: 14px; padding-bottom: 28px; border-bottom: 1px solid var(--rule); }
-.art h1 { font: 600 clamp(2.1rem, 4.6vw, 3.1rem)/1.1 var(--f-serif); letter-spacing: -0.02em; }
-.art .dek { font: 400 1.28rem/1.5 var(--f-serif); color: var(--soft); margin: 0; }
+.art h1 { font: 600 clamp(2.1rem, 4.6vw, 3rem)/1.08 var(--f-ui); letter-spacing: -0.035em; }
+.art .dek { font: 400 1.2rem/1.55 var(--f-ui); color: var(--soft); margin: 0; }
 .art .meta { font: 500 .78rem var(--f-mono); color: var(--faint); letter-spacing: .02em; display: flex; flex-wrap: wrap; gap: 6px 14px; }
-.prose { font: 400 1.1rem/1.75 var(--f-serif); color: var(--ink); }
-.prose h2 { font: 600 1.55rem/1.25 var(--f-serif); letter-spacing: -0.01em; margin: 44px 0 12px; scroll-margin-top: 90px; }
+.prose { font: 400 1.05rem/1.75 var(--f-ui); color: var(--ink); }
+.prose h2 { font: 600 1.45rem/1.25 var(--f-ui); letter-spacing: -0.025em; margin: 44px 0 12px; scroll-margin-top: 90px; }
 .prose h3 { font: 600 1.15rem/1.35 var(--f-ui); margin: 26px 0 6px; }
 .prose p { margin: 0 0 14px; }
 .prose .num { font: 500 .8rem var(--f-mono); color: var(--green); margin-right: 8px; }
@@ -186,7 +186,7 @@ const CSS = `
 .cta-box { font-family: var(--f-ui); margin: 36px 0 8px; padding: 22px 24px; border: 1px solid var(--rule); border-radius: 14px; background: var(--card); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; }
 .cta-box b { display: block; font-size: 1.05rem; } .cta-box span { color: var(--soft); font-size: .92rem; }
 .cta-box .ctas { display: flex; flex-wrap: wrap; gap: 10px; }
-.prose .guard { font: italic 400 .95rem/1.6 var(--f-serif); color: var(--faint); border-top: 1px solid var(--rule); padding-top: 18px; margin-top: 36px; }
+.prose .guard { font: 400 .9rem/1.6 var(--f-ui); color: var(--faint); border-top: 1px solid var(--rule); padding-top: 18px; margin-top: 36px; }
 .toc { position: sticky; top: 96px; align-self: start; display: grid; gap: 8px; font-size: .88rem; padding-top: 6px; }
 .toc span { font: 500 .72rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
 .toc a { color: var(--soft); text-decoration: none; } .toc a:hover { color: var(--green); }
@@ -207,7 +207,7 @@ export function guidePage(slug: string) {
   const others = GUIDES.filter((x) => x.slug !== slug).slice(0, 3);
   return page(
     `${g.title} — ${BRAND}`,
-    `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>${SERIF_FONT}<style>${CSS}${INDEX_CSS}</style>
+    `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script><style>${CSS}${INDEX_CSS}</style>
     <div class="art">
       <article>
         <header><div class="crumbs"><a href="/guides">Guides</a> › ${esc(g.kicker)}</div><h1>${esc(g.title)}</h1><p class="dek">${esc(g.lede)}</p>
@@ -245,16 +245,16 @@ const INDEX_CSS = `
 .gitem { display: grid; gap: 6px; padding: 22px 0; border-bottom: 1px solid var(--rule); color: var(--ink); text-decoration: none; }
 .glist .gitem:first-child { padding-top: 6px; }
 .gitem .gk { font: 500 .74rem var(--f-mono); color: var(--green); text-transform: uppercase; letter-spacing: .06em; }
-.gitem b { font: 600 1.45rem/1.25 "Source Serif 4", Georgia, serif; letter-spacing: -0.01em; transition: color .15s; }
+.gitem b { font: 600 1.35rem/1.25 var(--f-ui); letter-spacing: -0.02em; transition: color .15s; }
 .gitem:hover b { color: var(--green); }
-.gitem .gb { color: var(--soft); font: 400 1.05rem/1.55 "Source Serif 4", Georgia, serif; }
+.gitem .gb { color: var(--soft); font: 400 1rem/1.55 var(--f-ui); }
 .keep .gitem b { font-size: 1.15rem; } .keep .gitem { padding: 14px 0; }
 `;
 
 export function guidesIndexPage() {
   return page(
     `Guides — ${BRAND}`,
-    `${SERIF_FONT}<style>${INDEX_CSS} .gi { display: grid; gap: 28px; max-width: 760px; padding-block: 52px 8px; } .gi h1 { font: 600 clamp(2.1rem, 4.6vw, 3rem)/1.1 "Source Serif 4", Georgia, serif; letter-spacing: -0.02em; } .gi .dek { font: 400 1.22rem/1.5 "Source Serif 4", Georgia, serif; color: var(--soft); margin: 0; }</style>
+    `<style>${INDEX_CSS} .gi { display: grid; gap: 28px; max-width: 760px; padding-block: 52px 8px; } .gi h1 { font: 600 clamp(2.1rem, 4.6vw, 3rem)/1.08 var(--f-ui); letter-spacing: -0.035em; } .gi .dek { font: 400 1.15rem/1.55 var(--f-ui); color: var(--soft); margin: 0; }</style>
     <section class="gi"><div style="display:grid;gap:12px;padding-bottom:20px;border-bottom:1px solid var(--rule)"><span class="eyebrow">Guides</span><h1>Mail that needs proof</h1>
       <p class="dek">Plain-English guides to certified letters, tax replies, disputes and demands: what to send, what to include, and how to prove it arrived.</p></div>
       ${guideList()}
