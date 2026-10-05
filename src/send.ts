@@ -33,6 +33,17 @@ const CSS = `
 .seg label { display: block; padding: 6px 14px; border-radius: 7px; cursor: pointer; font-size: .88rem; color: var(--soft); }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 .seg-wrap { flex-wrap: wrap; }
+/* Option tiles: name on one line, price on the next (Ryan, 2026-10-05: don't run "4×6 · $2.99" together). */
+.opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.opts label { position: relative; display: grid; gap: 2px; align-content: start; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 10px; background: var(--card); cursor: pointer; }
+.opts label:hover { border-color: var(--faint); }
+.opts label:has(input:checked) { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+.opts label:has(input:focus-visible) { outline: 2px solid var(--green); outline-offset: 2px; }
+.opts input { position: absolute; opacity: 0; pointer-events: none; }
+.opts b { font-weight: 600; font-size: .95rem; } .opts small { color: var(--soft); font-size: .84rem; }
+.opts .shape { display: block; border: 1.5px solid var(--faint); border-radius: 3px; margin-bottom: 8px; background: var(--tint); }
+.opts label:has(input:checked) .shape { border-color: var(--green); background: var(--green-soft); }
+.sizes label { grid-template-rows: 24px auto auto; } .sizes .shape { align-self: end; margin-bottom: 6px; }
 .seg label:has(input:checked) { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(13, 21, 18, .08); }
 .seg label:has(input:focus-visible) { outline: 2px solid var(--green); }
 .drop { display: grid; place-items: center; gap: 6px; text-align: center; padding: 26px 16px; border: 1.5px dashed var(--rule); border-radius: 12px; background: var(--tint); color: var(--soft); cursor: pointer; font-weight: 400; font-size: .9rem; }
@@ -176,17 +187,21 @@ export function sendPage(initial: string, fixed: SendKind) {
   // Mailing for letters: First-Class, Express (USPS Priority, extra charge) or Certified (with or without receipt).
   const mailing = (["none", "express", "certified", "certified_return_receipt"] as const)
     .map((m) => {
-      const label =
-        m === "none" ? `First-Class · ${usd(PRODUCTS.letter.cents)}`
-        : m === "express" ? `Express · +${usd(EXPRESS_CENTS)}`
-        : m === "certified" ? `Certified · ${usd(PRODUCTS.letter_certified.cents)}`
-        : `Certified + receipt · ${usd(PRODUCTS.letter_certified_rr.cents)}`;
-      return `<label><input type="radio" name="mailing" value="${m}"${m === startMailing ? " checked" : ""}>${label}</label>`;
+      const [name, price] =
+        m === "none" ? ["First-Class", `${usd(PRODUCTS.letter.cents)} · 3–5 days`]
+        : m === "express" ? ["Express", `${usd(PRODUCTS.letter.cents + EXPRESS_CENTS)} · 2–3 days`]
+        : m === "certified" ? ["Certified", `${usd(PRODUCTS.letter_certified.cents)} · tracked`]
+        : ["Certified + receipt", `${usd(PRODUCTS.letter_certified_rr.cents)} · signature`];
+      return `<label><input type="radio" name="mailing" value="${m}"${m === startMailing ? " checked" : ""}><b>${name}</b><small>${price}</small></label>`;
     })
     .join("");
   const info = KIND_INFO[fixed];
   const sizes = (["postcard_4x6", "postcard_6x9", "postcard_6x11"] as const)
-    .map((id) => `<label><input type="radio" name="product" value="${id}"${!isLetter(asked) && id === asked ? " checked" : ""}>${esc(PRODUCTS[id].size.replace(/ in$/, "").replace(/ /g, ""))} · ${usd(PRODUCTS[id].cents)}</label>`)
+    .map((id) => {
+      // A to-scale outline of the card (6×11 is the widest), then the size, then the price on its own line.
+      const sz = Object.values(POSTCARD_SIZES).find((x) => x.product === id)!;
+      return `<label><input type="radio" name="product" value="${id}"${!isLetter(asked) && id === asked ? " checked" : ""}><i class="shape" style="width:${Math.round((sz.w / 11) * 44)}px;height:${Math.round((sz.h / 11) * 44)}px" aria-hidden="true"></i><b>${sz.h}×${sz.w} in</b><small>${usd(PRODUCTS[id].cents)}</small></label>`;
+    })
     .join("");
   const swatches = Object.entries(THEMES)
     .map(([k, [bg]], i) => `<label style="background:${bg}" title="${k}"><input type="radio" name="theme" value="${k}"${i === 0 ? " checked" : ""}><span class="sr">${k}</span></label>`)
@@ -202,7 +217,7 @@ export function sendPage(initial: string, fixed: SendKind) {
         <input type="radio" name="product" value="letter" tabindex="-1" aria-hidden="true" class="sr"${isLetter(asked) ? " checked" : ""}>
 
         <div class="step" id="pc"${fixed === "postcard" ? "" : " hidden"}><div class="step-h"><span>01</span><h2>Design your postcard</h2></div>
-          <div class="field"><div class="top">Size</div><div class="seg seg-wrap" role="radiogroup" aria-label="Postcard size">${sizes}</div></div>
+          <div class="field"><div class="top">Size</div><div class="opts sizes" role="radiogroup" aria-label="Postcard size">${sizes}</div></div>
           <div class="field"><div class="top">Front</div><div class="seg seg-wrap" role="radiogroup" aria-label="Front style"><label><input type="radio" name="front" value="text" checked>Text</label><label><input type="radio" name="front" value="photo">Photo</label><label><input type="radio" name="front" value="caption">Photo + caption</label><label><input type="radio" name="front" value="collage">Collage</label></div></div>
           <label class="drop" id="drop" hidden><input id="photo" type="file" accept="image/jpeg,image/png,image/webp"><span id="dropText"><b>Drop a photo</b> or click to choose<br><small>JPG, PNG or WebP, up to 25 MB. You can crop it next.</small></span></label>
           <button type="button" class="linkbtn" id="recrop" hidden>Adjust crop</button>
@@ -217,7 +232,7 @@ export function sendPage(initial: string, fixed: SendKind) {
           <div class="field"><div class="top"><label for="message">Message on the back</label><span class="count" id="mc">0/${LIMITS.postcardMessage}</span></div><textarea id="message" maxlength="${LIMITS.postcardMessage}" placeholder="Wish you were here…"></textarea></div>
           <div class="field"><div class="top">Message font</div><div class="seg" role="radiogroup" aria-label="Message font"><label><input type="radio" name="mfont" value="handwriting" checked>Handwriting</label><label><input type="radio" name="mfont" value="serif">Serif</label><label><input type="radio" name="mfont" value="sans">Sans</label></div></div>
           <div class="field"><div class="top">Delivery</div>
-            <div class="seg" role="radiogroup" aria-label="Postcard delivery"><label><input type="radio" name="pdeliv" value="first" checked>First-Class · included</label><label><input type="radio" name="pdeliv" value="express">Express · +${usd(EXPRESS_CENTS)}</label></div>
+            <div class="opts" role="radiogroup" aria-label="Postcard delivery"><label><input type="radio" name="pdeliv" value="first" checked><b>First-Class</b><small>Included · 3–5 days</small></label><label><input type="radio" name="pdeliv" value="express"><b>Express</b><small>+${usd(EXPRESS_CENTS)} · 2–3 days</small></label></div>
             <p class="note" style="margin:0">Express goes by USPS Priority Mail, usually 2–3 days, with tracking.</p></div>
         </div>
 
@@ -234,7 +249,7 @@ export function sendPage(initial: string, fixed: SendKind) {
           <div class="seg" role="radiogroup" aria-label="Typeface"><label><input type="radio" name="font" value="serif" checked>Serif</label><label><input type="radio" name="font" value="sans">Sans-serif</label></div>
           </div>
           <div class="field"><div class="top">Mailing</div>
-            <div class="seg seg-wrap" role="radiogroup" aria-label="Mailing">${mailing}</div>
+            <div class="opts" role="radiogroup" aria-label="Mailing">${mailing}</div>
             <p class="note" style="margin:0">${fixed === "certified" ? "Certified Mail gets a USPS tracking number and proof of delivery; the return receipt adds the recipient's signature, which landlords, courts and agencies often ask for." : "Express goes by USPS Priority Mail, usually 2–3 days, with tracking. Need proof of delivery? <a href=\"/send/certified\">Send a certified letter</a>."}</p></div>
         </div>
 
