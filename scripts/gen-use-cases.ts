@@ -15,14 +15,12 @@ description: "What people send with Sendpaper, with prompts you can paste into y
 
 Letters that need proof, and cards that deserve paper. Each prompt works as-is in Codex, Muse or Claude once Sendpaper is connected.
 
-# When you need proof it arrived
-
-Certified Mail with tracking and proof of delivery. Write it with your agent, or upload a PDF.
+# Certified mail use cases
 
 <Note>${GUARDRAIL}</Note>
 
 ${USE_CASES.filter((u) => u.group === "proof").map(section).join("\n")}
-# Personal mail
+# Personal mail use cases
 
 ${USE_CASES.filter((u) => u.group === "personal").map(section).join("\n")}`;
 

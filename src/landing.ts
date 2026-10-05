@@ -122,7 +122,7 @@ export function landing() {
           ${OFFER_ACTIVE ? `<a class="stat" href="/send"><b>${FIRST_ORDER_DISCOUNT_PCT}% off</b> Your first order, any product →</a>` : ""}
           <h1>Physical mail for AI agents</h1>
           <p class="lede">Real postcards and letters from <b>Codex</b>, <b>Muse</b> and <b>Claude</b>.</p>
-          <div class="ctas"><a class="btn" href="${esc(docsUrl("/quickstart"))}">Read the quickstart ›</a><a class="btn alt" href="/send">Send from the web</a></div>
+          <div class="ctas"><a class="btn" href="${esc(docsUrl("/quickstart"))}">Read the quickstart ›</a><a class="btn alt" href="/send">Send mail now</a></div>
           <div class="cmd">
             <a id="setup" href="${esc(docsUrl("/agents/codex"))}">Full setup for Codex in the docs →</a>
           </div>
@@ -151,16 +151,15 @@ export function landing() {
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
       <div class="prices three">
         <div class="card pcard"><h3>Postcard</h3><div class="price"><small>from</small> ${usd(PRODUCTS.postcard_4x6.cents)}</div>
-          <p class="soft">Three sizes. Text, photo, caption or collage on the front. Postage included.</p>
+          <p class="soft">Three sizes, photo or text front. Postage included.</p>
           <a class="btn green" href="/send?product=postcard_4x6">Send a postcard</a></div>
         <div class="card pcard"><h3>Letter</h3><div class="price"><small>from</small> ${usd(PRODUCTS.letter.cents)}</div>
-          <p class="soft">Write it with your agent or upload a PDF. Envelope and postage included.</p>
+          <p class="soft">Up to 3 pages, or upload a PDF. Postage included.</p>
           <a class="btn green" href="/send?product=letter">Send a letter</a></div>
         <div class="card pcard cert"><h3>Certified letter</h3><div class="price"><small>from</small> ${usd(PRODUCTS.letter_certified.cents)}</div>
-          <p class="soft">USPS tracking and proof of delivery. Add a return receipt for a signature.</p>
+          <p class="soft">Tracking and proof of delivery. Postage included.</p>
           <a class="btn green" href="/send?product=letter_certified">Send certified</a></div>
       </div>
-      <p class="soft" style="margin:0;font-size:.9rem">Color printing and express delivery are options when you order. <a href="/certified-mail-online">How certified mail works →</a></p>
     </section>
 
     <section class="pay-line">

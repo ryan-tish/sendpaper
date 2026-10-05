@@ -1,7 +1,6 @@
 import { BRAND, type ProductId } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
-import { GUIDE_CARD_CSS, guideCards } from "./guides.ts";
 
 // Real reasons people still need paper mail, each with a prompt an agent can run as-is (Ryan, 2026-10-05: lead
 // with professional, proof-of-delivery mail; personal cards follow). Keep caveats honest, never imply scheduling or
@@ -183,17 +182,15 @@ const card = (u: UseCase) => `<article class="uc" id="${u.id}"><div class="uc-in
 export function useCasesPage() {
   return page(
     `Use cases — ${BRAND}`,
-    `<style>${CSS}${GUIDE_CARD_CSS}.uc-sec { display: grid; gap: 10px; padding-block: 28px 0; } .uc-sec h2 { font-size: 1.35rem; } .guard { font-size: .88rem; color: var(--faint); max-width: 760px; margin: 8px 0 0; }</style>
+    `<style>${CSS}.uc-sec { display: grid; gap: 10px; padding-block: 28px 0; } .uc-sec h2 { font-size: 1.35rem; } .guard { font-size: .88rem; color: var(--faint); max-width: 760px; margin: 8px 0 0; }</style>
     <div class="uc-head"><span class="eyebrow">Use cases</span><h1>What people send</h1>
       <p class="soft">Letters that need proof, and cards that deserve paper. Copy a prompt into your agent, or send from the web.</p></div>
-    <section class="uc-sec" aria-labelledby="proofH"><h2 id="proofH">When you need proof it arrived</h2>
-      <p class="soft" style="margin:0">Certified Mail with tracking and proof of delivery. Write it with your agent, or upload a PDF.</p>
+    <section class="uc-sec" aria-labelledby="proofH"><h2 id="proofH">Certified mail use cases</h2>
       <div class="uc-grid">${USE_CASES.filter((u) => u.group === "proof").map(card).join("")}</div>
       <p class="guard">${esc(GUARDRAIL)}</p>
 </section>
-    <section class="uc-sec" aria-labelledby="guidesH"><div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px"><h2 id="guidesH">Step-by-step guides</h2><a href="/guides" style="font-size:.92rem">All guides →</a></div>
-      ${guideCards()}</section>
-    <section class="uc-sec" aria-labelledby="personalH"><h2 id="personalH">Personal mail</h2>
+
+    <section class="uc-sec" aria-labelledby="personalH"><h2 id="personalH">Personal mail use cases</h2>
       <div class="uc-grid">${USE_CASES.filter((u) => u.group === "personal").map(card).join("")}</div></section>
     <script>
     (function () {
