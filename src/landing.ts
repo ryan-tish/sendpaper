@@ -1,4 +1,4 @@
-import { BASE_URL, BRAND, PRODUCTS, EXTRA_SERVICE } from "./config.ts";
+import { BASE_URL, BRAND, PRODUCTS, EXTRA_SERVICE, SUPPORT_EMAIL } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
 
@@ -129,11 +129,34 @@ details.q p { color: var(--soft); margin-top: 10px; }
 `;
 
 
+// Structured data (schema.org) so search and answer engines know what Sendpaper is and what it costs.
+// Prices come from PRODUCTS, so they never drift from the site.
+function structuredData() {
+  const ld = {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "Organization", "@id": `${BASE_URL}/#org`, name: BRAND, url: BASE_URL, logo: "https://docs.sendmypaper.com/logo/icon-512.png", email: SUPPORT_EMAIL, sameAs: ["https://github.com/ryan-tish/sendpaper-plugin", "https://docs.sendmypaper.com"] },
+      { "@type": "WebSite", "@id": `${BASE_URL}/#site`, name: BRAND, url: BASE_URL, publisher: { "@id": `${BASE_URL}/#org` } },
+      {
+        "@type": "Service",
+        name: `${BRAND}: physical mail for AI agents`,
+        serviceType: "Online printing and mailing of postcards and letters",
+        provider: { "@id": `${BASE_URL}/#org` },
+        areaServed: { "@type": "Country", name: "United States" },
+        description: "Send real postcards and letters, including USPS Certified Mail, from an AI agent (MCP server), a REST API, or the web. You preview exactly what prints; a person reviews every piece; it's mailed via USPS.",
+        offers: (Object.keys(PRODUCTS) as (keyof typeof PRODUCTS)[]).map((id) => ({ "@type": "Offer", name: PRODUCTS[id].name, price: (PRODUCTS[id].cents / 100).toFixed(2), priceCurrency: "USD", description: PRODUCTS[id].blurb })),
+      },
+    ],
+  };
+  // Escape "<" so the JSON can never close the script tag early.
+  return `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>`;
+}
+
 export function landing() {
   const docs = docsUrl();
   return page(
     `${BRAND}: physical mail for AI agents`,
-    `<style>${CSS}</style>
+    `${structuredData()}<style>${CSS}</style>
     <div class="hero-wrap">
       <div class="art" aria-hidden="true"><canvas id="lines"></canvas></div>
       <div class="hero">

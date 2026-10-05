@@ -106,6 +106,12 @@ export function page(title: string, body: string, opts: { description?: string; 
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(opts.description ?? `${BRAND} prints and mails real postcards and letters, from the web, a REST API, or your AI agent (Codex, Muse Code, Claude).`)}">
 ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
+<meta property="og:site_name" content="${esc(BRAND)}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(opts.description ?? `${BRAND} prints and mails real postcards and letters, from the web, a REST API, or your AI agent (Codex, Muse Code, Claude).`)}">
+<meta property="og:image" content="https://docs.sendmypaper.com/logo/icon-512.png">
+<meta name="twitter:card" content="summary">
 <link rel="icon" href="/favicon.svg?v=4" type="image/svg+xml">
 <link rel="alternate" type="text/plain" title="For AI agents" href="/llms.txt">
 <link rel="service-desc" type="application/json" href="/openapi.json">

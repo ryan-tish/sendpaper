@@ -10,6 +10,7 @@ import { startPrintSync } from "./fulfill.ts";
 import { web } from "./web.ts";
 import { quick } from "./quick.ts";
 import { trackViews } from "./stats.ts";
+import { pingIndexNow, seo } from "./seo.ts";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -72,6 +73,7 @@ app.get("/.well-known/openai-apps-challenge", (_req, res) => {
 });
 
 // Count page views for /admin/stats (pages only: no API, MCP, assets, admin or bots).
+app.use(seo);
 app.use(trackViews);
 app.use(docs);
 app.use(quick);
@@ -87,4 +89,7 @@ app.use((err: unknown, req: express.Request, res: express.Response, _next: expre
 
 await migrate();
 startPrintSync();
-app.listen(env.port, () => console.log(`listening on ${env.port} (${BASE_URL})`));
+app.listen(env.port, () => {
+  console.log(`listening on ${env.port} (${BASE_URL})`);
+  pingIndexNow();
+});
