@@ -17,19 +17,28 @@ description: "The tools Sendpaper exposes to your agent."
 <ParamField path="size" type="string" default="4x6">`4x6`, `6x9` or `6x11`.</ParamField>
 <ParamField path="to" type="Address" required>Recipient: `name`, `line1`, optional `line2`, `city`, two-letter `state`, `zip`. US only.</ParamField>
 <ParamField path="from" type="Address" required>Return address, printed on the card.</ParamField>
-<ParamField path="content.front_image_url" type="string">https URL of a JPG or PNG. Use this **or** `front_headline`.</ParamField>
-<ParamField path="content.front_headline" type="string">Up to 60 characters of big text for a text-only front, with `front_theme`: `ink`, `sky`, `sunset` or `forest`.</ParamField>
+<ParamField path="content.layout" type="string">`headline`, `photo`, `photo_caption` or `collage`. Inferred from the fields you send when omitted.</ParamField>
+<ParamField path="content.front_headline" type="string">`headline` layout: up to 60 characters of big text, with `front_theme`: `ink`, `sky`, `sunset`, `forest`, `rose`, `sand`, `night` or `mint`.</ParamField>
+<ParamField path="content.front_image_url" type="string">`photo` and `photo_caption` layouts: https URL of a JPG or PNG.</ParamField>
+<ParamField path="content.caption" type="string">`photo_caption` layout: up to 80 characters over a band at the bottom of the photo.</ParamField>
+<ParamField path="content.front_images" type="string[]">`collage` layout: 2 to 4 https photo URLs, arranged in a grid.</ParamField>
+<ParamField path="content.headline_font" type="string" default="serif">Headline or caption font: `serif`, `sans` or `script`.</ParamField>
 <ParamField path="content.message" type="string" required>The message on the back, up to 600 characters.</ParamField>
+<ParamField path="content.message_font" type="string" default="handwriting">`handwriting`, `serif` or `sans`.</ParamField>
+<ParamField path="express" type="boolean" default="false">USPS Priority Mail, usually 2–3 days with tracking, for an extra charge (see `get_pricing`).</ParamField>
 <ParamField path="idempotency_key" type="string">Any unique string; a retry with the same key returns the original order.</ParamField>
 
 ## create_letter
 
 Same `to`, `from` and `idempotency_key`, plus:
 
-<ParamField path="content.body" type="string" required>Plain text, blank lines between paragraphs, up to about 3 pages.</ParamField>
+<ParamField path="content.body" type="string">Plain text, blank lines between paragraphs, up to about 3 pages. Send this **or** `content.pdf_url`.</ParamField>
+<ParamField path="content.pdf_url" type="string">Mail your own document: a public https link to a PDF of up to 6 pages. Any page size is fitted to 8.5×11, and a blank address page is added in front.</ParamField>
+<ParamField path="content.color" type="boolean">PDF letters: print in color for $1.00 more.</ParamField>
 <ParamField path="content.font" type="string" default="serif">`serif` or `sans`.</ParamField>
 <ParamField path="content.image_url" type="string">Optional https URL of a JPG or PNG printed under the date. A letter with a photo prints in color and costs $1.00 more.</ParamField>
 <ParamField path="certified" type="string" default="none">`none` ($4.99), `certified` ($14.99, USPS tracking and proof of delivery) or `certified_return_receipt` ($19.99, adds the recipient's signature).</ParamField>
+<ParamField path="express" type="boolean" default="false">USPS Priority Mail (2–3 days, tracked) for an extra charge. Can't be combined with `certified`.</ParamField>
 
 ## pay_order
 

@@ -21,7 +21,7 @@ Flow: confirm the recipient address, return address and wording with the user, t
 The response contains a preview_url and a checkout_url. Nothing is printed until the order is paid. Two ways to pay:
 1. If you can obtain a Stripe shared payment token (spt_…) for the user, for example through Stripe Link / link-cli, request one for the order's exact amount in USD${env.stripeNetworkId ? ` scoped to network id ${env.stripeNetworkId}` : ""}, then call pay_order. Only do this after the user has approved this purchase and its price.
 2. Otherwise, show the user the preview_url and checkout_url and let them pay there.
-Letters can go by USPS Certified Mail (create_letter certified option) when the user needs proof of mailing and delivery; the order then gets a USPS tracking number.
+Letters can go by USPS Certified Mail (create_letter certified option) when the user needs proof of mailing and delivery; the order then gets a USPS tracking number. Letters can also be the user's own PDF (content.pdf_url). Express (USPS Priority, 2-3 days) is available for postcards and letters, not with certified. ${BRAND} prints and mails what the user writes and gives no legal or tax advice.
 Every order is reviewed by a person before printing; threatening, harassing, fraudulent or obscene mail is refused and refunded.`;
 
 const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
@@ -142,7 +142,7 @@ function build(client: string | undefined) {
     {
       title: "Create a postcard",
       description:
-        "Create a postcard order (4x6, 6x9 or 6x11) and get a payment link. The front is an image URL or a big headline; the back carries the message and addresses. Mails only after the user pays.",
+        "Create a postcard order (4x6, 6x9 or 6x11) and get a payment link. Front layouts: a big headline on a color, one photo, a photo with a caption, or a collage of 2-4 photos; the back carries the message (handwriting, serif or sans) and addresses. Set express for USPS Priority Mail (2-3 days, tracked). Mails only after the user pays.",
       inputSchema: CreatePostcardSchema.shape,
       outputSchema: OrderOutput,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
@@ -160,7 +160,7 @@ function build(client: string | undefined) {
     {
       title: "Create a letter",
       description:
-        "Create a printed letter order (up to 3 pages, 8.5x11, mailed in a #10 envelope) and get a payment link. Mails only after the user pays. Set certified to \"certified\" ($14.99) for USPS Certified Mail with tracking and proof of delivery, or \"certified_return_receipt\" ($19.99) to add the recipient's signature; use these when the user needs proof (landlord notices, legal or tax replies, disputes). Regular letters are $4.99.",
+        "Create a printed letter order (8.5x11, mailed in a #10 envelope) and get a payment link. Either write it (content.body, up to ~3 pages, optional photo) or mail the user's own PDF (content.pdf_url, a public https link, up to " + LIMITS.pdfPages + " pages). Set certified to \"certified\" for USPS Certified Mail with tracking and proof of delivery, or \"certified_return_receipt\" to add the recipient's signature; use these when the user needs proof (tax notice replies, lease notices, disputes, demand letters). Or set express for USPS Priority Mail (not with certified). Prices: get_pricing. Mails only after the user pays.",
       inputSchema: CreateLetterSchema.shape,
       outputSchema: OrderOutput,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },

@@ -449,7 +449,11 @@
                   "ink",
                   "sky",
                   "sunset",
-                  "forest"
+                  "forest",
+                  "rose",
+                  "sand",
+                  "night",
+                  "mint"
                 ],
                 "default": "ink"
               },
@@ -457,6 +461,49 @@
                 "type": "string",
                 "maxLength": 600,
                 "description": "Message on the back"
+              },
+              "layout": {
+                "type": "string",
+                "enum": [
+                  "headline",
+                  "photo",
+                  "photo_caption",
+                  "collage"
+                ],
+                "description": "Front layout; inferred when omitted."
+              },
+              "caption": {
+                "type": "string",
+                "maxLength": 80,
+                "description": "photo_caption: text over the bottom of the photo."
+              },
+              "front_images": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "minItems": 2,
+                "maxItems": 4,
+                "description": "collage: 2-4 https photo URLs."
+              },
+              "headline_font": {
+                "type": "string",
+                "enum": [
+                  "serif",
+                  "sans",
+                  "script"
+                ],
+                "default": "serif"
+              },
+              "message_font": {
+                "type": "string",
+                "enum": [
+                  "handwriting",
+                  "serif",
+                  "sans"
+                ],
+                "default": "handwriting"
               }
             }
           },
@@ -467,6 +514,11 @@
           "idempotency_key": {
             "type": "string",
             "description": "Alternative to the Idempotency-Key header"
+          },
+          "express": {
+            "type": "boolean",
+            "default": false,
+            "description": "USPS Priority Mail (2-3 days, tracked) for an extra charge."
           }
         }
       },
@@ -486,9 +538,7 @@
           },
           "content": {
             "type": "object",
-            "required": [
-              "body"
-            ],
+            "required": [],
             "properties": {
               "body": {
                 "type": "string",
@@ -507,6 +557,15 @@
                 "type": "string",
                 "format": "uri",
                 "description": "Optional https URL of a JPG or PNG printed under the date. A letter with a photo prints in color and costs $1.00 more."
+              },
+              "pdf_url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Mail your own PDF (public https link, up to 6 pages) instead of body. Pages are fitted to 8.5x11; an address page is added in front."
+              },
+              "color": {
+                "type": "boolean",
+                "description": "PDF letters: print in color (+$1.00)."
               }
             }
           },
@@ -526,6 +585,11 @@
             ],
             "default": "none",
             "description": "USPS Certified Mail. `certified` ($14.99): tracking number and proof of mailing and delivery. `certified_return_receipt` ($19.99): adds the recipient's signature. `none` ($4.99): regular First-Class."
+          },
+          "express": {
+            "type": "boolean",
+            "default": false,
+            "description": "USPS Priority Mail (2-3 days, tracked); not with certified."
           }
         }
       },

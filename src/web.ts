@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import express, { Router } from "express";
 import { readFileSync } from "node:fs";
-import { BASE_URL, BRAND, DOCS_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
+import { BASE_URL, BRAND, COLOR_LETTER_CENTS, DOCS_URL, EXPRESS_CENTS, LIMITS, PRODUCTS, SUPPORT_EMAIL, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
 import { pool } from "./db.ts";
 import { landing } from "./landing.ts";
 import { sendPage } from "./send.ts";
@@ -12,7 +12,7 @@ import { page } from "./layout.ts";
 import { getOrder, publicOrder } from "./orders.ts";
 import { checkoutUrlFor, confirmFromRedirect } from "./payments.ts";
 import { addReview, listReviews, reviewFor } from "./offer.ts";
-import { addressBlock, esc, printSheet } from "./render.ts";
+import { addressBlock, esc, printSheet, THEMES } from "./render.ts";
 
 export const web = Router();
 const MCP_URL = `${BASE_URL}/mcp`;
@@ -200,7 +200,7 @@ web.get("/llms.txt", (_req, res) => {
   const docs = DOCS_URL || `${BASE_URL}/docs`;
   res.type("text/plain").send(`# ${BRAND}
 
-> Physical mail for AI agents. ${BRAND} prints and mails real postcards and letters to US addresses via USPS First-Class. Agents call an MCP server or REST API with no API key; every order returns a checkout_url that a person pays, plus a preview_url of the exact print. Nothing is printed until paid, and a person reviews every piece.
+> Physical mail for AI agents. ${BRAND} prints and mails real postcards and letters to US addresses, by USPS First-Class, Certified Mail (tracking + proof of delivery) or express. Agents call an MCP server or REST API with no API key; every order returns a checkout_url that a person pays, plus a preview_url of the exact print. Nothing is printed until paid, and a person reviews every piece.
 
 ## Connect
 - MCP endpoint (Streamable HTTP, no auth): ${MCP_URL}
@@ -214,6 +214,16 @@ web.get("/llms.txt", (_req, res) => {
 
 ## Products
 ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}, ${p.blurb}`).join("\n")}
+
+## Options
+- Letters: write the text (content.body, optional photo via content.image_url) OR mail the user's own PDF (content.pdf_url, a public https link, up to ${LIMITS.pdfPages} pages; any page size is fitted to 8.5×11 and an address page is added in front; content.color: true prints in color for ${usd(COLOR_LETTER_CENTS)} more).
+- Certified Mail for letters: certified "certified" or "certified_return_receipt" (recipient's signature). Use it when the user needs proof: tax notice replies, lease notices, disputes, demand letters.
+- Express (postcards and letters): express: true, USPS Priority Mail, usually 2–3 days with tracking, ${usd(EXPRESS_CENTS)} more. Not combinable with certified.
+- Postcard fronts: layout headline (front_headline + front_theme: ${Object.keys(THEMES).join(", ")}), photo (front_image_url), photo_caption (front_image_url + caption) or collage (front_images: 2–4 https URLs). headline_font: serif, sans or script; message_font: handwriting, serif or sans.
+- ${BRAND} prints and mails what the user or agent writes; it doesn't give legal or tax advice.
+
+## Guides (proof-of-delivery mail)
+${GUIDES.map((g) => `- ${g.title}: ${BASE_URL}/${g.slug}`).join("\n")}
 
 ## Order links (for agents using a web browser)
 - Can't call tools or HTTP APIs? Open one URL with every field: ${BASE_URL}/quick?type=postcard&size=4x6&headline=…&message=…&to_name=…&to_line1=…&to_city=…&to_state=…&to_zip=…&from_name=…&from_line1=…&from_city=…&from_state=…&from_zip=…
