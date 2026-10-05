@@ -9,6 +9,8 @@ https://sendmypaper.com/v1
 
 No API key. Create an order, send the person to its `checkout_url`, and it is mailed once they pay.
 
+Prefer Postman? Every endpoint is in the public [Sendpaper workspace](https://www.postman.com/ryantish-2567958/sendpaper) on the Postman API Network, generated from [`openapi.json`](https://sendmypaper.com/openapi.json).
+
 ## Idempotency
 
 Send an `Idempotency-Key` header (or an `idempotency_key` field) on create calls. A repeat with the same key returns the original order with status `200` instead of `201`, so retries never double-mail.
