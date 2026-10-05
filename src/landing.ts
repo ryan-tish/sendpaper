@@ -50,6 +50,7 @@ const CSS = `
 .steps .muted { color: var(--faint); font-size: .82rem; }
 .agent { justify-self: start; background: var(--tint); border: 1px solid var(--rule); padding: 10px 13px; border-radius: 14px 14px 14px 4px; max-width: 86%; }
 .pay-band { display: flex; justify-content: space-between; align-items: center; gap: 16px 40px; flex-wrap: wrap; background: var(--tint); border: 1px solid var(--rule); border-radius: 16px; padding: 24px 28px; }
+#pricing .pay-band { margin-top: -28px; } /* section gap 36 + card margin 16 → 24px under the cards */
 .pay-band > div { display: grid; gap: 6px; max-width: 680px; }
 .pay-band p { color: var(--soft); font-size: .95rem; }
 .more { white-space: nowrap; color: var(--green); text-decoration: none; font-weight: 500; font-size: .95rem; }
@@ -169,9 +170,6 @@ ${[
           <dl><div><dt>Format</dt><dd>${format}</dd></div><div><dt>Included</dt><dd>${incl}</dd></div><div><dt>Delivery</dt><dd>${delivery}</dd></div></dl>
           <a class="btn green" href="${href}">${cta}</a></div>`).join("")}
       </div>
-    </section>
-
-    <section class="pay-line">
       <div class="pay-band"><div><h3>Your agent can pay, with your OK.</h3><p>Sendpaper accepts Stripe's one-time agent payment tokens. You approve the amount and your card is never shared. Prefer to pay yourself? Every order has a checkout link too.</p></div>
       <a class="more" href="${esc(docsUrl("/guides/agent-payments"))}">How it works →</a></div>
     </section>
