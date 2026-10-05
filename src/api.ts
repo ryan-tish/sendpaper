@@ -1,6 +1,6 @@
 import express, { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
-import { BASE_URL, LIMITS, PRODUCTS, letterProduct } from "./config.ts";
+import { BASE_URL, LIMITS, PRODUCTS, letterProduct, postcardProduct } from "./config.ts";
 import { pool } from "./db.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import {
@@ -53,7 +53,7 @@ api.post(
       ...rest,
       content,
       idempotency_key: idem(req, rest),
-      product: size === "6x9" ? "postcard_6x9" : "postcard_4x6",
+      product: postcardProduct(size),
       source: "api",
       client: client(req),
       analytics_id: req.get("x-analytics-id") || undefined,

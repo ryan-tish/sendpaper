@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { BASE_URL, BRAND, PRODUCTS, env, letterProduct } from "./config.ts";
+import { BASE_URL, BRAND, PRODUCTS, env, letterProduct, postcardProduct } from "./config.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import { track } from "./analytics.ts";
 import { recordToolCall } from "./stats.ts";
@@ -128,14 +128,14 @@ function build(client: string | undefined) {
     {
       title: "Create a postcard",
       description:
-        "Create a postcard order (4x6 or 6x9) and get a payment link. The front is an image URL or a big headline; the back carries the message and addresses. Mails only after the user pays.",
+        "Create a postcard order (4x6, 6x9 or 6x11) and get a payment link. The front is an image URL or a big headline; the back carries the message and addresses. Mails only after the user pays.",
       inputSchema: CreatePostcardSchema.shape,
       outputSchema: OrderOutput,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
     async (args) => {
       const { size, content, ...rest } = CreatePostcardSchema.parse(args);
-      const { order } = await createOrder({ ...rest, content, product: size === "6x9" ? "postcard_6x9" : "postcard_4x6", source: "mcp", client });
+      const { order } = await createOrder({ ...rest, content, product: postcardProduct(size), source: "mcp", client });
       const o = await orderWithOffer(order);
       return result(o, nextStep(o));
     },

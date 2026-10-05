@@ -43,11 +43,11 @@ docs.get("/docs", (_req, res) => {
         <p class="soft">Response <code>201</code> (or <code>200</code> when the <code>Idempotency-Key</code> was already used — you get the original order back, never a duplicate):</p><pre><code>${esc(response)}</code></pre></section>
       <section><h2>Fields</h2><div class="scroll"><table>
         <tr><th>Field</th><th>Notes</th></tr>
-        <tr><td><code>size</code></td><td>Postcards only: <code>4x6</code> (default) or <code>6x9</code>.</td></tr>
+        <tr><td><code>size</code></td><td>Postcards only: <code>4x6</code> (default), <code>6x9</code> or <code>6x11</code>.</td></tr>
         <tr><td><code>to</code>, <code>from</code></td><td><code>name</code>, optional <code>company</code>, <code>line1</code>, optional <code>line2</code>, <code>city</code>, <code>state</code> (2-letter), <code>zip</code>. US only. Return address is required.</td></tr>
         <tr><td><code>content.front_image_url</code></td><td>Postcard front photo, https URL (JPG/PNG). Or use <code>front_headline</code> (≤60 chars) with <code>front_theme</code>: ink, sky, sunset, forest.</td></tr>
         <tr><td><code>content.message</code></td><td>Postcard back, ≤600 characters.</td></tr>
-        <tr><td><code>content.body</code></td><td>Letters (<code>POST /v1/letters</code>): plain text, blank lines between paragraphs, up to ~3 pages. <code>content.font</code>: serif or sans.</td></tr>
+        <tr><td><code>content.body</code></td><td>Letters (<code>POST /v1/letters</code>): plain text, blank lines between paragraphs, up to ~3 pages. <code>content.font</code>: serif or sans. Optional <code>content.image_url</code>: a photo printed under the date, in color (+$1.00).</td></tr>
         <tr><td><code>customer_email</code></td><td>Optional; Stripe asks at checkout otherwise.</td></tr>
       </table></div></section>
       <section><h2>Other endpoints</h2><div class="scroll"><table>

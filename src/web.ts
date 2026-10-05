@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import express, { Router } from "express";
 import { readFileSync } from "node:fs";
-import { BASE_URL, BRAND, DOCS_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL, env, EXTRA_SERVICE, isLetter } from "./config.ts";
+import { BASE_URL, BRAND, DOCS_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
 import { pool } from "./db.ts";
 import { landing } from "./landing.ts";
 import { sendPage } from "./send.ts";
@@ -47,7 +47,7 @@ web.get("/agents", (_req, res) => {
       <section><h2>Tools</h2><div class="scroll"><table>
         <tr><th>Tool</th><th>What it does</th></tr>
         <tr><td><code>get_pricing</code></td><td>Products and prices.</td></tr>
-        <tr><td><code>create_postcard</code></td><td>4×6 or 6×9 postcard. Front: image URL or headline. Back: message. Returns preview and checkout links.</td></tr>
+        <tr><td><code>create_postcard</code></td><td>4×6, 6×9 or 6×11 postcard. Front: image URL or headline. Back: message. Returns preview and checkout links.</td></tr>
         <tr><td><code>create_letter</code></td><td>Up to 3 printed pages in a #10 envelope. Returns preview and checkout links.</td></tr>
         <tr><td><code>get_order</code></td><td>Status of an order.</td></tr>
         <tr><td><code>cancel_order</code></td><td>Cancel an unpaid order.</td></tr>
@@ -120,7 +120,7 @@ web.get("/o/:id", async (req, res) => {
           <div class="card"><span class="eyebrow">From</span><div>${addressBlock(o.from_address)}</div></div>
         </div>
         <h2>Print preview</h2>
-        <iframe src="/o/${esc(o.id)}/preview" title="Print preview" style="width:100%;height:${isLetter(o.product) ? 1150 : o.product === "postcard_6x9" ? 1250 : 900}px;border:1px solid var(--rule);border-radius:10px;background:#e9e7e2"></iframe>
+        <iframe src="/o/${esc(o.id)}/preview" title="Print preview" style="width:100%;height:${isLetter(o.product) ? 1150 : postcardSpec(o.product).h >= 6 ? 1250 : 900}px;border:1px solid var(--rule);border-radius:10px;background:#e9e7e2"></iframe>
         <p class="soft">Something wrong? ${o.status === "awaiting_payment" ? `<a href="/send">Start a new order</a> — unpaid orders are never mailed.` : `Email ${esc(SUPPORT_EMAIL)} with your order id before it's printed.`}</p>
       </section>`,
       { noindex: true },

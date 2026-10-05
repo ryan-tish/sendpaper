@@ -4,11 +4,11 @@
 //
 // Layout rules learned by probing the API (test mode):
 // - Postcards: PostGrid prints the return address, recipient and postage on the RIGHT half of the back.
-//   Our back HTML may only use the left half. Pages include a 0.125in bleed (6.25x4.25 / 9.25x6.25).
+//   Our back HTML may only use the left half. Pages include a 0.125in bleed (6.25x4.25 / 9.25x6.25 / 11.25x6.25).
 // - Letters: PostGrid prints both addresses in the top ~2.75in of page 1 (addressPlacement top_first_page)
 //   and adds no margins. Anything overlapping that area is auto-cancelled with
 //   cancellation.reason = "invalid_content".
-import { BASE_URL, BRAND, env, EXTRA_SERVICE, isLetter } from "./config.ts";
+import { BASE_URL, BRAND, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
 import { pool } from "./db.ts";
 import { getOrder, setStatus, type Address, type OrderRow } from "./orders.ts";
 import { esc, THEMES } from "./render.ts";
@@ -34,8 +34,9 @@ function contact(a: Address) {
 const absolute = (url: string) => (url.startsWith("/") ? `${BASE_URL}${url}` : url);
 
 export function postcardHtml(o: OrderRow) {
-  const big = o.product === "postcard_6x9";
-  const [w, h] = big ? [9.25, 6.25] : [6.25, 4.25];
+  const spec = postcardSpec(o.product);
+  const big = spec.h >= 6;
+  const [w, h] = [spec.w + 0.25, spec.h + 0.25];
   const c = o.content;
   const [bg, fg] = THEMES[c.front_theme ?? "ink"] ?? THEMES.ink;
   const page = `margin:0;padding:0;width:${w}in;height:${h}in;overflow:hidden;`;
@@ -57,8 +58,12 @@ export function letterHtml(o: OrderRow) {
     .split(/\n{2,}/)
     .map((p) => `<p style="margin:0 0 1em">${esc(p).replace(/\n/g, "<br>")}</p>`)
     .join("");
+  // An optional photo sits under the date, at most 3in tall, inside the 6.5in text column (it prints in color).
+  const photo = o.content.image_url
+    ? `<img src="${esc(absolute(o.content.image_url))}" style="display:block;max-width:6.5in;max-height:3in;margin:0 auto 1.4em;object-fit:contain">`
+    : "";
   // The 3.1in spacer keeps page 1 clear of PostGrid's address block; @page margins apply to later pages.
-  return `<html><head>${FONTS}<style>@page{size:8.5in 11in;margin:0.75in 1in}body{margin:0;font:11.5pt/1.5 ${family};color:#1b1b1b}</style></head><body><div style="height:2.35in"></div><p style="margin:0 0 1.4em">${esc(date)}</p>${paras}</body></html>`;
+  return `<html><head>${FONTS}<style>@page{size:8.5in 11in;margin:0.75in 1in}body{margin:0;font:11.5pt/1.5 ${family};color:#1b1b1b}</style></head><body><div style="height:2.35in"></div><p style="margin:0 0 1.4em">${esc(date)}</p>${photo}${paras}</body></html>`;
 }
 
 async function pg(path: string, init: { method?: string; body?: unknown; idempotencyKey?: string } = {}) {
@@ -102,12 +107,13 @@ export async function sendToPrint(o: OrderRow) {
           ...base,
           html: letterHtml(o),
           addressPlacement: "top_first_page",
-          color: false,
+          // Only letters with a photo print in color (and carry the color surcharge).
+          color: Boolean(o.content.image_url),
           doubleSided: false,
           // USPS Certified Mail (with or without return receipt) for the certified letter products.
           ...(EXTRA_SERVICE[o.product] ? { extraService: EXTRA_SERVICE[o.product] } : {}),
         }
-      : { ...base, size: o.product === "postcard_6x9" ? "9x6" : "6x4", ...postcardHtml(o) };
+      : { ...base, size: postcardSpec(o.product).postgrid, ...postcardHtml(o) };
   const job = await pg(`/${kind(o)}`, { method: "POST", body, idempotencyKey: `sendpaper-${o.id}` });
   await recordPrint(o.id, { print_id: job.id, print_status: job.status, print_error: null });
   return setStatus(o.id, "printing", `sent to PostGrid (${postgridMode()}) ${job.id}`);

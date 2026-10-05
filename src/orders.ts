@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
-import { BASE_URL, EXTRA_SERVICE, LIMITS, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
+import { BASE_URL, COLOR_LETTER_CENTS, EXTRA_SERVICE, LIMITS, POSTCARD_SIZE_NAMES, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
 import { pool } from "./db.ts";
 import { track } from "./analytics.ts";
 
@@ -70,6 +70,9 @@ export const LetterContentSchema = z.object({
     .max(LIMITS.letterBody)
     .describe("Full letter text. Plain text; blank lines separate paragraphs."),
   font: z.enum(["serif", "sans"]).default("serif").describe("Typeface for the letter body"),
+  image_url: imageUrl
+    .optional()
+    .describe("Optional photo printed at the top of the letter (https JPG or PNG). A letter with a photo prints in color, for a small surcharge (see get_pricing)."),
 });
 
 const common = {
@@ -85,7 +88,7 @@ const common = {
 };
 
 export const CreatePostcardSchema = z.object({
-  size: z.enum(["4x6", "6x9"]).default("4x6").describe("Postcard size: 4x6 ($2.99) or 6x9 ($3.99)"),
+  size: z.enum(POSTCARD_SIZE_NAMES).default("4x6").describe("Postcard size: 4x6, 6x9 or 6x11 (see get_pricing for prices)"),
   ...common,
   content: PostcardContentSchema.describe("Front (an image URL or a headline) and the message on the back"),
 });
@@ -142,6 +145,10 @@ type CreateInput = {
   analytics_id?: string;
 };
 
+// A letter with a photo prints in color, which costs a little more; everything else is the product's list price.
+export const orderPrice = (product: ProductId, content: Record<string, any>) =>
+  PRODUCTS[product].cents + (isLetter(product) && content?.image_url ? COLOR_LETTER_CENTS : 0);
+
 export async function createOrder(input: CreateInput): Promise<{ order: OrderRow; existing: boolean }> {
   if (input.idempotency_key) {
     const prior = await pool.query<OrderRow>("SELECT * FROM orders WHERE idempotency_key = $1", [input.idempotency_key]);
@@ -159,7 +166,7 @@ export async function createOrder(input: CreateInput): Promise<{ order: OrderRow
       input.to,
       input.from,
       input.content,
-      PRODUCTS[input.product].cents,
+      orderPrice(input.product, input.content),
       input.customer_email ?? null,
       input.source,
       input.client?.slice(0, 120) ?? null,

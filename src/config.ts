@@ -24,17 +24,34 @@ export const env = {
   posthogKey: process.env.POSTHOG_KEY ?? "",
 };
 
-export type ProductId = "postcard_4x6" | "postcard_6x9" | "letter" | "letter_certified" | "letter_certified_rr";
+export type ProductId = "postcard_4x6" | "postcard_6x9" | "postcard_6x11" | "letter" | "letter_certified" | "letter_certified_rr";
 
 // Prices include printing, postage (USPS First-Class) and the envelope. US addresses only.
 export const PRODUCTS: Record<ProductId, { name: string; cents: number; blurb: string; size: string }> = {
   postcard_4x6: { name: "Postcard 4×6", cents: 299, size: "4 × 6 in", blurb: "Full-color front, your message on the back." },
   postcard_6x9: { name: "Postcard 6×9", cents: 399, size: "6 × 9 in", blurb: "Bigger card, more room for a photo and a note." },
+  // 6×11 (Ryan, 2026-10-04): PostGrid's largest postcard ("11x6").
+  postcard_6x11: { name: "Postcard 6×11", cents: 599, size: "6 × 11 in", blurb: "Our biggest card: a big photo and a longer note." },
   letter: { name: "Letter", cents: 499, size: "8.5 × 11 in", blurb: "Up to 3 printed pages, folded into a #10 envelope." },
   // Certified Mail (Ryan, 2026-10-04): same letter, sent via USPS Certified Mail through PostGrid's extraService.
   letter_certified: { name: "Certified letter", cents: 1499, size: "8.5 × 11 in", blurb: "USPS Certified Mail: tracking number and proof of mailing and delivery." },
   letter_certified_rr: { name: "Certified letter + return receipt", cents: 1999, size: "8.5 × 11 in", blurb: "USPS Certified Mail with a return receipt: the recipient's signature as proof of delivery." },
 };
+
+// Postcard sizes in one place: the API/MCP size name, our product, PostGrid's size name and the trim size in inches
+// (landscape, width × height). Print sheets add a 0.125in bleed on every side.
+export const POSTCARD_SIZES = {
+  "4x6": { product: "postcard_4x6", postgrid: "6x4", w: 6, h: 4 },
+  "6x9": { product: "postcard_6x9", postgrid: "9x6", w: 9, h: 6 },
+  "6x11": { product: "postcard_6x11", postgrid: "11x6", w: 11, h: 6 },
+} as const satisfies Record<string, { product: ProductId; postgrid: string; w: number; h: number }>;
+export type PostcardSize = keyof typeof POSTCARD_SIZES;
+export const POSTCARD_SIZE_NAMES = Object.keys(POSTCARD_SIZES) as [PostcardSize, ...PostcardSize[]];
+export const postcardProduct = (size: string | undefined): ProductId => (POSTCARD_SIZES[size as PostcardSize] ?? POSTCARD_SIZES["4x6"]).product;
+export const postcardSpec = (p: ProductId) => Object.values(POSTCARD_SIZES).find((s) => s.product === p) ?? POSTCARD_SIZES["4x6"];
+
+// Letters can carry one photo (Ryan, 2026-10-04); a letter with a photo prints in color for this surcharge.
+export const COLOR_LETTER_CENTS = 100;
 
 // Every letter product shares the letter layout and limits; certified ones add a USPS extra service.
 export const isLetter = (p: ProductId) => p === "letter" || p === "letter_certified" || p === "letter_certified_rr";

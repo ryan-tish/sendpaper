@@ -8,16 +8,16 @@
 //         &from_name=…&from_line1=…&from_city=…&from_state=CO&from_zip=80202
 import { randomBytes } from "node:crypto";
 import express, { Router } from "express";
-import { BASE_URL, BRAND, PRODUCTS, type ProductId, letterProduct, type Certified, isLetter } from "./config.ts";
+import { BASE_URL, BRAND, PRODUCTS, type ProductId, letterProduct, type Certified, isLetter, postcardProduct } from "./config.ts";
 import { page } from "./layout.ts";
-import { CreateLetterSchema, CreatePostcardSchema, createOrder } from "./orders.ts";
+import { CreateLetterSchema, CreatePostcardSchema, createOrder, orderPrice } from "./orders.ts";
 import { addressBlock, esc, letterPages, postcardBack, postcardFront, PRINT_CSS } from "./render.ts";
 
 export const QUICK_PARAMS = {
   type: "postcard (default) or letter",
-  size: "postcards: 4x6 (default) or 6x9",
+  size: "postcards: 4x6 (default), 6x9 or 6x11",
   headline: "postcard front text (or use image)",
-  image: "postcard front photo, https URL",
+  image: "postcard front photo, or a photo at the top of a letter (prints in color), https URL",
   theme: "ink, sky, sunset or forest (text fronts)",
   message: "postcard back, up to 600 characters",
   body: "letter text; blank lines between paragraphs",
@@ -62,10 +62,10 @@ export function parseQuick(q: Q) {
   const letter = q.type === "letter";
   const base = { to: addr(q, "to"), from: addr(q, "from"), ...(q.email ? { customer_email: q.email } : {}) };
   const parsed = letter
-    ? CreateLetterSchema.safeParse({ ...base, ...(q.certified ? { certified: q.certified } : {}), content: { body: (q.body ?? "").replace(/\\n/g, "\n"), ...(q.font ? { font: q.font } : {}) } })
+    ? CreateLetterSchema.safeParse({ ...base, ...(q.certified ? { certified: q.certified } : {}), content: { body: (q.body ?? "").replace(/\\n/g, "\n"), ...(q.font ? { font: q.font } : {}), ...(q.image ? { image_url: q.image } : {}) } })
     : CreatePostcardSchema.safeParse({
         ...base,
-        size: q.size === "6x9" ? "6x9" : "4x6",
+        size: q.size || "4x6",
         content: {
           message: (q.message ?? "").replace(/\\n/g, "\n"),
           ...(q.image ? { front_image_url: q.image } : {}),
@@ -75,7 +75,7 @@ export function parseQuick(q: Q) {
       });
   if (!parsed.success)
     return { ok: false as const, errors: parsed.error.issues.map((i) => ({ param: paramName(i.path.join(".")), message: /received undefined/.test(i.message) ? "missing: add this parameter" : i.message })) };
-  const product: ProductId = letter ? letterProduct((parsed.data as { certified?: Certified }).certified) : (parsed.data as { size: string }).size === "6x9" ? "postcard_6x9" : "postcard_4x6";
+  const product: ProductId = letter ? letterProduct((parsed.data as { certified?: Certified }).certified) : postcardProduct((parsed.data as { size: string }).size);
   return { ok: true as const, product, data: parsed.data };
 }
 
@@ -121,6 +121,7 @@ quick.get("/quick", (req, res) => {
       ? letterPages(preview)
       : `${postcardFront(preview)}${postcardBack(preview)}`;
   const p = PRODUCTS[r.product];
+  const total = `$${(orderPrice(r.product, r.data.content) / 100).toFixed(2)}`;
   const nonce = randomBytes(9).toString("base64url");
   res.send(
     page(
@@ -134,8 +135,8 @@ quick.get("/quick", (req, res) => {
           <input type="hidden" name="nonce" value="${nonce}">
           <div style="display:grid;gap:4px"><b>To</b><div class="soft">${addressBlock(r.data.to)}</div></div>
           <div style="display:grid;gap:4px"><b>From</b><div class="soft">${addressBlock(r.data.from)}</div></div>
-          <div class="total"><span>Total, postage included</span><b>$${(p.cents / 100).toFixed(2)}</b></div>
-          <button class="btn" id="pay" type="submit">Pay $${(p.cents / 100).toFixed(2)}</button>
+          <div class="total"><span>Total, postage included</span><b>${total}</b></div>
+          <button class="btn" id="pay" type="submit">Pay ${total}</button>
           <p class="fine">Checkout by Stripe (cards, Link, Apple Pay). By paying you confirm this mail follows our <a href="/content-policy">content policy</a>; a person reviews every piece before printing.</p>
           <a class="fine" href="${esc(editLink)}">Edit in the full form</a>
         </form>

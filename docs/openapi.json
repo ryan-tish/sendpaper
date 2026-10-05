@@ -41,7 +41,7 @@
     "/postcards": {
       "post": {
         "summary": "Create a postcard",
-        "description": "Creates a 4×6 or 6×9 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.",
+        "description": "Creates a 4\u00d76 or 6\u00d79 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.",
         "operationId": "createPostcard",
         "parameters": [
           {
@@ -111,7 +111,7 @@
     "/letters": {
       "post": {
         "summary": "Create a letter",
-        "description": "Creates a printed letter (up to ~3 pages, 8.5×11, #10 envelope) in `awaiting_payment` and returns a `checkout_url`. Set `certified` to send it by USPS Certified Mail.",
+        "description": "Creates a printed letter (up to ~3 pages, 8.5\u00d711, #10 envelope) in `awaiting_payment` and returns a `checkout_url`. Set `certified` to send it by USPS Certified Mail.",
         "operationId": "createLetter",
         "parameters": [
           {
@@ -253,7 +253,7 @@
     "/orders/{id}/pay": {
       "post": {
         "summary": "Pay with an agent token",
-        "description": "Pay an unpaid order with a Stripe shared payment token (`spt_…`) the user approved, scoped to at least the order amount in USD. Safe to retry with the same token.",
+        "description": "Pay an unpaid order with a Stripe shared payment token (`spt_\u2026`) the user approved, scoped to at least the order amount in USD. Safe to retry with the same token.",
         "operationId": "payOrder",
         "parameters": [
           {
@@ -414,7 +414,8 @@
             "type": "string",
             "enum": [
               "4x6",
-              "6x9"
+              "6x9",
+              "6x11"
             ],
             "default": "4x6"
           },
@@ -501,6 +502,11 @@
                   "sans"
                 ],
                 "default": "serif"
+              },
+              "image_url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Optional https URL of a JPG or PNG printed under the date. A letter with a photo prints in color and costs $1.00 more."
               }
             }
           },
@@ -531,6 +537,7 @@
             "enum": [
               "postcard_4x6",
               "postcard_6x9",
+              "postcard_6x11",
               "letter",
               "letter_certified",
               "letter_certified_rr"
@@ -573,7 +580,10 @@
             "enum": [
               "postcard_4x6",
               "postcard_6x9",
-              "letter"
+              "postcard_6x11",
+              "letter",
+              "letter_certified",
+              "letter_certified_rr"
             ]
           },
           "status": {

@@ -106,7 +106,7 @@ const CSS = `
 // The logo's envelope, faint in each card's corner.
 const MARK = `<svg class="mark" width="36" height="26" viewBox="0 0 36 26" aria-hidden="true"><path d="M1 9h5M3 13h4M1 17h5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><rect x="8" y="3" width="27" height="20" rx="4" fill="currentColor"/><path d="M11 6.5 21.5 14 32 6.5" fill="none" stroke="var(--card)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-const LABEL: Record<ProductId, string> = { postcard_4x6: "Postcard 4×6", postcard_6x9: "Postcard 6×9", letter: "Letter", letter_certified: "Certified letter", letter_certified_rr: "Certified + return receipt" };
+const LABEL: Record<ProductId, string> = { postcard_4x6: "Postcard 4×6", postcard_6x9: "Postcard 6×9", postcard_6x11: "Postcard 6×11", letter: "Letter", letter_certified: "Certified letter", letter_certified_rr: "Certified + return receipt" };
 
 export function useCasesPage() {
   return page(

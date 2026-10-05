@@ -1,5 +1,5 @@
 import { OFFER_LIMIT } from "./offer.ts";
-import { BRAND, LIMITS, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
+import { BRAND, COLOR_LETTER_CENTS, LIMITS, POSTCARD_SIZES, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc, THEMES } from "./render.ts";
 
@@ -13,7 +13,9 @@ const CSS = `
 .step-h { display: flex; align-items: baseline; gap: 10px; }
 .step-h span { font: 500 .74rem var(--f-mono); color: var(--green); }
 .step-h h2 { font-size: 1.1rem; letter-spacing: -0.01em; }
-.choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .choices { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.lphoto-pv { display: block; max-width: 100%; max-height: 120px; margin: 0 auto 10px; object-fit: contain; }
 .choice { position: relative; display: grid; gap: 4px; padding: 14px; border: 1px solid var(--rule); border-radius: 12px; background: var(--card); cursor: pointer; font-weight: 400; }
 .choice:hover { border-color: var(--faint); }
 .choice input { position: absolute; opacity: 0; pointer-events: none; }
@@ -141,6 +143,8 @@ export function sendPage(initial: string, offerLeft = 0) {
 
         <div class="step" id="lt" hidden><div class="step-h"><span>02</span><h2>Write the letter</h2></div>
           <div class="field"><div class="top"><label for="body">Letter</label><span class="count" id="bc">0/${LIMITS.letterBody}</span></div><textarea id="body" maxlength="${LIMITS.letterBody}" style="min-height:280px" placeholder="Dear …"></textarea></div>
+          <label class="drop" id="ldrop"><input id="lphoto" type="file" accept="image/jpeg,image/png,image/webp"><span id="ldropText"><b>Add a photo</b> (optional)<br><small>Printed at the top of the letter, in color, for ${usd(COLOR_LETTER_CENTS)} more.</small></span></label>
+          <button type="button" class="linkbtn" id="lphotoRemove" hidden>Remove photo</button>
           <div class="seg" role="radiogroup" aria-label="Typeface"><label><input type="radio" name="font" value="serif" checked>Serif</label><label><input type="radio" name="font" value="sans">Sans-serif</label></div>
           <div class="field"><div class="top">Mailing</div>
             <div class="seg seg-wrap" role="radiogroup" aria-label="Mailing">${mailing}</div>
@@ -159,7 +163,7 @@ export function sendPage(initial: string, offerLeft = 0) {
         <div class="stage">
           <div class="label"><span id="pvName">Postcard 4×6</span><span>Live preview</span></div>
           <div id="pvCard" class="card-pv"><div class="front" id="pvFront"></div></div>
-          <div id="pvLetter" class="letter-pv" hidden><div class="to" id="pvLetterTo"></div><div id="pvLetterBody"></div></div>
+          <div id="pvLetter" class="letter-pv" hidden><div class="to" id="pvLetterTo"></div><img id="pvLetterPhoto" class="lphoto-pv" alt="" hidden><div id="pvLetterBody"></div></div>
           <div class="flip" id="flip"><button type="button" data-side="front" aria-pressed="true">Front</button><button type="button" data-side="back" aria-pressed="false">Back</button></div>
         </div>
         <div class="summary">
@@ -186,13 +190,15 @@ export function sendPage(initial: string, offerLeft = 0) {
     <script>
     const PRODUCTS = ${JSON.stringify(PRODUCTS)};
     const THEMES = ${JSON.stringify(THEMES)};
-    const MAX_IMG = ${LIMITS.imageBytes}, MAX_ORIGINAL = 25 * 1024 * 1024;
+    const MAX_IMG = ${LIMITS.imageBytes}, MAX_ORIGINAL = 25 * 1024 * 1024, COLOR_LETTER = ${COLOR_LETTER_CENTS};
+    const SIZE_OF_NAME = ${JSON.stringify(Object.fromEntries(Object.entries(POSTCARD_SIZES).map(([size, s]) => [size, s.product])))};
+    const SIZE_OF = ${JSON.stringify(Object.fromEntries(Object.entries(POSTCARD_SIZES).map(([size, s]) => [s.product, size])))};
     const $ = (id) => document.getElementById(id);
     const val = (name) => document.querySelector('input[name="' + name + '"]:checked').value;
     // A letter's product depends on its mailing option (regular, certified, certified + return receipt).
     const LETTER_PRODUCT = { none: "letter", certified: "letter_certified", certified_return_receipt: "letter_certified_rr" };
     const effectiveProduct = () => (val("product") === "letter" ? LETTER_PRODUCT[val("mailing")] : val("product"));
-    let side = "front", photoUrl = null, photoFile = null;
+    let side = "front", photoUrl = null, photoFile = null, letterPhoto = null, letterPhotoUrl = null;
 
     function addr(p) {
       return Object.fromEntries(["name","line1","line2","city","state","zip"].map(k => [k, $(p + "_" + k).value.trim()]).filter(([, v]) => v));
@@ -207,7 +213,7 @@ export function sendPage(initial: string, offerLeft = 0) {
       $("drop").hidden = !photo; $("textFront").hidden = photo; $("recrop").hidden = !photo || !photoFile;
       $("pvName").textContent = PRODUCTS[product].name;
       $("postageLine").textContent = product === "letter_certified" ? "Printing, envelope, Certified Mail" : product === "letter_certified_rr" ? "Printing, envelope, Certified Mail + return receipt" : "Printing, envelope, First-Class postage";
-      $("total").textContent = "$" + (PRODUCTS[product].cents / 100).toFixed(2);
+      $("total").textContent = "$" + ((PRODUCTS[product].cents + (letter && letterPhoto ? COLOR_LETTER : 0)) / 100).toFixed(2);
       $("pvCard").hidden = letter; $("pvLetter").hidden = !letter; $("flip").hidden = letter;
       $("hc").textContent = $("headline").value.length + "/${LIMITS.postcardHeadline}";
       $("mc").textContent = $("message").value.length + "/${LIMITS.postcardMessage}";
@@ -217,6 +223,8 @@ export function sendPage(initial: string, offerLeft = 0) {
         $("pvLetterTo").textContent = to;
         $("pvLetterBody").textContent = $("body").value || "Dear …";
         $("pvLetter").style.fontFamily = val("font") === "sans" ? "Helvetica, Arial, sans-serif" : "Georgia, serif";
+        $("pvLetterPhoto").hidden = !letterPhotoUrl; if (letterPhotoUrl) $("pvLetterPhoto").src = letterPhotoUrl;
+        $("lphotoRemove").hidden = !letterPhoto;
         return;
       }
       const card = $("pvCard");
@@ -248,7 +256,7 @@ export function sendPage(initial: string, offerLeft = 0) {
 
     // Photos go through a cropper at the card's print shape (with bleed), then are re-encoded as a 300 dpi JPEG.
     // What's uploaded is exactly what prints.
-    const SHEET = { postcard_4x6: [6.25, 4.25], postcard_6x9: [9.25, 6.25] }, BLEED = 0.125;
+    const SHEET = ${JSON.stringify(Object.fromEntries(Object.values(POSTCARD_SIZES).map((s) => [s.product, [s.w + 0.25, s.h + 0.25]])))}, BLEED = 0.125;
     const dlg = $("cropDlg"), view = $("cropView"), cimg = $("cropImg"), zoomEl = $("cropZoom");
     const crop = { file: null, url: null, product: "postcard_4x6", nw: 0, nh: 0, Vw: 0, Vh: 0, s0: 1, zoom: 1, ox: 0, oy: 0 };
     function takeFile(file) {
@@ -259,7 +267,7 @@ export function sendPage(initial: string, offerLeft = 0) {
     }
     function openCrop(file) {
       crop.file = file;
-      crop.product = val("product") === "postcard_6x9" ? "postcard_6x9" : "postcard_4x6";
+      crop.product = SHEET[val("product")] ? val("product") : "postcard_4x6";
       const [w, h] = SHEET[crop.product];
       view.style.aspectRatio = w + " / " + h;
       $("cropSafe").style.inset = (BLEED / h * 100) + "% " + (BLEED / w * 100) + "%";
@@ -331,6 +339,44 @@ export function sendPage(initial: string, offerLeft = 0) {
     ["dragleave", "drop"].forEach(t => drop.addEventListener(t, () => drop.classList.remove("over")));
     drop.addEventListener("drop", (e) => { e.preventDefault(); takeFile(e.dataTransfer.files[0]); });
 
+    // A letter photo isn't cropped: it's scaled to fit the 6.5 × 3 in print area at 300 dpi and re-encoded as JPEG.
+    function takeLetterPhoto(file) {
+      if (!file) return;
+      if (!/^image.(jpeg|png|webp)$/.test(file.type)) { $("err").textContent = "Use a JPG, PNG or WebP photo."; return; }
+      if (file.size > MAX_ORIGINAL) { $("err").textContent = "That photo is over 25 MB. Try a smaller one."; return; }
+      const img = new Image(), src = URL.createObjectURL(file);
+      img.onload = () => {
+        const k = Math.min(1, 1950 / img.naturalWidth, 900 / img.naturalHeight);
+        const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(src);
+        c.toBlob((blob) => {
+          if (!blob || blob.size > MAX_IMG) { $("err").textContent = "Couldn't use that photo. Try another one."; return; }
+          letterPhoto = new File([blob], "letter.jpg", { type: "image/jpeg" });
+          if (letterPhotoUrl) URL.revokeObjectURL(letterPhotoUrl);
+          letterPhotoUrl = URL.createObjectURL(letterPhoto);
+          $("ldropText").innerHTML = '<img class="thumb" alt="" src="' + letterPhotoUrl + '"><br><b>Change photo</b>';
+          $("lphoto").value = ""; $("err").textContent = ""; render();
+        }, "image/jpeg", 0.9);
+      };
+      img.onerror = () => { URL.revokeObjectURL(src); $("err").textContent = "That photo couldn't be opened. Try a JPG or PNG."; };
+      img.src = src;
+    }
+    $("lphoto").addEventListener("change", (e) => takeLetterPhoto(e.target.files[0]));
+    const ldrop = $("ldrop");
+    ["dragenter", "dragover"].forEach(t => ldrop.addEventListener(t, (e) => { e.preventDefault(); ldrop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach(t => ldrop.addEventListener(t, () => ldrop.classList.remove("over")));
+    ldrop.addEventListener("drop", (e) => { e.preventDefault(); takeLetterPhoto(e.dataTransfer.files[0]); });
+    $("lphotoRemove").addEventListener("click", () => {
+      letterPhoto = null; if (letterPhotoUrl) URL.revokeObjectURL(letterPhotoUrl); letterPhotoUrl = null;
+      $("ldropText").innerHTML = '<b>Add a photo</b> (optional)<br><small>Printed at the top of the letter, in color.</small>'; render();
+    });
+    async function upload(file) {
+      const up = await fetch("/v1/images", { method: "POST", headers: { "Content-Type": file.type }, body: file });
+      const uj = await up.json(); if (!up.ok) throw new Error(uj.error.message);
+      return uj.url;
+    }
+
     $("f").addEventListener("submit", async (e) => {
       e.preventDefault(); $("err").textContent = "";
       if (!$("ok").checked) { $("err").textContent = "Please confirm the content policy (step 04)."; return; }
@@ -340,16 +386,15 @@ export function sendPage(initial: string, offerLeft = 0) {
         let url, body;
         if (product === "letter") {
           url = "/v1/letters"; body = { content: { body: $("body").value, font: val("font") }, certified: val("mailing") };
+          if (letterPhoto) body.content.image_url = await upload(letterPhoto);
         } else {
           url = "/v1/postcards";
           const content = { message: $("message").value, front_theme: val("theme") };
           if (val("front") === "photo") {
             if (!photoFile) throw new Error("Add a photo for the front, or switch to Text.");
-            const up = await fetch("/v1/images", { method: "POST", headers: { "Content-Type": photoFile.type }, body: photoFile });
-            const uj = await up.json(); if (!up.ok) throw new Error(uj.error.message);
-            content.front_image_url = uj.url;
+            content.front_image_url = await upload(photoFile);
           } else if ($("headline").value.trim()) content.front_headline = $("headline").value.trim();
-          body = { size: product === "postcard_6x9" ? "6x9" : "4x6", content };
+          body = { size: SIZE_OF[product] || "4x6", content };
         }
         Object.assign(body, { to: addr("to"), from: addr("from"), customer_email: $("email").value.trim() || undefined });
         const r = await fetch(url, { method: "POST", headers: Object.assign({ "Content-Type": "application/json", "X-Client": "web" }, window.posthog && posthog.get_distinct_id ? { "X-Analytics-Id": String(posthog.get_distinct_id()) } : {}), body: JSON.stringify(body) });
@@ -366,7 +411,7 @@ export function sendPage(initial: string, offerLeft = 0) {
       const pick = (name, value) => { const el = document.querySelector('input[name="' + name + '"][value="' + value + '"]'); if (el) el.checked = true; };
       if (q.get("type") === "letter") pick("product", "letter");
       if (q.get("certified")) { pick("product", "letter"); pick("mailing", q.get("certified")); }
-      else if (q.get("size") === "6x9") pick("product", "postcard_6x9");
+      else if (SIZE_OF_NAME[q.get("size")]) pick("product", SIZE_OF_NAME[q.get("size")]);
       else if (q.get("type") === "postcard" || q.get("size") === "4x6") pick("product", "postcard_4x6");
       if (q.get("headline")) { pick("front", "text"); set("headline", q.get("headline")); }
       if (q.get("theme")) pick("theme", q.get("theme"));

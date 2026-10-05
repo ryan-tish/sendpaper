@@ -27,14 +27,15 @@ const CLIENTS: [string, string][] = [
   ["VS Code", "/agents/other-clients"],
 ];
 
-const SIZE: Record<keyof typeof PRODUCTS, string> = { postcard_4x6: "4×6", postcard_6x9: "6×9", letter: "8.5×11", letter_certified: "USPS Certified", letter_certified_rr: "USPS Certified" };
-const TITLE: Record<keyof typeof PRODUCTS, string> = { postcard_4x6: "Postcard", postcard_6x9: "Postcard", letter: "Letter", letter_certified: "Certified letter", letter_certified_rr: "Certified + return receipt" };
+const SIZE: Record<keyof typeof PRODUCTS, string> = { postcard_4x6: "4×6", postcard_6x9: "6×9", postcard_6x11: "6×11", letter: "8.5×11", letter_certified: "USPS Certified", letter_certified_rr: "USPS Certified" };
+const TITLE: Record<keyof typeof PRODUCTS, string> = { postcard_4x6: "Postcard", postcard_6x9: "Postcard", postcard_6x11: "Postcard", letter: "Letter", letter_certified: "Certified letter", letter_certified_rr: "Certified + return receipt" };
 
 // Same five rows on every card so they compare at a glance (Ryan: "uniform across packages").
 const DETAILS: Record<keyof typeof PRODUCTS, [string, string][]> = {
   postcard_4x6: [["Size", "4 × 6 in"], ["Printing", "Full-color front"], ["Writing", "Up to 600 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
   postcard_6x9: [["Size", "6 × 9 in"], ["Printing", "Full-color front"], ["Writing", "Up to 600 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
-  letter: [["Size", "8.5 × 11 in, #10 envelope"], ["Printing", "Black & white, up to 3 pages"], ["Writing", "Up to about 9,000 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
+  postcard_6x11: [["Size", "6 × 11 in"], ["Printing", "Full-color front"], ["Writing", "Up to 600 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
+  letter: [["Size", "8.5 × 11 in, #10 envelope"], ["Printing", "3 pages + optional photo"], ["Writing", "Up to about 9,000 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
   letter_certified: [["Size", "8.5 × 11 in, #10 envelope"], ["Printing", "Black & white, up to 3 pages"], ["Writing", "Up to about 9,000 characters"], ["Postage", "Certified Mail + tracking"], ["Mailed", "Within 1 business day"]],
   letter_certified_rr: [["Size", "8.5 × 11 in, #10 envelope"], ["Printing", "Black & white, up to 3 pages"], ["Writing", "Up to about 9,000 characters"], ["Postage", "Certified + signed receipt"], ["Mailed", "Within 1 business day"]],
 };
@@ -104,7 +105,7 @@ const CSS = `
 .works a:hover { color: var(--ink); }
 .section-head { display: grid; gap: 12px; max-width: 640px; }
 .section-head .soft { font-size: 1.05rem; }
-.prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+.prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
 .prices .card { padding: 24px; gap: 14px; }
 .prices dl { margin: 0; display: grid; gap: 0; border-top: 1px solid var(--rule); }
 .prices dl div { display: flex; justify-content: space-between; gap: 12px; padding-block: 9px; border-bottom: 1px solid var(--rule); font-size: .9rem; }

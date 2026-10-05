@@ -1,6 +1,6 @@
 // Print layouts. The same HTML is the customer preview and the operator's print sheet,
 // so what the customer approved is exactly what gets printed.
-import { BRAND, isLetter } from "./config.ts";
+import { BRAND, isLetter, postcardSpec } from "./config.ts";
 import type { Address, OrderRow } from "./orders.ts";
 
 export const esc = (s: unknown) =>
@@ -27,7 +27,7 @@ const paragraphs = (text: string) =>
     .join("");
 
 export function postcardFront(o: Pick<OrderRow, "product" | "content">) {
-  const [w, h] = o.product === "postcard_6x9" ? [9, 6] : [6, 4];
+  const { w, h } = postcardSpec(o.product);
   const c = o.content;
   const [bg, fg] = THEMES[c.front_theme ?? "ink"] ?? THEMES.ink;
   const inner = c.front_image_url
@@ -37,7 +37,7 @@ export function postcardFront(o: Pick<OrderRow, "product" | "content">) {
 }
 
 export function postcardBack(o: Pick<OrderRow, "product" | "content" | "to_address" | "from_address">) {
-  const [w, h] = o.product === "postcard_6x9" ? [9, 6] : [6, 4];
+  const { w, h } = postcardSpec(o.product);
   return `<div class="piece back" style="width:${w}in;height:${h}in">
     <div class="msg">${paragraphs(o.content.message ?? "")}</div>
     <div class="addr">
@@ -54,6 +54,7 @@ export function letterPages(o: Pick<OrderRow, "content" | "to_address" | "from_a
   return `<div class="piece letter" style="font-family:${font}">
     <div class="window">${addressBlock(o.from_address)}<br><br>${addressBlock(o.to_address)}</div>
     <div class="date">${esc(date)}</div>
+    ${o.content.image_url ? `<img class="photo" alt="" src="${esc(o.content.image_url)}">` : ""}
     ${paragraphs(o.content.body ?? "")}
   </div>`;
 }
@@ -70,6 +71,7 @@ export const PRINT_CSS = `
   .letter { width:8.5in; min-height:11in; padding:.75in 1in; box-sizing:border-box; font-size:12pt; line-height:1.5; }
   .letter .window { font:10pt/1.35 Helvetica,Arial,sans-serif; margin-bottom:.4in; min-height:1.6in; }
   .letter .date { margin-bottom:.3in; }
+  .letter .photo { display:block; max-width:100%; max-height:3in; margin:0 auto .3in; object-fit:contain; }
   .letter p { margin:0 0 1em; }
   @media print { .piece { box-shadow:none; page-break-after:always; } .noprint { display:none !important; } body { background:#fff !important; } }
 `;
