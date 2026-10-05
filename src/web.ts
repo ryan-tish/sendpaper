@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { BASE_URL, BRAND, FIRST_ORDER_DISCOUNT_PCT, OFFER_ACTIVE, OFFER_LINE, COLOR_LETTER_CENTS, DOCS_URL, EXPRESS_CENTS, LIMITS, PRODUCTS, SUPPORT_EMAIL, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
 import { pool } from "./db.ts";
 import { landing } from "./landing.ts";
-import { sendPage } from "./send.ts";
+import { SEND_KINDS, type SendKind, kindFromQuery, sendChooser, sendPage } from "./send.ts";
 import { useCasesPage } from "./usecases.ts";
 import { GUIDES, guidePage, guidesIndexPage } from "./guides.ts";
 import { QUICK_EXAMPLE, QUICK_PARAMS } from "./quick.ts";
@@ -71,7 +71,19 @@ web.get("/guides", (_req, res) => res.send(guidesIndexPage()));
 for (const g of GUIDES) web.get(`/${g.slug}`, (_req, res) => res.send(guidePage(g.slug)));
 
 web.get("/send", async (req, res) => {
-  res.send(sendPage(String(req.query.product ?? "")));
+  // Links that already name a product go straight to that kind's form, keeping their prefill parameters.
+  const kind = kindFromQuery(req.query as Record<string, unknown>);
+  if (kind) {
+    const qs = req.originalUrl.split("?")[1];
+    return res.redirect(302, `/send/${kind}${qs ? `?${qs}` : ""}`);
+  }
+  res.send(sendChooser());
+});
+
+web.get("/send/:kind", async (req, res, next) => {
+  const kind = req.params.kind as SendKind;
+  if (!SEND_KINDS.includes(kind)) return next();
+  res.send(sendPage(String(req.query.product ?? ""), kind));
 });
 
 web.get("/o/:id", async (req, res) => {

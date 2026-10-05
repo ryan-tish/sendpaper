@@ -161,9 +161,9 @@ export function landing() {
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
       <div class="prices three">
 ${[
-          ["Postcard", PRODUCTS.postcard_4x6.cents, "For photos and quick notes", "4×6, 6×9 or 6×11 card", "Printing and postage", "First-Class or express", "/send?product=postcard_4x6", "Send a postcard"],
-          ["Letter", PRODUCTS.letter.cents, "For documents and correspondence", "Up to 3 pages, 8.5×11", "Printing, envelope, postage", "First-Class or express", "/send?product=letter", "Send a letter"],
-          ["Certified letter", PRODUCTS.letter_certified.cents, "For mail that needs delivery documentation", "Up to 3 pages, 8.5×11", "Printing, envelope, postage", "Tracked, proof of delivery", "/send?product=letter_certified", "Send a certified letter"],
+          ["Postcard", PRODUCTS.postcard_4x6.cents, "For photos and quick notes", "4×6, 6×9 or 6×11 card", "Printing and postage", "First-Class or express", "/send/postcard", "Send a postcard"],
+          ["Letter", PRODUCTS.letter.cents, "For documents and correspondence", "Up to 3 pages, 8.5×11", "Printing, envelope, postage", "First-Class or express", "/send/letter", "Send a letter"],
+          ["Certified letter", PRODUCTS.letter_certified.cents, "For mail that needs delivery documentation", "Up to 3 pages, 8.5×11", "Printing, envelope, postage", "Tracked, proof of delivery", "/send/certified", "Send a certified letter"],
         ].map(([name, cents, purpose, format, incl, delivery, href, cta]) => `<div class="card pcard"><h3>${name}</h3><div class="price"><small>from</small> ${usd(cents as number)}</div>
           <p class="purpose">${purpose}</p>
           <dl><div><dt>Format</dt><dd>${format}</dd></div><div><dt>Included</dt><dd>${incl}</dd></div><div><dt>Delivery</dt><dd>${delivery}</dd></div></dl>

@@ -9,6 +9,8 @@ const CSS = `
 .send h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
 .form { display: grid; gap: 28px; min-width: 0; }
 .step { display: grid; gap: 14px; }
+.back-link { font-size: .9rem; color: var(--green); text-decoration: none; font-weight: 500; justify-self: start; }
+.back-link:hover { color: var(--ink); }
 .step-h { display: flex; align-items: baseline; gap: 10px; }
 .step-h span { font: 500 .74rem var(--f-mono); color: var(--green); }
 .step-h h2 { font-size: 1.1rem; letter-spacing: -0.01em; }
@@ -86,6 +88,7 @@ dialog.cropper::backdrop { background: rgba(10, 16, 14, .55); }
 .summary .total { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--rule); padding-top: 12px; }
 .summary .total b { font: 600 1.5rem var(--f-ui); letter-spacing: -0.02em; }
 .summary .btn { justify-content: center; width: 100%; padding-block: 13px; }
+.field .note { font-size: .84rem; color: var(--faint); line-height: 1.5; }
 .summary .note { font-size: .8rem; color: var(--faint); text-align: center; }
 @media (max-width: 920px) { .send { grid-template-columns: minmax(0, 1fr); gap: 28px; } .aside { position: static; } }
 @media (max-width: 380px) { .choices { grid-template-columns: minmax(0, 1fr); } }
@@ -101,8 +104,56 @@ const addressFields = (p: string, label: string) => `<fieldset class="addr" styl
   <label class="w2"><span class="sr">ZIP</span><input id="${p}_zip" placeholder="ZIP" required maxlength="10" inputmode="numeric"></label>
 </fieldset>`;
 
-export function sendPage(initial: string) {
-  const asked: ProductId = initial in PRODUCTS ? (initial as ProductId) : "postcard_4x6";
+export type SendKind = "postcard" | "letter" | "certified";
+export const SEND_KINDS: SendKind[] = ["postcard", "letter", "certified"];
+
+// /send with nothing chosen yet (Ryan, 2026-10-05): pick what you're sending, then get one page with every field.
+const KIND_INFO: Record<SendKind, { title: string; h1: string; cents: number; purpose: string; detail: string }> = {
+  postcard: { title: "Postcard", h1: "Send a postcard", cents: PRODUCTS.postcard_4x6.cents, purpose: "For photos and quick notes", detail: "4×6, 6×9 or 6×11. A photo or big text on the front, your note on the back." },
+  letter: { title: "Letter", h1: "Send a letter", cents: PRODUCTS.letter.cents, purpose: "For documents and correspondence", detail: "Up to 3 pages you write, or a PDF you upload, in a #10 envelope." },
+  certified: { title: "Certified letter", h1: "Send a certified letter", cents: PRODUCTS.letter_certified.cents, purpose: "For mail that needs delivery documentation", detail: "USPS Certified Mail with tracking and proof of delivery. Return receipt optional." },
+};
+
+// Old /send?… links (order links, guides, use cases) name a product; map them to the page for that kind.
+export function kindFromQuery(q: Record<string, unknown>): SendKind | null {
+  const g = (k: string) => (typeof q[k] === "string" ? (q[k] as string) : "");
+  const product = g("product");
+  if ((g("certified") && g("certified") !== "none") || product.startsWith("letter_certified")) return "certified";
+  if (product === "letter" || g("type") === "letter" || g("source") === "pdf") return "letter";
+  if (product.startsWith("postcard") || g("type") === "postcard" || g("size")) return "postcard";
+  return null;
+}
+
+export function sendChooser() {
+  const tiles = SEND_KINDS.map((k) => {
+    const i = KIND_INFO[k];
+    return `<a class="kind" href="/send/${k}"><span class="kt">${i.title}</span><span class="kp"><small>from</small> ${usd(i.cents)}</span><b>${i.purpose}</b><span class="kd">${i.detail}</span><span class="go">Start →</span></a>`;
+  }).join("");
+  return page(
+    `Send a postcard or letter — ${BRAND}`,
+    `<style>
+    .pick { display: grid; gap: 28px; padding-block: 48px 24px; }
+    .pick-head { display: grid; gap: 10px; max-width: 640px; } .pick h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
+    .kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; }
+    .kind { display: flex; flex-direction: column; gap: 10px; padding: 24px; border: 1px solid var(--rule); border-radius: 14px; background: var(--card); color: var(--ink); text-decoration: none; transition: border-color .15s, box-shadow .15s, transform .15s; }
+    .kind:hover, .kind:focus-visible { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+    .kt { font-weight: 600; font-size: 1.15rem; } .kp { font: 600 1.6rem var(--f-ui); letter-spacing: -0.02em; } .kp small { font: 500 .85rem var(--f-ui); color: var(--faint); margin-right: 4px; }
+    .kind b { font-weight: 500; } .kd { color: var(--soft); font-size: .92rem; } .kind .go { margin-top: auto; padding-top: 8px; color: var(--green); font-weight: 600; }
+    </style>
+    <div class="pick">
+      <div class="pick-head"><span class="eyebrow">Send mail now</span><h1>What are you sending?</h1><p class="soft">We print it and mail it to any US address. You see the exact print before you pay.${OFFER_ACTIVE ? ` <b style="color:var(--green)">${esc(OFFER_LINE)}.</b>` : ""}</p></div>
+      <div class="kinds">${tiles}</div>
+      <p class="soft" style="font-size:.85rem">AI agent? Skip this form. Build an <a href="${esc(docsUrl("/guides/order-links"))}">order link</a> (one URL with every field) or call the <a href="${esc(docsUrl("/api/introduction"))}">API</a>.</p>
+    </div>`,
+  );
+}
+
+export function sendPage(initial: string, fixed: SendKind) {
+  // The page is for one kind; a product from an old link only refines it (a size, or certified + return receipt).
+  let asked: ProductId = initial in PRODUCTS ? (initial as ProductId) : "postcard_4x6";
+  if (fixed === "postcard" && isLetter(asked)) asked = "postcard_4x6";
+  if (fixed === "letter") asked = "letter";
+  if (fixed === "certified" && !EXTRA_SERVICE[asked]) asked = "letter_certified";
   // Certified letters are a mailing option on the Letter tile, not tiles of their own.
   const start: ProductId = isLetter(asked) ? "letter" : asked;
   const startMailing = EXTRA_SERVICE[asked] ?? "none";
@@ -117,15 +168,7 @@ export function sendPage(initial: string) {
       return `<label><input type="radio" name="mailing" value="${m}"${m === startMailing ? " checked" : ""}>${label}</label>`;
     })
     .join("");
-  // Step 1 (2026-10-05, Ryan: "less at once"): three kinds; the postcard size is chosen inside the postcard step.
-  const startKind = EXTRA_SERVICE[asked] ? "certified" : isLetter(asked) ? "letter" : initial in PRODUCTS ? "postcard" : "";
-  const kinds = ([
-    ["postcard", "Postcard", `from ${usd(PRODUCTS.postcard_4x6.cents)}`, "A photo or big text on the front, your note on the back."],
-    ["letter", "Letter", `from ${usd(PRODUCTS.letter.cents)}`, "Up to 3 pages you write, or a PDF you upload."],
-    ["certified", "Certified letter", `from ${usd(PRODUCTS.letter_certified.cents)}`, "Tracking and proof of delivery, for notices that matter."],
-  ] as const)
-    .map(([k, t, price, d]) => `<label class="choice"><input type="radio" name="kind" value="${k}"${k === startKind ? " checked" : ""}><b>${t}</b><span class="p">${price}</span><small>${d}</small></label>`)
-    .join("");
+  const info = KIND_INFO[fixed];
   const sizes = (["postcard_4x6", "postcard_6x9", "postcard_6x11"] as const)
     .map((id) => `<label><input type="radio" name="product" value="${id}"${!isLetter(asked) && id === asked ? " checked" : ""}>${esc(PRODUCTS[id].size.replace(/ in$/, "").replace(/ /g, ""))} · ${usd(PRODUCTS[id].cents)}</label>`)
     .join("");
@@ -134,16 +177,15 @@ export function sendPage(initial: string) {
     .join("");
 
   return page(
-    `Send a postcard or letter — ${BRAND}`,
+    `${info.h1} — ${BRAND}`,
     `<style>${CSS}</style>
-    <div class="send${startKind ? "" : " solo"}" id="sendWrap">
+    <div class="send" id="sendWrap">
       <form id="f" class="form" novalidate>
-        <div style="display:grid;gap:10px"><span class="eyebrow">Send mail now</span><h1>Send a postcard or letter</h1><p class="soft">We print it and mail it to any US address. You see the exact print before you pay.</p></div>
+        <div style="display:grid;gap:10px"><a class="back-link" href="/send">← Send something else</a><h1>${info.h1}</h1><p class="soft">${info.purpose}. We print it and mail it to any US address, and you see the exact print before you pay.</p></div>
+        <input type="radio" name="kind" value="${fixed}" checked hidden>
+        <input type="radio" name="product" value="letter" tabindex="-1" aria-hidden="true" class="sr"${isLetter(asked) ? " checked" : ""}>
 
-        <div class="step" data-step="1"><div class="step-h"><span>01</span><h2>What are you sending?</h2></div><div class="choices" role="radiogroup" aria-label="What are you sending">${kinds}</div>
-          <input type="radio" name="product" value="letter" tabindex="-1" aria-hidden="true" class="sr"${isLetter(asked) ? " checked" : ""}></div>
-
-        <div class="step" id="pc" hidden><div class="step-h"><span>02</span><h2>Design your postcard</h2></div>
+        <div class="step" id="pc"${fixed === "postcard" ? "" : " hidden"}><div class="step-h"><span>01</span><h2>Design your postcard</h2></div>
           <div class="field"><div class="top">Size</div><div class="seg seg-wrap" role="radiogroup" aria-label="Postcard size">${sizes}</div></div>
           <div class="field"><div class="top">Front</div><div class="seg seg-wrap" role="radiogroup" aria-label="Front style"><label><input type="radio" name="front" value="text" checked>Text</label><label><input type="radio" name="front" value="photo">Photo</label><label><input type="radio" name="front" value="caption">Photo + caption</label><label><input type="radio" name="front" value="collage">Collage</label></div></div>
           <label class="drop" id="drop" hidden><input id="photo" type="file" accept="image/jpeg,image/png,image/webp"><span id="dropText"><b>Drop a photo</b> or click to choose<br><small>JPG, PNG or WebP, up to 25 MB. You can crop it next.</small></span></label>
@@ -163,7 +205,7 @@ export function sendPage(initial: string) {
             <p class="note" style="margin:0">Express goes by USPS Priority Mail, usually 2–3 days, with tracking.</p></div>
         </div>
 
-        <div class="step" id="lt" hidden><div class="step-h"><span>02</span><h2 id="ltH">Your letter</h2></div>
+        <div class="step" id="lt"${fixed === "postcard" ? " hidden" : ""}><div class="step-h"><span>01</span><h2 id="ltH">Your letter</h2></div>
           <div class="seg" role="radiogroup" aria-label="Letter source"><label><input type="radio" name="lsrc" value="write" checked>Write it</label><label><input type="radio" name="lsrc" value="pdf">Upload a PDF</label></div>
           <div id="pdfBox" hidden style="display:grid;gap:10px">
             <label class="drop" id="pdrop"><input id="pdfFile" type="file" accept="application/pdf"><span id="pdropText"><b>Drop a PDF</b> or click to choose<br><small>Up to ${LIMITS.pdfPages} pages and ${LIMITS.pdfBytes / 1024 / 1024} MB. Any page size: we fit it to 8.5×11 and add an address page in front.</small></span></label>
@@ -177,20 +219,18 @@ export function sendPage(initial: string) {
           </div>
           <div class="field"><div class="top">Mailing</div>
             <div class="seg seg-wrap" role="radiogroup" aria-label="Mailing">${mailing}</div>
-            <p class="note" style="margin:0">Certified Mail gets a USPS tracking number and proof of delivery; the return receipt adds the recipient's signature, which landlords, courts and agencies often ask for. Express goes by USPS Priority Mail (2–3 days, tracked) and can't be combined with Certified.</p></div>
+            <p class="note" style="margin:0">${fixed === "certified" ? "Certified Mail gets a USPS tracking number and proof of delivery; the return receipt adds the recipient's signature, which landlords, courts and agencies often ask for." : "Express goes by USPS Priority Mail, usually 2–3 days, with tracking. Need proof of delivery? <a href=\"/send/certified\">Send a certified letter</a>."}</p></div>
         </div>
 
-        <div class="next" id="next2" hidden><button type="button" class="btn" data-next="3">Next: who it's going to</button><span class="err" id="err2" role="alert"></span></div>
-        <div class="step" data-step="3" hidden><div class="step-h"><span>03</span><h2>Who's it going to?</h2></div>${addressFields("to", "Recipient address")}
-          <div class="next"><button type="button" class="btn" data-next="4">Next: your return address</button><span class="err" id="err3" role="alert"></span></div></div>
-        <div class="step" data-step="4" hidden><div class="step-h"><span>04</span><h2>Who's it from?</h2></div>${addressFields("from", "Return address")}
+        <div class="step" data-step="3"><div class="step-h"><span>02</span><h2>Who's it going to?</h2></div>${addressFields("to", "Recipient address")}</div>
+        <div class="step" data-step="4"><div class="step-h"><span>03</span><h2>Who's it from?</h2></div>${addressFields("from", "Return address")}
           <label class="field"><span class="sr">Your email</span><input id="email" type="email" required autocomplete="email" placeholder="Your email, for the receipt and updates"></label>
           <label class="consent"><input id="ok" type="checkbox"><span>This mail isn't threatening, harassing, fraudulent or obscene, and a person at ${esc(BRAND)} may review it before printing. <a href="/content-policy" target="_blank">Content policy</a></span></label>
         </div>
         <p class="soft" style="font-size:.85rem">AI agent? Skip this form. Build an <a href="${esc(docsUrl("/guides/order-links"))}">order link</a> (one URL with every field) or call the <a href="${esc(docsUrl("/api/introduction"))}">API</a>.</p>
       </form>
 
-      <aside class="aside" id="aside" aria-label="Preview and payment" hidden>
+      <aside class="aside" id="aside" aria-label="Preview and payment">
         <div class="stage">
           <div class="label"><span id="pvName">Postcard 4×6</span><span>Live preview</span></div>
           <div id="pvCard" class="card-pv"><div class="front" id="pvFront"></div></div>
@@ -232,15 +272,13 @@ export function sendPage(initial: string) {
     let pdfUploaded = null;
     const isPdf = () => val("lsrc") === "pdf";
     const isExpress = () => (val("product") === "letter" ? val("mailing") === "express" : val("pdeliv") === "express");
-    // Steps are revealed one at a time: 1 what, 2 design/write, 3 recipient, 4 sender + pay.
-    let shown = 1;
+    // Every section is visible from the start (2026-10-05, Ryan: the one-step-at-a-time form felt like it hid the fields).
+    let shown = 4;
     const kind = () => { const k = document.querySelector('input[name="kind"]:checked'); return k ? k.value : ""; };
     const motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
     function reveal(n, scroll) {
       const before = shown; shown = Math.max(shown, n);
       document.querySelectorAll("[data-step]").forEach((el) => { el.hidden = Number(el.dataset.step) > shown; });
-      $("next2").hidden = shown !== 2;
-      $("aside").hidden = shown < 2; $("sendWrap").classList.toggle("solo", shown < 2);
       render();
       if (scroll && shown > before) {
         const target = shown === 2 ? (val("product") === "letter" ? $("lt") : $("pc")) : document.querySelector('[data-step="' + shown + '"]');
@@ -285,11 +323,6 @@ export function sendPage(initial: string) {
       }
       return "";
     }
-    document.querySelectorAll("[data-next]").forEach((b) => b.addEventListener("click", () => {
-      const to = Number(b.dataset.next), problem = stepProblem(to - 1);
-      $("err" + (to - 1)).textContent = problem;
-      if (!problem) reveal(to, true);
-    }));
     const effectiveProduct = () => (val("product") === "letter" ? LETTER_PRODUCT[val("mailing")] : val("product"));
     let side = "front", photoUrl = null, photoFile = null, letterPhoto = null, letterPhotoUrl = null;
 
@@ -559,7 +592,8 @@ export function sendPage(initial: string) {
 
     $("f").addEventListener("submit", async (e) => {
       e.preventDefault(); $("err").textContent = "";
-      if (!$("ok").checked) { $("err").textContent = "Please confirm the content policy (step 04)."; return; }
+      const problem = stepProblem(2) || stepProblem(3) || (!$("ok").checked ? "Please confirm the content policy (section 03)." : "");
+      if (problem) { $("err").textContent = problem; if (matchMedia("(max-width: 920px)").matches) $("err").scrollIntoView({ block: "center" }); return; }
       const go = $("go"); go.disabled = true; go.textContent = "Working…";
       try {
         const product = val("product");
@@ -621,13 +655,7 @@ export function sendPage(initial: string) {
       if (q.get("font")) pick("font", q.get("font"));
       set("message", q.get("message")); set("body", q.get("body")); set("email", q.get("email"));
       for (const p of ["to", "from"]) for (const k of ["name", "line1", "line2", "city", "state", "zip"]) set(p + "_" + k, q.get(p + "_" + k));
-      // Coming from a link that already chose something: pick the matching kind and open the steps it filled in.
-      const product = val("product"), m = val("mailing");
-      if (q.get("type") || q.get("size") || q.get("certified") || q.get("source") || q.get("product")) {
-        const k = product !== "letter" ? "postcard" : m === "certified" || m === "certified_return_receipt" ? "certified" : "letter";
-        pick("kind", k);
-      }
-      if (kind()) { applyKind(); reveal(q.get("to_name") ? 4 : 2, false); }
+      applyKind(); reveal(4, false);
     })();
     render();
     </script>`,
