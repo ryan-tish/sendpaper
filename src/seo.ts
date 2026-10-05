@@ -3,9 +3,10 @@
 // instead of waiting for a crawl. The key is public by design: it's served at /<key>.txt to prove we own the host.
 import { Router } from "express";
 import { BASE_URL, DOCS_URL } from "./config.ts";
+import { GUIDE_PATHS } from "./guides.ts";
 
 // Pages we want indexed. Order pages, admin, order links and the API stay out (they're private or per-order).
-export const PUBLIC_PATHS = ["/", "/send", "/use-cases", "/reviews", "/privacy", "/terms", "/content-policy"];
+export const PUBLIC_PATHS = ["/", "/send", "/use-cases", ...GUIDE_PATHS, "/reviews", "/privacy", "/terms", "/content-policy"];
 
 const INDEXNOW_KEY = "5a91dadb8889cecc61126822710dc0b0";
 const isProd = () => BASE_URL.startsWith("https://") && !BASE_URL.includes("localhost");

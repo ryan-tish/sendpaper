@@ -1,4 +1,4 @@
-import { BASE_URL, BRAND, PRODUCTS, EXTRA_SERVICE, SUPPORT_EMAIL } from "./config.ts";
+import { BASE_URL, BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
 
@@ -26,18 +26,6 @@ const CLIENTS: [string, string][] = [
   ["VS Code", "/agents/other-clients"],
 ];
 
-const SIZE: Record<keyof typeof PRODUCTS, string> = { postcard_4x6: "4×6", postcard_6x9: "6×9", postcard_6x11: "6×11", letter: "8.5×11", letter_certified: "USPS Certified", letter_certified_rr: "USPS Certified" };
-const TITLE: Record<keyof typeof PRODUCTS, string> = { postcard_4x6: "Postcard", postcard_6x9: "Postcard", postcard_6x11: "Postcard", letter: "Letter", letter_certified: "Certified letter", letter_certified_rr: "Certified + return receipt" };
-
-// Same five rows on every card so they compare at a glance (Ryan: "uniform across packages").
-const DETAILS: Record<keyof typeof PRODUCTS, [string, string][]> = {
-  postcard_4x6: [["Size", "4 × 6 in"], ["Printing", "Full-color front"], ["Writing", "Up to 600 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
-  postcard_6x9: [["Size", "6 × 9 in"], ["Printing", "Full-color front"], ["Writing", "Up to 600 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
-  postcard_6x11: [["Size", "6 × 11 in"], ["Printing", "Full-color front"], ["Writing", "Up to 600 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
-  letter: [["Size", "8.5 × 11 in, #10 envelope"], ["Printing", "3 pages + optional photo"], ["Writing", "Up to about 9,000 characters"], ["Postage", "First-Class, included"], ["Mailed", "Within 1 business day"]],
-  letter_certified: [["Size", "8.5 × 11 in, #10 envelope"], ["Printing", "Black & white, up to 3 pages"], ["Writing", "Up to about 9,000 characters"], ["Postage", "Certified Mail + tracking"], ["Mailed", "Within 1 business day"]],
-  letter_certified_rr: [["Size", "8.5 × 11 in, #10 envelope"], ["Printing", "Black & white, up to 3 pages"], ["Writing", "Up to about 9,000 characters"], ["Postage", "Certified + signed receipt"], ["Mailed", "Within 1 business day"]],
-};
 
 const CSS = `
 .hero-wrap { position: relative; margin-inline: -24px; padding-inline: 24px; }
@@ -105,18 +93,14 @@ const CSS = `
 .section-head { display: grid; gap: 12px; max-width: 640px; }
 .section-head .soft { font-size: 1.05rem; }
 .prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.prices.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.prices .price small { font: 500 .85rem var(--f-ui); color: var(--faint); margin-right: 4px; }
 .prices .card { padding: 24px; gap: 14px; }
 .prices dl { margin: 0; display: grid; gap: 0; border-top: 1px solid var(--rule); }
 .prices dl div { display: flex; justify-content: space-between; gap: 12px; padding-block: 9px; border-bottom: 1px solid var(--rule); font-size: .9rem; }
 .prices dt { color: var(--faint); }
 .prices dd { margin: 0; text-align: right; color: var(--ink); }
 .prices .btn { justify-content: center; }
-.cert-card { grid-template-columns: minmax(0, 1.6fr) auto auto; align-items: center; gap: 20px 36px; padding: 24px; }
-.cert-copy { display: grid; gap: 6px; }
-.cert-opts { display: flex; gap: 28px; }
-.cert-opts > div { display: grid; gap: 2px; }
-.cert-opts .price { font-size: 1.6rem; }
-@media (max-width: 860px) { .cert-card { grid-template-columns: minmax(0, 1fr); } }
 .prices .size { font: 600 .8rem var(--f-mono); color: var(--green); letter-spacing: .02em; margin-bottom: -10px; }
 .faq { max-width: 760px; gap: 20px; }
 details.q { border-bottom: 1px solid var(--rule); padding-block: 16px; }
@@ -199,21 +183,29 @@ export function landing() {
     <section id="pricing">
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
       <div class="offer-banner"><span><b>$1 off your first order.</b> Any postcard or letter. Taken off automatically, one per return address.</span><a href="/send" class="more">Send one →</a></div>
-      <div class="prices">${(Object.keys(PRODUCTS) as (keyof typeof PRODUCTS)[])
-        .filter((id) => !EXTRA_SERVICE[id])
-        .map((id) => `<div class="card"><span class="size">${esc(SIZE[id])}</span><h3>${TITLE[id]}</h3><div class="price">${usd(PRODUCTS[id].cents)}</div>
-          <dl>${DETAILS[id].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
-          <a class="btn green" href="/send?product=${id}">Send ${id.startsWith("postcard") ? "a postcard" : "a letter"}</a></div>`)
-        .join("")}</div>
-      <div class="card cert-card">
-        <div class="cert-copy"><span class="eyebrow">USPS Certified Mail</span><h3>Need proof it arrived?</h3>
-          <p class="soft">Send any letter by Certified Mail for a USPS tracking number and proof of delivery. Add a return receipt for the recipient's signature, which leases, courts and agencies often require.</p></div>
-        <div class="cert-opts">
-          <div><span class="price">${usd(PRODUCTS.letter_certified.cents)}</span><span class="soft">Certified</span></div>
-          <div><span class="price">${usd(PRODUCTS.letter_certified_rr.cents)}</span><span class="soft">+ return receipt</span></div>
-        </div>
-        <a class="btn green" href="/send?product=letter_certified">Send certified</a>
+      <div class="prices two">
+        <div class="card"><span class="size">4×6 · 6×9 · 6×11</span><h3>Postcard</h3><div class="price"><small>from</small> ${usd(PRODUCTS.postcard_4x6.cents)}</div>
+          <dl>
+            <div><dt>4×6</dt><dd>${usd(PRODUCTS.postcard_4x6.cents)}</dd></div>
+            <div><dt>6×9</dt><dd>${usd(PRODUCTS.postcard_6x9.cents)}</dd></div>
+            <div><dt>6×11</dt><dd>${usd(PRODUCTS.postcard_6x11.cents)}</dd></div>
+            <div><dt>Front</dt><dd>Text, photo, photo + caption, or collage</dd></div>
+            <div><dt>Express delivery</dt><dd>+${usd(EXPRESS_CENTS)}</dd></div>
+            <div><dt>Postage</dt><dd>First-Class, included</dd></div>
+          </dl>
+          <a class="btn green" href="/send?product=postcard_4x6">Send a postcard</a></div>
+        <div class="card"><span class="size">8.5×11 · #10 envelope</span><h3>Letter</h3><div class="price"><small>from</small> ${usd(PRODUCTS.letter.cents)}</div>
+          <dl>
+            <div><dt>First-Class</dt><dd>${usd(PRODUCTS.letter.cents)}</dd></div>
+            <div><dt>Certified Mail</dt><dd>${usd(PRODUCTS.letter_certified.cents)}</dd></div>
+            <div><dt>Certified + return receipt</dt><dd>${usd(PRODUCTS.letter_certified_rr.cents)}</dd></div>
+            <div><dt>Write it or upload a PDF</dt><dd>Up to ${LIMITS.pdfPages} pages</dd></div>
+            <div><dt>Color (photo or PDF)</dt><dd>+${usd(COLOR_LETTER_CENTS)}</dd></div>
+            <div><dt>Express delivery</dt><dd>+${usd(EXPRESS_CENTS)}</dd></div>
+          </dl>
+          <a class="btn green" href="/send?product=letter">Send a letter</a></div>
       </div>
+      <p class="soft" style="margin:0;font-size:.9rem">Certified Mail gives you a USPS tracking number and proof of delivery; the return receipt adds the recipient's signature. Express goes by USPS Priority Mail (usually 2–3 days, tracked). You choose options when you order. <a href="/certified-mail-online">How certified mail works →</a></p>
     </section>
 
     <section class="pay-line">
@@ -226,6 +218,9 @@ export function landing() {
       <div>
         <details class="q"><summary>Is there a first-order discount?</summary><p>Yes: $1 off your first order, any postcard or letter, one per return address. It's taken off the price automatically when the order is created, so the checkout total already includes it. <a href="/reviews">See what senders say</a>.</p></details>
         <details class="q"><summary>Can you send certified mail?</summary><p>Yes. Letters can go by USPS Certified Mail ($14.99) with a tracking number and proof of delivery, or with a return receipt ($19.99) that adds the recipient's signature. Ask your agent to "send it certified", or choose it under Mailing on the <a href="/send?product=letter_certified">web form</a>.</p></details>
+        <details class="q"><summary>Can I mail my own PDF?</summary><p>Yes. Upload a PDF of up to ${LIMITS.pdfPages} pages (any page size is fitted to 8.5×11) and we print and mail it as a letter, by First-Class, Certified Mail or express. We add an address page in front, so your document needs no room for addresses. <a href="/mail-a-pdf">How it works</a>.</p></details>
+        <details class="q"><summary>Can it get there faster?</summary><p>Yes. Express sends postcards and letters by USPS Priority Mail, usually 2 to 3 days with tracking, for ${usd(EXPRESS_CENTS)} more. It can't be combined with Certified Mail, which already includes tracking.</p></details>
+        <details class="q"><summary>Do you give legal or tax advice?</summary><p>No. We print and mail what you or your agent writes. For deadlines and the right address, check the notice itself, the agency, or a professional.</p></details>
         <details class="q"><summary>Can my agent pay for me?</summary><p>Yes, if you let it. Agents pay with a one-time Stripe token capped at the order's exact price, which you approve in your agent (for example through Stripe Link). Your card details are never shared. Or pay the checkout link yourself. Either way, nothing is mailed until it's paid.</p></details>
         <details class="q"><summary>Which agents work?</summary><p>Anything that supports remote MCP servers over Streamable HTTP: Codex, Muse Code, Claude Code, Claude Desktop, claude.ai, ChatGPT developer mode, Cursor and VS Code. Everything else can use the <a href="${esc(docsUrl("/api/introduction"))}">REST API</a>.</p></details>
         <details class="q"><summary>Where can you mail to?</summary><p>US addresses, including Puerto Rico, US territories and APO/FPO/DPO military addresses.</p></details>

@@ -126,7 +126,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 </nav></div></header>
 <div class="wrap">
 ${body}
-<footer class="site"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="/use-cases">Use cases</a><a href="${docsUrl()}">Docs</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a><span>Support: ${esc(SUPPORT_EMAIL)}</span></footer>
+<footer class="site"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="/use-cases">Use cases</a><a href="/certified-mail-online">Certified mail</a><a href="/mail-a-pdf">Mail a PDF</a><a href="${docsUrl()}">Docs</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a><span>Support: ${esc(SUPPORT_EMAIL)}</span></footer>
 </div>
 <script>
 document.getElementById("theme").addEventListener("click", () => {

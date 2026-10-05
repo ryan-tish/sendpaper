@@ -540,6 +540,8 @@ export function sendPage(initial: string) {
       const set = (id, v) => { if (v && $(id)) $(id).value = v.split(String.fromCharCode(92) + "n").join(String.fromCharCode(10)); };
       const pick = (name, value) => { const el = document.querySelector('input[name="' + name + '"][value="' + value + '"]'); if (el) el.checked = true; };
       if (q.get("type") === "letter") pick("product", "letter");
+      if (q.get("source") === "pdf") { pick("product", "letter"); pick("lsrc", "pdf"); }
+      if (q.get("express") === "1") { pick("pdeliv", "express"); pick("mailing", "express"); }
       if (q.get("certified")) { pick("product", "letter"); pick("mailing", q.get("certified")); }
       else if (SIZE_OF_NAME[q.get("size")]) pick("product", SIZE_OF_NAME[q.get("size")]);
       else if (q.get("type") === "postcard" || q.get("size") === "4x6") pick("product", "postcard_4x6");
