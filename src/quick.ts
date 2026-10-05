@@ -25,6 +25,7 @@ export const QUICK_PARAMS = {
   certified: "letters: certified ($14.99, USPS tracking and proof of delivery) or certified_return_receipt ($19.99, adds the recipient's signature)",
   "to_name, to_line1, to_line2, to_city, to_state, to_zip": "recipient (US)",
   "from_name, from_line1, from_line2, from_city, from_state, from_zip": "return address (required)",
+  express: "1 for express delivery (USPS Priority Mail, 2–3 days, tracked; not with certified)",
   email: "optional, for the receipt",
 };
 
@@ -60,7 +61,7 @@ const paramName = (path: string) => PARAM_FOR[path] ?? path.replace(/^(to|from)\
 
 export function parseQuick(q: Q) {
   const letter = q.type === "letter";
-  const base = { to: addr(q, "to"), from: addr(q, "from"), ...(q.email ? { customer_email: q.email } : {}) };
+  const base = { to: addr(q, "to"), from: addr(q, "from"), ...(q.email ? { customer_email: q.email } : {}), ...(/^(1|true|yes)$/i.test(q.express ?? "") ? { express: true } : {}) };
   const parsed = letter
     ? CreateLetterSchema.safeParse({ ...base, ...(q.certified ? { certified: q.certified } : {}), content: { body: (q.body ?? "").replace(/\\n/g, "\n"), ...(q.font ? { font: q.font } : {}), ...(q.image ? { image_url: q.image } : {}) } })
     : CreatePostcardSchema.safeParse({
@@ -121,7 +122,7 @@ quick.get("/quick", (req, res) => {
       ? letterPages(preview)
       : `${postcardFront(preview)}${postcardBack(preview)}`;
   const p = PRODUCTS[r.product];
-  const total = `$${(orderPrice(r.product, r.data.content) / 100).toFixed(2)}`;
+  const total = `$${(orderPrice(r.product, r.data.content, (r.data as { express?: boolean }).express) / 100).toFixed(2)}`;
   const nonce = randomBytes(9).toString("base64url");
   res.send(
     page(

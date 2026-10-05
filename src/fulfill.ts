@@ -10,7 +10,7 @@
 //   cancellation.reason = "invalid_content".
 import { BASE_URL, BRAND, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
 import { pool } from "./db.ts";
-import { getOrder, setStatus, type Address, type OrderRow } from "./orders.ts";
+import { getOrder, printsInColor, setStatus, type Address, type OrderRow } from "./orders.ts";
 import { esc, THEMES } from "./render.ts";
 
 const API = "https://api.postgrid.com/print-mail/v1";
@@ -99,16 +99,19 @@ export async function sendToPrint(o: OrderRow) {
     from: contact(o.from_address),
     description: `${BRAND} ${o.id}`,
     metadata: { order_id: o.id },
-    mailingClass: "first_class",
+    // Express = USPS Priority Mail through PostGrid; certified letters always go First-Class (validated at order time).
+    mailingClass: o.express && !EXTRA_SERVICE[o.product] ? "express" : "first_class",
   };
   const body =
     isLetter(o.product)
       ? {
           ...base,
-          html: letterHtml(o),
-          addressPlacement: "top_first_page",
+          // A PDF letter prints the customer's own (normalized 8.5×11) document after a blank address page.
+          ...(o.content.pdf_url
+            ? { pdf: absolute(o.content.pdf_url), addressPlacement: "insert_blank_page" }
+            : { html: letterHtml(o), addressPlacement: "top_first_page" }),
           // Only letters with a photo print in color (and carry the color surcharge).
-          color: Boolean(o.content.image_url),
+          color: printsInColor(o.product, o.content),
           doubleSided: false,
           // USPS Certified Mail (with or without return receipt) for the certified letter products.
           ...(EXTRA_SERVICE[o.product] ? { extraService: EXTRA_SERVICE[o.product] } : {}),

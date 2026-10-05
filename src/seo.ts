@@ -23,6 +23,7 @@ seo.get("/robots.txt", (_req, res) => {
       "Disallow: /quick",
       "Disallow: /v1/",
       "Disallow: /webhooks/",
+      "Disallow: /files/",
       "",
       `Sitemap: ${BASE_URL}/sitemap.xml`,
       ...(DOCS_URL ? [`Sitemap: ${DOCS_URL}/sitemap.xml`] : []),

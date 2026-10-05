@@ -2,10 +2,11 @@ import type { Request, Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { BASE_URL, BRAND, COLOR_LETTER_CENTS, FIRST_ORDER_DISCOUNT_CENTS, OFFER_LINE, PRODUCTS, env, letterProduct, postcardProduct } from "./config.ts";
+import { BASE_URL, BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, FIRST_ORDER_DISCOUNT_CENTS, OFFER_LINE, PRODUCTS, env, letterProduct, postcardProduct } from "./config.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import { track } from "./analytics.ts";
 import { recordToolCall } from "./stats.ts";
+import { PdfError, prepareLetterContent } from "./pdf.ts";
 import {
   CreateLetterSchema,
   CreatePostcardSchema,
@@ -64,7 +65,9 @@ const PricingOutput = z.object({
     })
     .loose(),
   first_order_discount: z.object({ amount_cents: z.number(), description: z.string() }),
-  letter_photo: z.object({ amount_cents: z.number(), description: z.string() }).describe("Surcharge for a letter with a photo (prints in color)"),
+  letter_photo: z.object({ amount_cents: z.number(), description: z.string() }).describe("Surcharge for a letter printed in color (a photo, or a PDF with color on)"),
+  express: z.object({ amount_cents: z.number(), description: z.string() }).describe("Surcharge for express delivery"),
+  pdf_letters: z.object({ max_pages: z.number(), description: z.string() }).describe("Mailing your own PDF as a letter"),
 });
 
 function nextStep(o: ReturnType<typeof publicOrder>) {
@@ -121,7 +124,15 @@ function build(client: string | undefined) {
         },
         letter_photo: {
           amount_cents: COLOR_LETTER_CENTS,
-          description: "Added to a letter that includes content.image_url; the letter then prints in color.",
+          description: "Added to a letter printed in color: one with content.image_url, or a PDF letter with content.color true.",
+        },
+        express: {
+          amount_cents: EXPRESS_CENTS,
+          description: "Added when express is true: USPS Priority Mail, usually 2–3 days, with tracking. Postcards and letters; not with certified.",
+        },
+        pdf_letters: {
+          max_pages: LIMITS.pdfPages,
+          description: "create_letter with content.pdf_url (a public https link to a PDF) mails that document instead of body text, at the letter price (or certified). Pages are fitted to 8.5×11; a blank address page is added in front.",
         },
       }),
   );
@@ -156,7 +167,14 @@ function build(client: string | undefined) {
     },
     async (args) => {
       const { certified, ...input } = CreateLetterSchema.parse(args);
-      const { order } = await createOrder({ ...input, product: letterProduct(certified), source: "mcp", client });
+      let content;
+      try {
+        content = await prepareLetterContent(input.content);
+      } catch (e) {
+        if (e instanceof PdfError) return { isError: true, content: [{ type: "text", text: `${e.message} (content.pdf_url)` }] };
+        throw e;
+      }
+      const { order } = await createOrder({ ...input, content, product: letterProduct(certified), source: "mcp", client });
       const o = publicOrder(order);
       return result(o, nextStep(o));
     },

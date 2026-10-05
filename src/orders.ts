@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
-import { BASE_URL, COLOR_LETTER_CENTS, EXTRA_SERVICE, FIRST_ORDER_DISCOUNT_CENTS, LIMITS, POSTCARD_SIZE_NAMES, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
+import { BASE_URL, COLOR_LETTER_CENTS, EXPRESS_CENTS, EXTRA_SERVICE, FIRST_ORDER_DISCOUNT_CENTS, LIMITS, POSTCARD_SIZE_NAMES, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
 import { pool } from "./db.ts";
 import { track } from "./analytics.ts";
 
@@ -62,18 +62,36 @@ export const PostcardContentSchema = z
   })
   .refine((c) => c.front_image_url || c.front_headline, "Give the front either an image URL or a headline");
 
-export const LetterContentSchema = z.object({
-  body: z
-    .string()
-    .trim()
-    .min(1)
-    .max(LIMITS.letterBody)
-    .describe("Full letter text. Plain text; blank lines separate paragraphs."),
-  font: z.enum(["serif", "sans"]).default("serif").describe("Typeface for the letter body"),
-  image_url: imageUrl
-    .optional()
-    .describe("Optional photo printed at the top of the letter (https JPG or PNG). A letter with a photo prints in color, for a small surcharge (see get_pricing)."),
-});
+// A letter is either text we lay out (body, optional photo) or the customer's own PDF (pdf_url).
+const pdfUrl = z
+  .string()
+  .trim()
+  .max(2000)
+  .refine((u) => /^https:\/\//.test(u) || /^\/files\/file_[a-z0-9]+$/.test(u), "PDF must be an https:// URL");
+
+export const LetterContentSchema = z
+  .object({
+    body: z
+      .string()
+      .trim()
+      .min(1)
+      .max(LIMITS.letterBody)
+      .optional()
+      .describe("Full letter text. Plain text; blank lines separate paragraphs. Use this OR pdf_url."),
+    pdf_url: pdfUrl
+      .optional()
+      .describe(`Mail your own document instead of body text: a public https link to a PDF (up to ${LIMITS.pdfPages} pages). Pages are fitted to 8.5×11 and a blank address page is added in front.`),
+    color: z.boolean().optional().describe("PDF letters only: print in color (costs a little more; see get_pricing). Text letters print in color automatically when they include image_url."),
+    font: z.enum(["serif", "sans"]).default("serif").describe("Typeface for the letter body (text letters)"),
+    image_url: imageUrl
+      .optional()
+      .describe("Text letters only: optional photo printed at the top (https JPG or PNG). A letter with a photo prints in color, for a small surcharge (see get_pricing)."),
+    // Set by the server after it fetches and normalizes the PDF; agents don't send it.
+    pdf_pages: z.number().int().optional().describe("Set by Sendpaper: page count of the PDF"),
+  })
+  .refine((c) => Boolean(c.body) !== Boolean(c.pdf_url), "Give the letter either body text or a pdf_url, not both")
+  .refine((c) => !(c.pdf_url && c.image_url), "A PDF letter can't also have image_url; put the image inside the PDF");
+
 
 const common = {
   to: AddressSchema.describe("Recipient's US mailing address"),
@@ -87,21 +105,26 @@ const common = {
     .describe("Any unique string; retrying with the same key returns the original order instead of creating a duplicate"),
 };
 
+// Express: USPS Priority Mail (2–3 days, tracked) instead of First-Class. Not combinable with Certified Mail.
+const express = z.boolean().default(false).describe("Send by express (USPS Priority Mail, usually 2–3 days, with tracking) for an extra charge; see get_pricing. Not available with certified.");
+
 export const CreatePostcardSchema = z.object({
   size: z.enum(POSTCARD_SIZE_NAMES).default("4x6").describe("Postcard size: 4x6, 6x9 or 6x11 (see get_pricing for prices)"),
   ...common,
+  express,
   content: PostcardContentSchema.describe("Front (an image URL or a headline) and the message on the back"),
 });
 export const CreateLetterSchema = z.object({
   ...common,
-  content: LetterContentSchema.describe("The letter text and font"),
+  content: LetterContentSchema.describe("The letter: body text (optionally with a photo) or your own PDF"),
   certified: z
     .enum(["none", "certified", "certified_return_receipt"])
     .default("none")
     .describe(
-      "USPS Certified Mail. \"certified\" ($14.99): tracking number and proof of mailing and delivery. \"certified_return_receipt\" ($19.99): adds the recipient's signature as proof of delivery, which landlords, courts and agencies often require. \"none\" ($4.99): regular First-Class.",
+      "USPS Certified Mail. \"certified\": tracking number and proof of mailing and delivery. \"certified_return_receipt\": adds the recipient's signature as proof of delivery, which landlords, courts and agencies often require. \"none\": regular First-Class. Prices: get_pricing.",
     ),
-});
+  express,
+}).refine((l) => !(l.express && l.certified !== "none"), "Choose either certified or express, not both (certified letters already include tracking)");
 
 export type OrderRow = {
   id: string;
@@ -128,6 +151,7 @@ export type OrderRow = {
   print_error: string | null;
   free_offer: boolean;
   discount_cents: number;
+  express: boolean;
   analytics_id: string | null;
   is_test: boolean;
   tracking_number: string | null;
@@ -144,11 +168,14 @@ type CreateInput = {
   client?: string;
   // The website visitor's PostHog id, so the order's events join their browsing funnel.
   analytics_id?: string;
+  express?: boolean;
 };
 
-// A letter with a photo prints in color, which costs a little more; everything else is the product's list price.
-export const orderPrice = (product: ProductId, content: Record<string, any>) =>
-  PRODUCTS[product].cents + (isLetter(product) && content?.image_url ? COLOR_LETTER_CENTS : 0);
+// A letter printed in color (a photo, or a PDF with color on) and express delivery cost extra; everything else is
+// the product's list price.
+export const printsInColor = (product: ProductId, content: Record<string, any>) => isLetter(product) && Boolean(content?.image_url || (content?.pdf_url && content?.color));
+export const orderPrice = (product: ProductId, content: Record<string, any>, express = false) =>
+  PRODUCTS[product].cents + (printsInColor(product, content) ? COLOR_LETTER_CENTS : 0) + (express ? EXPRESS_CENTS : 0);
 
 // One first-order discount per return address (normalized street + unit + ZIP5), so a new name on the same
 // address doesn't qualify again.
@@ -184,13 +211,13 @@ export async function createOrder(input: CreateInput): Promise<{ order: OrderRow
     if (prior.rows[0]) return { order: prior.rows[0], existing: true };
   }
   const id = newId("ord");
-  const list = orderPrice(input.product, input.content);
+  const list = orderPrice(input.product, input.content as Record<string, any>, input.express);
   const discount = (await senderHasPaid(input.from)) ? 0 : Math.min(FIRST_ORDER_DISCOUNT_CENTS, list);
   const events = [{ at: new Date().toISOString(), status: "awaiting_payment" }];
   const { rows } = await pool.query<OrderRow>(
     `INSERT INTO orders (id, product, to_address, from_address, content, price_cents, customer_email,
-                         source, client, idempotency_key, events, analytics_id, discount_cents)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+                         source, client, idempotency_key, events, analytics_id, discount_cents, express)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
     [
       id,
       input.product,
@@ -205,6 +232,7 @@ export async function createOrder(input: CreateInput): Promise<{ order: OrderRow
       JSON.stringify(events),
       input.analytics_id?.slice(0, 120) ?? null,
       discount,
+      Boolean(input.express),
     ],
   );
   const o = rows[0];
@@ -266,6 +294,7 @@ export function publicOrder(o: OrderRow, checkoutUrl?: string | null) {
     id: o.id,
     object: isLetter(o.product) ? "letter" : "postcard",
     certified: EXTRA_SERVICE[o.product] ?? "none",
+    express: Boolean(o.express),
     product: o.product,
     product_name: PRODUCTS[o.product].name,
     status: o.status,

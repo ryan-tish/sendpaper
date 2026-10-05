@@ -21,7 +21,7 @@ app.disable("x-powered-by");
 // keep answering on the old onrender.com host so agents configured before the domain switch keep working.
 const canonical = new URL(BASE_URL).host;
 app.use((req, res, next) => {
-  const keep = /^\/(v1|mcp|webhooks|o|images|healthz)(\/|$)/.test(req.path);
+  const keep = /^\/(v1|mcp|webhooks|o|images|files|healthz)(\/|$)/.test(req.path);
   if (req.hostname !== canonical && req.hostname.endsWith(".onrender.com") && !keep && req.method === "GET")
     return res.redirect(301, BASE_URL + req.originalUrl);
   next();

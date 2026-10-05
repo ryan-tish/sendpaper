@@ -1,5 +1,6 @@
 import express, { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
+import { PdfError, normalizePdf, prepareLetterContent, storePdf } from "./pdf.ts";
 import { BASE_URL, LIMITS, PRODUCTS, letterProduct, postcardProduct } from "./config.ts";
 import { pool } from "./db.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
@@ -27,6 +28,8 @@ const handle = (fn: (req: Request, res: Response) => Promise<unknown>) => async 
     await fn(req, res);
   } catch (e) {
     if (e instanceof ZodError) return apiError(res, 422, "invalid_request", "Some fields are invalid.", zodFields(e));
+    if (e instanceof PdfError) return apiError(res, 422, "invalid_request", e.message, [{ field: "content.pdf_url", message: e.message }]);
+    if ((e as { type?: string })?.type === "entity.too.large") return apiError(res, 413, "too_large", "That file is too large.");
     console.error(e);
     apiError(res, 500, "server_error", "Something went wrong on our side. Retry with the same Idempotency-Key.");
   }
@@ -67,6 +70,7 @@ api.post(
     const { certified, ...input } = CreateLetterSchema.parse(req.body);
     const { order, existing } = await createOrder({
       ...input,
+      content: await prepareLetterContent(input.content),
       idempotency_key: idem(req, input),
       product: letterProduct(certified),
       source: "api",
@@ -110,6 +114,20 @@ api.post(
       if (e instanceof PaymentError) return apiError(res, e.code === "not_payable" ? 409 : 402, e.code, e.message);
       throw e;
     }
+  }),
+);
+
+// PDF upload for letters from the customer's own document. Normalized to 8.5×11 right away, so the response can
+// report the page count (and any problem) before the order is created. Returns a URL usable as content.pdf_url.
+api.post(
+  "/files",
+  express.raw({ type: ["application/pdf"], limit: LIMITS.pdfBytes }),
+  handle(async (req, res) => {
+    if (!Buffer.isBuffer(req.body) || req.get("content-type") !== "application/pdf")
+      return apiError(res, 415, "unsupported_media", `Upload a PDF (max ${LIMITS.pdfBytes / 1024 / 1024} MB, ${LIMITS.pdfPages} pages).`);
+    const { bytes, pages } = await normalizePdf(req.body);
+    const url = await storePdf(bytes);
+    res.status(201).json({ id: url.split("/").pop(), url, pages });
   }),
 );
 

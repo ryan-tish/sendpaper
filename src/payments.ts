@@ -32,7 +32,9 @@ export async function checkoutUrlFor(o: OrderRow): Promise<string> {
   };
   const note = certified
     ? `A person reviews every piece before it's printed. It goes out by USPS Certified Mail${certified === "certified_return_receipt" ? " with a return receipt" : ""}, and the tracking number appears on your order page.`
-    : "A person reviews every piece before it's printed. It's usually mailed within one business day via USPS First-Class.";
+    : o.express
+      ? "A person reviews every piece before it's printed. It goes out by express (USPS Priority Mail, usually 2–3 days) with tracking."
+      : "A person reviews every piece before it's printed. It's usually mailed within one business day via USPS First-Class.";
   const offNote = o.discount_cents ? ` Includes $${(o.discount_cents / 100).toFixed(2)} off your first order.` : "";
   const create = (useCatalog: boolean) =>
     stripe!.checkout.sessions.create({

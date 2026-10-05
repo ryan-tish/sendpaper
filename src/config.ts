@@ -58,6 +58,11 @@ export const postcardSpec = (p: ProductId) => Object.values(POSTCARD_SIZES).find
 export const FIRST_ORDER_DISCOUNT_CENTS = 100;
 export const OFFER_LINE = "$1 off your first order";
 
+// Express delivery (Ryan, 2026-10-05): PostGrid mailingClass "express" = USPS Priority Mail, 2–3 days, tracked.
+// Postcards and letters; NOT with Certified Mail (PostGrid rejects express + extraService). PLACEHOLDER PRICE:
+// confirm PostGrid's express cost before relying on the margin.
+export const EXPRESS_CENTS = 1000;
+
 // Letters can carry one photo (Ryan, 2026-10-04); a letter with a photo prints in color for this surcharge.
 export const COLOR_LETTER_CENTS = 100;
 
@@ -76,6 +81,9 @@ export const LIMITS = {
   postcardHeadline: 60,
   letterBody: 9000, // roughly 3 single-spaced pages
   imageBytes: 6 * 1024 * 1024,
+  // Letters from a customer's own PDF: normalized to 8.5×11, plus the blank address page PostGrid adds.
+  pdfPages: 6,
+  pdfBytes: 15 * 1024 * 1024,
 };
 
 export const US_STATES = [

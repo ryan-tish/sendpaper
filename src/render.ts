@@ -51,6 +51,16 @@ export function postcardBack(o: Pick<OrderRow, "product" | "content" | "to_addre
 export function letterPages(o: Pick<OrderRow, "content" | "to_address" | "from_address" | "created_at">) {
   const date = new Date(o.created_at ?? Date.now()).toLocaleDateString("en-US", { dateStyle: "long" });
   const font = o.content.font === "sans" ? "Helvetica,Arial,sans-serif" : "Georgia,'Times New Roman',serif";
+  // A PDF letter: PostGrid's blank address page first, then the customer's own document (already 8.5×11).
+  if (o.content.pdf_url) {
+    const pages = Number(o.content.pdf_pages ?? 1);
+    return `<div class="piece letter" style="font-family:Helvetica,Arial,sans-serif">
+      <div class="window">${addressBlock(o.from_address)}<br><br>${addressBlock(o.to_address)}</div>
+      <p class="pdfnote">Address page, added automatically. Your document follows (${pages} page${pages === 1 ? "" : "s"}${o.content.color ? ", in color" : ", black and white"}).</p>
+    </div>
+    <div class="piece pdfdoc"><object data="${esc(o.content.pdf_url)}#view=FitH" type="application/pdf" style="width:8.5in;height:${Math.min(pages, 3) * 11}in;display:block">
+      <p style="padding:1in;font:14px Helvetica,Arial,sans-serif">Your browser can't show the PDF here. <a href="${esc(o.content.pdf_url)}" target="_blank" rel="noopener">Open the document</a> to check it.</p></object></div>`;
+  }
   return `<div class="piece letter" style="font-family:${font}">
     <div class="window">${addressBlock(o.from_address)}<br><br>${addressBlock(o.to_address)}</div>
     <div class="date">${esc(date)}</div>
@@ -71,6 +81,8 @@ export const PRINT_CSS = `
   .letter { width:8.5in; min-height:11in; padding:.75in 1in; box-sizing:border-box; font-size:12pt; line-height:1.5; }
   .letter .window { font:10pt/1.35 Helvetica,Arial,sans-serif; margin-bottom:.4in; min-height:1.6in; }
   .letter .date { margin-bottom:.3in; }
+  .letter .pdfnote { color:#666; font-size:10pt; }
+  .pdfdoc { width:8.5in; }
   .letter .photo { display:block; max-width:100%; max-height:3in; margin:0 auto .3in; object-fit:contain; }
   .letter p { margin:0 0 1em; }
   @media print { .piece { box-shadow:none; page-break-after:always; } .noprint { display:none !important; } body { background:#fff !important; } }

@@ -86,6 +86,7 @@ web.get("/o/:id", async (req, res) => {
         <div><span class="pill${paid ? " ok" : ""}">${esc(o.status.replace("_", " "))}</span></div>
         <p>${esc(p.status_detail)}</p>
         ${o.free_offer ? `<p><span class="pill ok">Free</span> Your first postcard is on us.</p>` : ""}
+        ${o.express ? `<p><span class="pill ok">Express · USPS Priority Mail</span> Usually delivered 2–3 days after mailing, with tracking.</p>` : ""}
         ${EXTRA_SERVICE[o.product] ? `<p><span class="pill ok">USPS Certified Mail${EXTRA_SERVICE[o.product] === "certified_return_receipt" ? " · return receipt" : ""}</span> ${o.tracking_number ? `Tracking: <a href="https://tools.usps.com/go/TrackConfirmAction?tLabels=${esc(o.tracking_number)}" target="_blank" rel="noopener">${esc(o.tracking_number)}</a>` : "You'll get a USPS tracking number here once it's accepted for mailing."}</p>` : ""}
         ${o.discount_cents ? `<p><span class="pill ok">${esc(p.discount!.display)}</span> Your first order from this return address. The price below already includes it.</p>` : ""}
         ${o.status === "awaiting_payment"
@@ -160,6 +161,13 @@ web.get("/o/:id/preview", async (req, res) => {
   const o = await getOrder(String(req.params.id));
   if (!o) return res.status(404).send("No such order");
   res.send(printSheet(o));
+});
+
+web.get("/files/:id", async (req, res) => {
+  const { rows } = await pool.query("SELECT bytes FROM images WHERE id = $1 AND mime = 'application/pdf'", [req.params.id]);
+  if (!rows[0]) return res.status(404).end();
+  // Unguessable ids (like order ids); PostGrid fetches these to print. Not indexed.
+  res.set({ "Cache-Control": "private, max-age=31536000, immutable", "X-Robots-Tag": "noindex" }).type("application/pdf").send(rows[0].bytes);
 });
 
 web.get("/images/:id", async (req, res) => {

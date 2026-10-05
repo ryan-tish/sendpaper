@@ -42,6 +42,8 @@ export async function migrate() {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number text;
     -- First-order discount already taken off price_cents (price_cents is always what we charge).
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_cents integer NOT NULL DEFAULT 0;
+    -- Express delivery (USPS Priority Mail through PostGrid mailingClass "express"); price_cents includes it.
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS express boolean NOT NULL DEFAULT false;
     -- Orders created while building and testing Sendpaper (2026-10-01..04); hidden from /admin lists and stats.
     UPDATE orders SET is_test = true WHERE id IN ('ord_tbzmm78n5x6k2pnn','ord_p880an9yghhqjq60','ord_sg875bgv28ke739q',
       'ord_d7n76m5f8dxvpfte','ord_b6rb3v37d2s2ybab','ord_3revxzgtj5v6pyrx','ord_fvkdkwgt2p2bs84b','ord_7rwe3j586rrdh0ew','ord_freh6ghvnq7d5766','ord_mw48fbd0ffr7rq91','ord_4ssq5x555c66gw38','ord_am89desh4kg8q5pt','ord_5019dx9zk68p8qeg') AND NOT is_test;

@@ -10,7 +10,7 @@ import { webTraffic } from "./posthogStats.ts";
 import { env } from "./config.ts";
 
 const BOT = /bot|crawl|spider|slurp|preview|fetch|headless|python|curl|wget|httpx|axios|node|go-http|java|monitor|uptime|lighthouse|scan|facebookexternalhit|whatsapp|telegram|discord|slack|skype|embedly|vkshare|pinterest|redditbot|applebot|bingpreview|google-read-aloud|mediapartners|ia_archiver|semrush|ahrefs|gptbot|claude|perplexity|chatgpt|ccbot|bytespider/i;
-const SKIP = /^\/(admin|v1|mcp|webhooks|images|healthz|ingest|\.well-known|review)(\/|$)|\.(svg|png|jpg|ico|js|css|json|txt|xml|mp4|webmanifest)$|\/preview$/;
+const SKIP = /^\/(admin|v1|mcp|webhooks|images|files|healthz|ingest|\.well-known|review)(\/|$)|\.(svg|png|jpg|ico|js|css|json|txt|xml|mp4|webmanifest)$|\/preview$/;
 
 // The salt lives in the database (one row per UTC day), so a deploy or restart doesn't make every returning visitor
 // count again; it was in memory until 2026-10-05, which inflated counts on days with many deploys.

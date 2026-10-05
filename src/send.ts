@@ -1,4 +1,4 @@
-import { BRAND, COLOR_LETTER_CENTS, LIMITS, POSTCARD_SIZES, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
+import { BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, POSTCARD_SIZES, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc, THEMES } from "./render.ts";
 
@@ -102,11 +102,15 @@ export function sendPage(initial: string) {
   // Certified letters are a mailing option on the Letter tile, not tiles of their own.
   const start: ProductId = isLetter(asked) ? "letter" : asked;
   const startMailing = EXTRA_SERVICE[asked] ?? "none";
-  const mailing = (["none", "certified", "certified_return_receipt"] as const)
+  // Mailing for letters: First-Class, Express (USPS Priority, extra charge) or Certified (with or without receipt).
+  const mailing = (["none", "express", "certified", "certified_return_receipt"] as const)
     .map((m) => {
-      const p = PRODUCTS[letterProduct(m)];
-      const label = m === "none" ? "First-Class" : m === "certified" ? "Certified" : "Certified + receipt";
-      return `<label><input type="radio" name="mailing" value="${m}"${m === startMailing ? " checked" : ""}>${label} · ${usd(p.cents)}</label>`;
+      const label =
+        m === "none" ? `First-Class · ${usd(PRODUCTS.letter.cents)}`
+        : m === "express" ? `Express · +${usd(EXPRESS_CENTS)}`
+        : m === "certified" ? `Certified · ${usd(PRODUCTS.letter_certified.cents)}`
+        : `Certified + receipt · ${usd(PRODUCTS.letter_certified_rr.cents)}`;
+      return `<label><input type="radio" name="mailing" value="${m}"${m === startMailing ? " checked" : ""}>${label}</label>`;
     })
     .join("");
   const choices = (Object.entries(PRODUCTS) as [ProductId, (typeof PRODUCTS)[ProductId]][])
@@ -138,16 +142,26 @@ export function sendPage(initial: string) {
             <div class="field"><div class="top">Color</div><div class="swatches" role="radiogroup" aria-label="Color">${swatches}</div></div>
           </div>
           <div class="field"><div class="top"><label for="message">Message on the back</label><span class="count" id="mc">0/${LIMITS.postcardMessage}</span></div><textarea id="message" maxlength="${LIMITS.postcardMessage}" placeholder="Wish you were here…"></textarea></div>
+          <div class="field"><div class="top">Delivery</div>
+            <div class="seg" role="radiogroup" aria-label="Postcard delivery"><label><input type="radio" name="pdeliv" value="first" checked>First-Class · included</label><label><input type="radio" name="pdeliv" value="express">Express · +${usd(EXPRESS_CENTS)}</label></div>
+            <p class="note" style="margin:0">Express goes by USPS Priority Mail, usually 2–3 days, with tracking.</p></div>
         </div>
 
-        <div class="step" id="lt" hidden><div class="step-h"><span>02</span><h2>Write the letter</h2></div>
+        <div class="step" id="lt" hidden><div class="step-h"><span>02</span><h2>Your letter</h2></div>
+          <div class="seg" role="radiogroup" aria-label="Letter source"><label><input type="radio" name="lsrc" value="write" checked>Write it</label><label><input type="radio" name="lsrc" value="pdf">Upload a PDF</label></div>
+          <div id="pdfBox" hidden style="display:grid;gap:10px">
+            <label class="drop" id="pdrop"><input id="pdfFile" type="file" accept="application/pdf"><span id="pdropText"><b>Drop a PDF</b> or click to choose<br><small>Up to ${LIMITS.pdfPages} pages and ${LIMITS.pdfBytes / 1024 / 1024} MB. Any page size: we fit it to 8.5×11 and add an address page in front.</small></span></label>
+            <label class="consent" style="margin:0"><input id="pdfColor" type="checkbox"><span>Print in color (+${usd(COLOR_LETTER_CENTS)})</span></label>
+          </div>
+          <div id="writeBox" style="display:grid;gap:12px">
           <div class="field"><div class="top"><label for="body">Letter</label><span class="count" id="bc">0/${LIMITS.letterBody}</span></div><textarea id="body" maxlength="${LIMITS.letterBody}" style="min-height:280px" placeholder="Dear …"></textarea></div>
           <label class="drop" id="ldrop"><input id="lphoto" type="file" accept="image/jpeg,image/png,image/webp"><span id="ldropText"><b>Add a photo</b> (optional)<br><small>Printed at the top of the letter, in color, for ${usd(COLOR_LETTER_CENTS)} more.</small></span></label>
           <button type="button" class="linkbtn" id="lphotoRemove" hidden>Remove photo</button>
           <div class="seg" role="radiogroup" aria-label="Typeface"><label><input type="radio" name="font" value="serif" checked>Serif</label><label><input type="radio" name="font" value="sans">Sans-serif</label></div>
+          </div>
           <div class="field"><div class="top">Mailing</div>
             <div class="seg seg-wrap" role="radiogroup" aria-label="Mailing">${mailing}</div>
-            <p class="note" style="margin:0">Certified Mail gets a USPS tracking number and proof of delivery. The return receipt adds the recipient's signature, which landlords, courts and agencies often ask for.</p></div>
+            <p class="note" style="margin:0">Certified Mail gets a USPS tracking number and proof of delivery; the return receipt adds the recipient's signature, which landlords, courts and agencies often ask for. Express goes by USPS Priority Mail (2–3 days, tracked) and can't be combined with Certified.</p></div>
         </div>
 
         <div class="step"><div class="step-h"><span>03</span><h2>Send to</h2></div>${addressFields("to", "Recipient address")}</div>
@@ -195,7 +209,11 @@ export function sendPage(initial: string) {
     const $ = (id) => document.getElementById(id);
     const val = (name) => document.querySelector('input[name="' + name + '"]:checked').value;
     // A letter's product depends on its mailing option (regular, certified, certified + return receipt).
-    const LETTER_PRODUCT = { none: "letter", certified: "letter_certified", certified_return_receipt: "letter_certified_rr" };
+    const LETTER_PRODUCT = { none: "letter", express: "letter", certified: "letter_certified", certified_return_receipt: "letter_certified_rr" };
+    const EXPRESS = ${EXPRESS_CENTS};
+    let pdfUploaded = null;
+    const isPdf = () => val("lsrc") === "pdf";
+    const isExpress = () => (val("product") === "letter" ? val("mailing") === "express" : val("pdeliv") === "express");
     const effectiveProduct = () => (val("product") === "letter" ? LETTER_PRODUCT[val("mailing")] : val("product"));
     let side = "front", photoUrl = null, photoFile = null, letterPhoto = null, letterPhotoUrl = null;
 
@@ -210,8 +228,10 @@ export function sendPage(initial: string) {
       $("pc").hidden = letter; $("lt").hidden = !letter;
       $("drop").hidden = !photo; $("textFront").hidden = photo; $("recrop").hidden = !photo || !photoFile;
       $("pvName").textContent = PRODUCTS[product].name;
-      $("postageLine").textContent = product === "letter_certified" ? "Printing, envelope, Certified Mail" : product === "letter_certified_rr" ? "Printing, envelope, Certified Mail + return receipt" : "Printing, envelope, First-Class postage";
-      $("total").textContent = "$" + ((PRODUCTS[product].cents + (letter && letterPhoto ? COLOR_LETTER : 0)) / 100).toFixed(2);
+      $("postageLine").textContent = product === "letter_certified" ? "Printing, envelope, Certified Mail" : product === "letter_certified_rr" ? "Printing, envelope, Certified Mail + return receipt" : isExpress() ? (letter ? "Printing, envelope, Express (USPS Priority)" : "Printing, Express (USPS Priority)") : (letter ? "Printing, envelope, First-Class postage" : "Printing, First-Class postage");
+      const color = letter && (isPdf() ? $("pdfColor").checked : Boolean(letterPhoto));
+      $("total").textContent = "$" + ((PRODUCTS[product].cents + (color ? COLOR_LETTER : 0) + (isExpress() ? EXPRESS : 0)) / 100).toFixed(2);
+      $("pdfBox").hidden = !isPdf(); $("writeBox").hidden = isPdf();
       $("pvCard").hidden = letter; $("pvLetter").hidden = !letter; $("flip").hidden = letter;
       $("hc").textContent = $("headline").value.length + "/${LIMITS.postcardHeadline}";
       $("mc").textContent = $("message").value.length + "/${LIMITS.postcardMessage}";
@@ -219,7 +239,7 @@ export function sendPage(initial: string) {
       const to = addrText(addr("to")) || "Recipient\\nStreet address\\nCity, ST ZIP";
       if (letter) {
         $("pvLetterTo").textContent = to;
-        $("pvLetterBody").textContent = $("body").value || "Dear …";
+        $("pvLetterBody").textContent = isPdf() ? (pdfUploaded ? "Your PDF: " + pdfUploaded.name + " (" + pdfUploaded.pages + " page" + (pdfUploaded.pages === 1 ? "" : "s") + "), after an address page. You'll see the exact print on the next page." : "Upload a PDF to see it here.") : ($("body").value || "Dear …");
         $("pvLetter").style.fontFamily = val("font") === "sans" ? "Helvetica, Arial, sans-serif" : "Georgia, serif";
         $("pvLetterPhoto").hidden = !letterPhotoUrl; if (letterPhotoUrl) $("pvLetterPhoto").src = letterPhotoUrl;
         $("lphotoRemove").hidden = !letterPhoto;
@@ -369,6 +389,31 @@ export function sendPage(initial: string) {
       letterPhoto = null; if (letterPhotoUrl) URL.revokeObjectURL(letterPhotoUrl); letterPhotoUrl = null;
       $("ldropText").innerHTML = '<b>Add a photo</b> (optional)<br><small>Printed at the top of the letter, in color.</small>'; render();
     });
+    // PDFs upload as soon as they're chosen, so the page count (or what's wrong with the file) shows right away.
+    async function takePdf(file) {
+      if (!file) return;
+      if (file.type && file.type !== "application/pdf") { $("err").textContent = "Choose a PDF file."; return; }
+      $("pdropText").innerHTML = "<b>Uploading…</b>";
+      try {
+        const r = await fetch("/v1/files", { method: "POST", headers: { "Content-Type": "application/pdf" }, body: file });
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error && j.error.message || "Couldn't upload that PDF.");
+        pdfUploaded = { url: j.url, pages: j.pages, name: file.name };
+        $("pdropText").innerHTML = "<b></b><br><small>Choose another file to replace it.</small>";
+        $("pdropText").firstChild.textContent = file.name + " · " + j.pages + " page" + (j.pages === 1 ? "" : "s");
+        $("err").textContent = "";
+      } catch (e) {
+        pdfUploaded = null; $("err").textContent = e.message;
+        $("pdropText").innerHTML = "<b>Drop a PDF</b> or click to choose";
+      }
+      $("pdfFile").value = ""; render();
+    }
+    $("pdfFile").addEventListener("change", (e) => takePdf(e.target.files[0]));
+    const pdrop = $("pdrop");
+    ["dragenter", "dragover"].forEach(t => pdrop.addEventListener(t, (e) => { e.preventDefault(); pdrop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach(t => pdrop.addEventListener(t, () => pdrop.classList.remove("over")));
+    pdrop.addEventListener("drop", (e) => { e.preventDefault(); takePdf(e.dataTransfer.files[0]); });
+
     async function upload(file) {
       const up = await fetch("/v1/images", { method: "POST", headers: { "Content-Type": file.type }, body: file });
       const uj = await up.json(); if (!up.ok) throw new Error(uj.error.message);
@@ -383,8 +428,15 @@ export function sendPage(initial: string) {
         const product = val("product");
         let url, body;
         if (product === "letter") {
-          url = "/v1/letters"; body = { content: { body: $("body").value, font: val("font") }, certified: val("mailing") };
-          if (letterPhoto) body.content.image_url = await upload(letterPhoto);
+          const m = val("mailing");
+          url = "/v1/letters"; body = { certified: m === "express" ? "none" : m, express: m === "express" };
+          if (isPdf()) {
+            if (!pdfUploaded) throw new Error("Upload a PDF, or switch to Write it.");
+            body.content = { pdf_url: pdfUploaded.url, color: $("pdfColor").checked };
+          } else {
+            body.content = { body: $("body").value, font: val("font") };
+            if (letterPhoto) body.content.image_url = await upload(letterPhoto);
+          }
         } else {
           url = "/v1/postcards";
           const content = { message: $("message").value, front_theme: val("theme") };
@@ -392,7 +444,7 @@ export function sendPage(initial: string) {
             if (!photoFile) throw new Error("Add a photo for the front, or switch to Text.");
             content.front_image_url = await upload(photoFile);
           } else if ($("headline").value.trim()) content.front_headline = $("headline").value.trim();
-          body = { size: SIZE_OF[product] || "4x6", content };
+          body = { size: SIZE_OF[product] || "4x6", content, express: isExpress() };
         }
         Object.assign(body, { to: addr("to"), from: addr("from"), customer_email: $("email").value.trim() || undefined });
         const r = await fetch(url, { method: "POST", headers: Object.assign({ "Content-Type": "application/json", "X-Client": "web" }, window.posthog && posthog.get_distinct_id ? { "X-Analytics-Id": String(posthog.get_distinct_id()) } : {}), body: JSON.stringify(body) });
