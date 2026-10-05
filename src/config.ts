@@ -22,6 +22,10 @@ export const env = {
   postgridKey: process.env.POSTGRID_API_KEY ?? "",
   // PostHog project key (public, phc_…). Unset locally so dev traffic never pollutes the numbers.
   posthogKey: process.env.POSTHOG_KEY ?? "",
+  // Personal API key with Query: Read, so /admin/stats can show PostHog's website numbers. Never sent to browsers.
+  posthogPersonalKey: process.env.POSTHOG_PERSONAL_API_KEY ?? "",
+  // Optional; looked up from the key when unset.
+  posthogProjectId: process.env.POSTHOG_PROJECT_ID ?? "",
 };
 
 export type ProductId = "postcard_4x6" | "postcard_6x9" | "postcard_6x11" | "letter" | "letter_certified" | "letter_certified_rr";

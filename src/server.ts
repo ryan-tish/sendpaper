@@ -11,6 +11,7 @@ import { web } from "./web.ts";
 import { quick } from "./quick.ts";
 import { trackViews } from "./stats.ts";
 import { pingIndexNow, seo } from "./seo.ts";
+import { posthogProxy } from "./analytics.ts";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -36,6 +37,9 @@ app.post("/webhooks/stripe", express.raw({ type: "application/json" }), async (r
     res.status(400).send(String(e));
   }
 });
+
+// PostHog reverse proxy (raw body passthrough, so it comes before any parser).
+app.use("/ingest", express.raw({ type: () => true, limit: "5mb" }), posthogProxy);
 
 // CORS for the API and MCP so browser-based agents can call them; no cookies or credentials are involved.
 app.use(["/v1", "/mcp"], (req, res, next) => {

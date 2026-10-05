@@ -6,14 +6,22 @@ import { createHash, randomBytes } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { pool } from "./db.ts";
 import { esc } from "./render.ts";
+import { webTraffic } from "./posthogStats.ts";
+import { env } from "./config.ts";
 
-const BOT = /bot|crawl|spider|slurp|preview|fetch|headless|python|curl|wget|httpx|axios|node|go-http|java|monitor|uptime|lighthouse|scan/i;
-const SKIP = /^\/(admin|v1|mcp|webhooks|images|healthz|\.well-known|review)(\/|$)|\.(svg|png|jpg|ico|js|css|json|txt|xml|mp4|webmanifest)$|\/preview$/;
+const BOT = /bot|crawl|spider|slurp|preview|fetch|headless|python|curl|wget|httpx|axios|node|go-http|java|monitor|uptime|lighthouse|scan|facebookexternalhit|whatsapp|telegram|discord|slack|skype|embedly|vkshare|pinterest|redditbot|applebot|bingpreview|google-read-aloud|mediapartners|ia_archiver|semrush|ahrefs|gptbot|claude|perplexity|chatgpt|ccbot|bytespider/i;
+const SKIP = /^\/(admin|v1|mcp|webhooks|images|healthz|ingest|\.well-known|review)(\/|$)|\.(svg|png|jpg|ico|js|css|json|txt|xml|mp4|webmanifest)$|\/preview$/;
 
+// The salt lives in the database (one row per UTC day), so a deploy or restart doesn't make every returning visitor
+// count again; it was in memory until 2026-10-05, which inflated counts on days with many deploys.
 let salt = { day: "", value: "" };
-function dailySalt() {
+async function dailySalt() {
   const day = new Date().toISOString().slice(0, 10);
-  if (salt.day !== day) salt = { day, value: randomBytes(16).toString("hex") };
+  if (salt.day === day) return salt.value;
+  await pool.query("INSERT INTO stats_salts (day, salt) VALUES ($1, $2) ON CONFLICT (day) DO NOTHING", [day, randomBytes(16).toString("hex")]);
+  const { rows } = await pool.query<{ salt: string }>("SELECT salt FROM stats_salts WHERE day = $1", [day]);
+  await pool.query("DELETE FROM stats_salts WHERE day < $1::date - 1", [day]);
+  salt = { day, value: rows[0].salt };
   return salt.value;
 }
 
@@ -34,13 +42,17 @@ function referrerHost(req: Request) {
 export function trackViews(req: Request, res: Response, next: NextFunction) {
   const ua = req.get("user-agent") ?? "";
   const owner = /(?:^|;\s*)sp_owner=1/.test(req.get("cookie") ?? "");
-  if (!owner && req.method === "GET" && !SKIP.test(req.path) && ua && !BOT.test(ua) && (req.get("accept") ?? "").includes("text/html")) {
+  // Real browsers mark a page visit with Sec-Fetch-Dest: document; scanners, link previews and scripts usually don't.
+  const navigation = req.get("sec-fetch-dest") === "document";
+  if (!owner && req.method === "GET" && navigation && !SKIP.test(req.path) && ua && !BOT.test(ua) && (req.get("accept") ?? "").includes("text/html")) {
     // Only pages that actually rendered (no 404s or redirects).
     res.on("finish", () => {
       if (res.statusCode !== 200) return;
-      const visitor = createHash("sha256").update(`${dailySalt()}|${req.ip}|${ua}`).digest("hex").slice(0, 16);
-      pool
-        .query("INSERT INTO page_views (path, referrer_host, visitor) VALUES ($1, $2, $3)", [normalize(req.path), referrerHost(req), visitor])
+      dailySalt()
+        .then((s) => {
+          const visitor = createHash("sha256").update(`${s}|${req.ip}|${ua}`).digest("hex").slice(0, 16);
+          return pool.query("INSERT INTO page_views (path, referrer_host, visitor) VALUES ($1, $2, $3)", [normalize(req.path), referrerHost(req), visitor]);
+        })
         .catch((e) => console.error("page_views", e));
     });
   }
@@ -135,6 +147,16 @@ export async function statsPage() {
   const d = discounts[0];
   const r = reviews[0];
 
+  // Website traffic: PostHog when its API is configured and answering, else our own page_views counter.
+  const ph = await webTraffic();
+  const own = { today: [n(span("today").visitors), n(span("today").views)], d7: [n(span("7d").visitors), n(span("7d").views)], d30: [n(span("30d").visitors), n(span("30d").views)] };
+  const W = ph
+    ? { days: ph.days, ...ph.totals, pages: ph.pages, refs: ph.refs, send: ph.sendVisitors }
+    : { days, ...own, pages: pages.map((p) => ({ label: p.path, value: n(p.views) })), refs: refs.map((x) => ({ label: x.host, value: n(x.visitors) })), send: sendVisitors };
+  const source = ph
+    ? `Website numbers come from <b>PostHog</b> (sent through our own domain, so most ad blockers don't drop them). Backup server counter: ${fmt(own.today[0])} visitors today, ${fmt(own.d30[0])} in 30 days.`
+    : `Website numbers come from our <b>own server counter</b>${env.posthogPersonalKey ? " because PostHog's API didn't answer (see logs)" : " (set POSTHOG_PERSONAL_API_KEY to use PostHog's numbers)"}.`;
+
   const tile = (label: string, value: string, sub = "") =>
     `<div class="card tile"><span class="eyebrow">${label}</span><b>${value}</b>${sub ? `<span class="soft">${sub}</span>` : ""}</div>`;
 
@@ -165,25 +187,29 @@ export async function statsPage() {
   </style>
   <section class="stats">
     <div><span class="eyebrow">Admin · last 30 days (UTC)</span><h1 style="font-size:clamp(1.9rem,3.6vw,2.6rem)">Stats</h1>
-      <p class="soft">Website visitors are counted without cookies (one per person per day); bots are excluded. Agent orders never visit the website, so they're under Agents and Orders. <a href="/admin">Orders</a> · <a href="/admin/reviews">Reviews</a></p></div>
+      <p class="soft">${source} Agent orders never visit the website, so they're under Agents and Orders. <a href="/admin">Orders</a> · <a href="/admin/reviews">Reviews</a></p></div>
     <div class="tiles">
-      ${tile("Visitors today", fmt(n(span("today").visitors)), `${fmt(n(span("today").views))} page views`)}
-      ${tile("Visitors, 7 days", fmt(n(span("7d").visitors)), `${fmt(n(span("7d").views))} page views`)}
-      ${tile("Visitors, 30 days", fmt(n(span("30d").visitors)), `${fmt(n(span("30d").views))} page views`)}
+      ${tile("Visitors today", fmt(W.today[0]), `${fmt(W.today[1])} page views`)}
+      ${tile("Visitors, 7 days", fmt(W.d7[0]), `${fmt(W.d7[1])} page views`)}
+      ${tile("Visitors, 30 days", fmt(W.d30[0]), `${fmt(W.d30[1])} page views`)}
       ${tile("Orders, 30 days", fmt(sum("created")), `${fmt(sum("paid"))} paid or free · ${fmt(sum("mailed"))} mailed`)}
       ${tile("Agent tool calls", fmt(tools.reduce((a, t) => a + n(t.calls), 0)), `${agents.length} agent${agents.length === 1 ? "" : "s"}`)}
     </div>
-    <div class="card"><h3>Daily visitors</h3>${dailyChart(days)}
-      <details><summary class="soft">Table view</summary><table class="stat-table" style="width:100%">${days.slice().reverse().map((d) => `<tr><td>${d.day}</td><td class="num">${d.visitors} visitors</td><td class="num">${d.views} views</td></tr>`).join("")}</table></details></div>
+    <div class="card"><h3>Daily visitors</h3>${dailyChart(W.days)}
+      <details><summary class="soft">Table view</summary><table class="stat-table" style="width:100%">${W.days.slice().reverse().map((d) => `<tr><td>${d.day}</td><td class="num">${d.visitors} visitors</td><td class="num">${d.views} views</td></tr>`).join("")}</table></details></div>
     <div class="two">
-      ${barTable("Top pages", ["Page", "Views"], pages.map((p) => ({ label: p.path, value: n(p.views) })), "No page views yet.")}
-      ${barTable("Where visitors come from", ["Site", "Visitors"], refs.map((x) => ({ label: x.host, value: n(x.visitors) })), "No referrals yet; direct visits don't show here.")}
+      ${barTable("Top pages", ["Page", "Views"], W.pages, "No page views yet.")}
+      ${barTable("Where visitors come from", ["Site", "Visitors"], W.refs, "No referrals yet; direct visits don't show here.")}
     </div>
+    ${ph ? `<div class="two">
+      ${barTable("Devices", ["Device", "Visitors"], ph.devices, "No data yet.")}
+      ${barTable("Countries", ["Country", "Visitors"], ph.countries, "No data yet.")}
+    </div>` : ""}
     <div class="two">
       <div class="card stat-table"><h3>Website funnel</h3><table><tr><th>Step</th><th class="num">Count</th><th class="num">Of previous</th></tr>
-        ${funnelRow("Visitors", n(span("30d").visitors), 0, "")}
-        ${funnelRow("Opened /send", sendVisitors, n(span("30d").visitors))}
-        ${funnelRow("Created an order", n(web?.created), sendVisitors)}
+        ${funnelRow("Visitors", W.d30[0], 0, "")}
+        ${funnelRow("Opened /send", W.send, W.d30[0])}
+        ${funnelRow("Created an order", n(web?.created), W.send)}
         ${funnelRow("Paid or claimed free", n(web?.paid), n(web?.created))}
         ${funnelRow("Mailed", n(web?.mailed), n(web?.paid))}</table></div>
       <div class="card stat-table"><h3>Orders by channel</h3><table><tr><th>Channel</th><th class="num">Created</th><th class="num">Paid</th><th class="num">Free</th><th class="num">Mailed</th></tr>

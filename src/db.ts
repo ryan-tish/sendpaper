@@ -48,6 +48,8 @@ export async function migrate() {
     -- The 2026-10-03 agent-payment test postcard: Ryan chose not to mail it (2026-10-04). Cancelled, not refunded.
     UPDATE orders SET status = 'cancelled' WHERE id = 'ord_5019dx9zk68p8qeg' AND status = 'paid';
 
+    -- One random salt per UTC day for the cookieless visitor hash (kept in the DB so deploys don't reset it; old days are deleted).
+    CREATE TABLE IF NOT EXISTS stats_salts (day date PRIMARY KEY, salt text NOT NULL);
     CREATE TABLE IF NOT EXISTS page_views (
       id             bigserial PRIMARY KEY,
       at             timestamptz NOT NULL DEFAULT now(),
