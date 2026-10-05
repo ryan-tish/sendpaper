@@ -50,6 +50,10 @@ export const POSTCARD_SIZE_NAMES = Object.keys(POSTCARD_SIZES) as [PostcardSize,
 export const postcardProduct = (size: string | undefined): ProductId => (POSTCARD_SIZES[size as PostcardSize] ?? POSTCARD_SIZES["4x6"]).product;
 export const postcardSpec = (p: ProductId) => Object.values(POSTCARD_SIZES).find((s) => s.product === p) ?? POSTCARD_SIZES["4x6"];
 
+// "$1 off your first order" (Ryan, 2026-10-04; replaced "First postcard free"): any product, once per return address.
+export const FIRST_ORDER_DISCOUNT_CENTS = 100;
+export const OFFER_LINE = "$1 off your first order";
+
 // Letters can carry one photo (Ryan, 2026-10-04); a letter with a photo prints in color for this surcharge.
 export const COLOR_LETTER_CENTS = 100;
 

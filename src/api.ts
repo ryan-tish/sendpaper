@@ -12,7 +12,6 @@ import {
   publicOrder,
   setStatus,
 } from "./orders.ts";
-import { offerFor, orderWithOffer } from "./offer.ts";
 
 export function apiError(res: Response, status: number, type: string, message: string, fields?: unknown) {
   return res.status(status).json({ error: { type, message, ...(fields ? { fields } : {}) } });
@@ -58,7 +57,7 @@ api.post(
       client: client(req),
       analytics_id: req.get("x-analytics-id") || undefined,
     });
-    res.status(existing ? 200 : 201).json(await orderWithOffer(order));
+    res.status(existing ? 200 : 201).json(publicOrder(order));
   }),
 );
 
@@ -74,7 +73,7 @@ api.post(
       client: client(req),
       analytics_id: req.get("x-analytics-id") || undefined,
     });
-    res.status(existing ? 200 : 201).json(await orderWithOffer(order));
+    res.status(existing ? 200 : 201).json(publicOrder(order));
   }),
 );
 
@@ -83,7 +82,7 @@ api.get(
   handle(async (req, res) => {
     const o = await getOrder(String(req.params.id));
     if (!o) return apiError(res, 404, "not_found", `No order ${req.params.id}`);
-    res.json(await orderWithOffer(o));
+    res.json(publicOrder(o));
   }),
 );
 
@@ -105,8 +104,6 @@ api.post(
     const o = await getOrder(String(req.params.id));
     if (!o) return apiError(res, 404, "not_found", `No order ${req.params.id}`);
     const token = String(req.body?.shared_payment_token ?? "");
-    if ((await offerFor(o)).eligible)
-      return apiError(res, 409, "free_first_postcard", `This is the sender's first postcard, so it's free. Don't charge the user: have them confirm at ${BASE_URL}/o/${o.id}/pay.`);
     try {
       res.json(publicOrder(await payWithSharedToken(o, token)));
     } catch (e) {

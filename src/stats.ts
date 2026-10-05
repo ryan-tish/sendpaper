@@ -5,7 +5,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { pool } from "./db.ts";
-import { OFFER_LIMIT, offerRemaining } from "./offer.ts";
 import { esc } from "./render.ts";
 
 const BOT = /bot|crawl|spider|slurp|preview|fetch|headless|python|curl|wget|httpx|axios|node|go-http|java|monitor|uptime|lighthouse|scan/i;
@@ -102,7 +101,7 @@ function barTable(title: string, head: [string, string], rows: { label: string; 
 }
 
 export async function statsPage() {
-  const [daysRaw, totals, pages, refs, orders, offerLeft, agents, tools, reviews] = await Promise.all([
+  const [daysRaw, totals, pages, refs, orders, discounts, agents, tools, reviews] = await Promise.all([
     q<{ day: string; visitors: string; views: string }>(`
       SELECT to_char(d, 'YYYY-MM-DD') AS day,
              count(DISTINCT pv.visitor) AS visitors, count(pv.id) AS views
@@ -122,7 +121,7 @@ export async function statsPage() {
              count(*) FILTER (WHERE free_offer AND status IN ('paid','printing','mailed')) AS free,
              count(*) FILTER (WHERE status = 'mailed') AS mailed
       FROM orders WHERE created_at > now() - interval '30 days' AND NOT is_test GROUP BY source`),
-    offerRemaining(),
+    q<{ used: string; cents: string; pending: string }>(`SELECT count(*) FILTER (WHERE status IN ('paid','printing','mailed')) AS used, coalesce(sum(discount_cents) FILTER (WHERE status IN ('paid','printing','mailed')), 0) AS cents, count(*) FILTER (WHERE status = 'awaiting_payment') AS pending FROM orders WHERE discount_cents > 0 AND NOT is_test`),
     q<{ client: string; calls: string; days: string }>(`SELECT split_part(client, '/', 1) AS client, count(*) AS calls, count(DISTINCT (at AT TIME ZONE 'UTC')::date) AS days FROM mcp_calls WHERE at > now() - interval '30 days' GROUP BY 1 ORDER BY calls DESC LIMIT 10`),
     q<{ tool: string; calls: string }>(`SELECT tool, count(*) AS calls FROM mcp_calls WHERE at > now() - interval '30 days' GROUP BY tool ORDER BY calls DESC`),
     q<{ total: string; pending: string; avg: string }>(`SELECT count(*) AS total, count(*) FILTER (WHERE NOT approved) AS pending, round(avg(rating), 1) AS avg FROM reviews`),
@@ -133,7 +132,7 @@ export async function statsPage() {
   const sendVisitors = n((await q<{ v: string }>(`SELECT count(DISTINCT visitor) AS v FROM page_views WHERE path = '/send' AND at > now() - interval '30 days'`))[0]?.v);
   const sum = (k: "created" | "paid" | "free" | "mailed") => orders.reduce((a, o) => a + n(o[k]), 0);
   const web = orders.find((o) => o.source === "web");
-  const claimed = OFFER_LIMIT - offerLeft;
+  const d = discounts[0];
   const r = reviews[0];
 
   const tile = (label: string, value: string, sub = "") =>
@@ -195,8 +194,7 @@ export async function statsPage() {
       ${barTable("Tools used", ["Tool", "Calls"], tools.map((t) => ({ label: t.tool, value: n(t.calls) })), "No tool calls yet.")}
     </div>
     <div class="two">
-      <div class="card" style="gap:10px"><h3>First postcard free (internal cap)</h3><p><b>${claimed}</b> of ${OFFER_LIMIT} free postcards claimed · ${offerLeft} left</p>
-        <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="${OFFER_LIMIT}" aria-valuenow="${claimed}" aria-label="Free postcards claimed"><i style="--w:${(claimed / OFFER_LIMIT) * 100}%"></i></div></div>
+      <div class="card" style="gap:6px"><h3>$1 off first order</h3><p><b>${fmt(n(d?.used))}</b> paid orders used it · $${(n(d?.cents) / 100).toFixed(2)} given · ${fmt(n(d?.pending))} unpaid orders carry it</p><p class="soft">The old "First postcard free" orders still show in the Free column above.</p></div>
       <div class="card" style="gap:6px"><h3>Reviews</h3><p><b>${fmt(n(r?.total))}</b> total${n(r?.total) ? ` · average ${r.avg} ★` : ""} · ${fmt(n(r?.pending))} waiting for approval</p><p><a href="/admin/reviews">Review queue →</a></p></div>
     </div>
   </section>`;

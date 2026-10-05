@@ -2,11 +2,10 @@ import type { Request, Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { BASE_URL, BRAND, PRODUCTS, env, letterProduct, postcardProduct } from "./config.ts";
+import { BASE_URL, BRAND, COLOR_LETTER_CENTS, FIRST_ORDER_DISCOUNT_CENTS, OFFER_LINE, PRODUCTS, env, letterProduct, postcardProduct } from "./config.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import { track } from "./analytics.ts";
 import { recordToolCall } from "./stats.ts";
-import { OFFER_LIMIT, offerFor, offerRemaining, orderWithOffer } from "./offer.ts";
 import {
   CreateLetterSchema,
   CreatePostcardSchema,
@@ -46,10 +45,10 @@ const OrderOutput = z
     order_url: z.string().describe("Order status page"),
     preview_url: z.string().describe("Exact print preview"),
     tracking: z.object({ number: z.string(), url: z.string() }).nullable().describe("USPS tracking, for Certified Mail once printed"),
-    first_postcard_free: z
-      .object({ eligible: z.boolean().optional(), applied: z.boolean().optional(), how: z.string().optional() })
-      .optional()
-      .describe("Present when the first-postcard-free offer applies"),
+    discount: z
+      .object({ amount_cents: z.number(), display: z.string(), reason: z.string() })
+      .nullable()
+      .describe("First-order discount, already taken off price; null when none applies"),
   })
   .loose();
 
@@ -64,14 +63,14 @@ const PricingOutput = z.object({
       stripe_network_id: z.string().optional().describe("Scope Stripe shared payment tokens to this network id"),
     })
     .loose(),
-  first_postcard_free: z.object({ description: z.string(), available: z.boolean() }),
+  first_order_discount: z.object({ amount_cents: z.number(), description: z.string() }),
+  letter_photo: z.object({ amount_cents: z.number(), description: z.string() }).describe("Surcharge for a letter with a photo (prints in color)"),
 });
 
-function nextStep(o: Awaited<ReturnType<typeof orderWithOffer>>) {
-  if ("first_postcard_free" in o && o.first_postcard_free && "eligible" in o.first_postcard_free)
-    return `Order created (${o.id}). Good news: it's FREE, because the first postcard from each return address is free. Preview: ${o.preview_url}. Tell the user it's free and give them ${o.checkout_url} to confirm it; no payment or card is needed. Do not call pay_order. Track it at ${o.order_url}.`;
+function nextStep(o: ReturnType<typeof publicOrder>) {
+  const off = o.discount ? ` That includes ${o.discount.display} as their first order.` : "";
   return o.checkout_url
-    ? `Order created (${o.id}, ${o.price.display}). Preview: ${o.preview_url}. To pay: call pay_order with a Stripe shared payment token for ${o.price.amount_cents} cents USD, or have the user pay at ${o.checkout_url}. It will not be mailed until paid. Track it at ${o.order_url}.`
+    ? `Order created (${o.id}, ${o.price.display}).${off} Preview: ${o.preview_url}. To pay: call pay_order with a Stripe shared payment token for ${o.price.amount_cents} cents USD, or have the user pay at ${o.checkout_url}. It will not be mailed until paid. Track it at ${o.order_url}.`
     : `Order status: ${o.status_detail} Track it at ${o.order_url}.`;
 }
 
@@ -116,9 +115,13 @@ function build(client: string | undefined) {
           currency: "usd",
           ...(env.stripeNetworkId ? { stripe_network_id: env.stripeNetworkId } : {}),
         },
-        first_postcard_free: {
-          description: "Each sender's first postcard is free (any size, one per return address). Applied automatically when the order is created; the user just confirms at checkout_url.",
-          available: (await offerRemaining()) > 0,
+        first_order_discount: {
+          amount_cents: FIRST_ORDER_DISCOUNT_CENTS,
+          description: `${OFFER_LINE}: taken off automatically when the order is created, once per return address (any product).`,
+        },
+        letter_photo: {
+          amount_cents: COLOR_LETTER_CENTS,
+          description: "Added to a letter that includes content.image_url; the letter then prints in color.",
         },
       }),
   );
@@ -136,7 +139,7 @@ function build(client: string | undefined) {
     async (args) => {
       const { size, content, ...rest } = CreatePostcardSchema.parse(args);
       const { order } = await createOrder({ ...rest, content, product: postcardProduct(size), source: "mcp", client });
-      const o = await orderWithOffer(order);
+      const o = publicOrder(order);
       return result(o, nextStep(o));
     },
   );
@@ -154,7 +157,7 @@ function build(client: string | undefined) {
     async (args) => {
       const { certified, ...input } = CreateLetterSchema.parse(args);
       const { order } = await createOrder({ ...input, product: letterProduct(certified), source: "mcp", client });
-      const o = await orderWithOffer(order);
+      const o = publicOrder(order);
       return result(o, nextStep(o));
     },
   );
@@ -176,8 +179,6 @@ function build(client: string | undefined) {
     async ({ order_id, shared_payment_token }) => {
       const o = await getOrder(order_id);
       if (!o) return { isError: true, content: [{ type: "text", text: `No order ${order_id}` }] };
-      if ((await offerFor(o)).eligible)
-        return { isError: true, content: [{ type: "text", text: `Don't charge the user: this is their first postcard, so it's free. Have them confirm it at ${publicOrder(o).checkout_url}.` }] };
       try {
         const paid = publicOrder(await payWithSharedToken(o, shared_payment_token));
         return result(paid, `${paid.status_detail} Track it at ${paid.order_url}.`);
@@ -201,7 +202,7 @@ function build(client: string | undefined) {
     async ({ order_id }) => {
       const o = await getOrder(order_id);
       if (!o) return { isError: true, content: [{ type: "text", text: `No order ${order_id}` }] };
-      return result(await orderWithOffer(o));
+      return result(publicOrder(o));
     },
   );
 

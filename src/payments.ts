@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { BASE_URL, BRAND, EXTRA_SERVICE, PRODUCTS, env, isLetter } from "./config.ts";
-import { attachSession, getOrder, setStatus, type OrderRow } from "./orders.ts";
+import { attachSession, confirmDiscount, getOrder, setStatus, type OrderRow } from "./orders.ts";
 import { notifyPaid } from "./notify.ts";
 
 export const stripe = env.stripeSecret ? new Stripe(env.stripeSecret) : null;
@@ -14,6 +14,7 @@ const missingCatalog = new Set<string>();
 
 export async function checkoutUrlFor(o: OrderRow): Promise<string> {
   if (!stripe) throw new Error("Payments are not configured (STRIPE_SECRET_KEY missing).");
+  o = await confirmDiscount(o);
   const p = PRODUCTS[o.product];
   const via = EXTRA_SERVICE[o.product] === "certified_return_receipt" ? "USPS Certified Mail with a return receipt" : EXTRA_SERVICE[o.product] ? "USPS Certified Mail" : "USPS First-Class";
   const inline = { name: `${p.name} to ${o.to_address.name}`, description: EXTRA_SERVICE[o.product] ? `${p.blurb} Printed and mailed by ${BRAND}.` : `${p.blurb} Printed and mailed by ${BRAND} via ${via}.` };
@@ -32,6 +33,7 @@ export async function checkoutUrlFor(o: OrderRow): Promise<string> {
   const note = certified
     ? `A person reviews every piece before it's printed. It goes out by USPS Certified Mail${certified === "certified_return_receipt" ? " with a return receipt" : ""}, and the tracking number appears on your order page.`
     : "A person reviews every piece before it's printed. It's usually mailed within one business day via USPS First-Class.";
+  const offNote = o.discount_cents ? ` Includes $${(o.discount_cents / 100).toFixed(2)} off your first order.` : "";
   const create = (useCatalog: boolean) =>
     stripe!.checkout.sessions.create({
     mode: "payment",
@@ -46,7 +48,7 @@ export async function checkoutUrlFor(o: OrderRow): Promise<string> {
     customer_email: o.customer_email ?? undefined,
     // Typed loosely: branding_settings is newer than some SDK typings.
     ...({ branding_settings: branding } as object),
-    custom_text: { submit: { message: note } },
+    custom_text: { submit: { message: note + offNote } },
     // A fresh session is made on every /pay visit, so a short expiry costs nothing and avoids stale sessions.
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
     client_reference_id: o.id,
@@ -143,6 +145,7 @@ export async function payWithSharedToken(o: OrderRow, token: string): Promise<Or
   if (!env.stripeSecret) throw new PaymentError("payments_unavailable", "Payments are not configured.");
   if (o.status !== "awaiting_payment") throw new PaymentError("not_payable", `Order is ${o.status}; nothing to pay.`);
   if (!/^spt_[A-Za-z0-9_]+$/.test(token)) throw new PaymentError("invalid_token", "shared_payment_token must look like spt_…");
+  o = await confirmDiscount(o);
 
   // Check the grant before charging so the agent gets a precise reason instead of a generic decline.
   const grant = await stripeForm(`/shared_payment/granted_tokens/${token}`, {}, undefined, "GET");

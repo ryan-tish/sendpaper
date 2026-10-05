@@ -1,4 +1,3 @@
-import { OFFER_LIMIT } from "./offer.ts";
 import { BRAND, COLOR_LETTER_CENTS, LIMITS, POSTCARD_SIZES, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc, THEMES } from "./render.ts";
@@ -98,7 +97,7 @@ const addressFields = (p: string, label: string) => `<fieldset class="addr" styl
   <label class="w2"><span class="sr">ZIP</span><input id="${p}_zip" placeholder="ZIP" required maxlength="10" inputmode="numeric"></label>
 </fieldset>`;
 
-export function sendPage(initial: string, offerLeft = 0) {
+export function sendPage(initial: string) {
   const asked: ProductId = initial in PRODUCTS ? (initial as ProductId) : "postcard_4x6";
   // Certified letters are a mailing option on the Letter tile, not tiles of their own.
   const start: ProductId = isLetter(asked) ? "letter" : asked;
@@ -171,7 +170,7 @@ export function sendPage(initial: string, offerLeft = 0) {
           <div class="total"><span>Total</span><b id="total">${usd(PRODUCTS[start].cents)}</b></div>
           <p id="err" class="err" role="alert" style="margin:0"></p>
           <button class="btn" id="go" type="submit" form="f">Preview the print and pay</button>
-          ${offerLeft > 0 ? `<p class="note" id="offerNote"><b style="color:var(--green)">First postcard free.</b> It's applied on the next page, with no card needed.</p>` : ""}
+          <p class="note" id="offerNote"><b style="color:var(--green)">$1 off your first order.</b> Taken off on the next page if it's your first one from this return address.</p>
           <p class="note">Nothing is mailed until you pay. Checkout by Stripe.</p>
         </div>
       </aside>
@@ -209,7 +208,6 @@ export function sendPage(initial: string, offerLeft = 0) {
     function render() {
       const product = effectiveProduct(), letter = val("product") === "letter", photo = val("front") === "photo";
       $("pc").hidden = letter; $("lt").hidden = !letter;
-      if ($("offerNote")) $("offerNote").hidden = letter;
       $("drop").hidden = !photo; $("textFront").hidden = photo; $("recrop").hidden = !photo || !photoFile;
       $("pvName").textContent = PRODUCTS[product].name;
       $("postageLine").textContent = product === "letter_certified" ? "Printing, envelope, Certified Mail" : product === "letter_certified_rr" ? "Printing, envelope, Certified Mail + return receipt" : "Printing, envelope, First-Class postage";

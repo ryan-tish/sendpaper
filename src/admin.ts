@@ -6,7 +6,7 @@ import { getOrder, listOrders, setStatus, setTest, STATUSES, type Status } from 
 import { stripe } from "./payments.ts";
 import { postgridMode, printProofUrl, sendToPrint, syncPrint } from "./fulfill.ts";
 import { addressBlock, esc, printSheet } from "./render.ts";
-import { listReviews, offerRemaining, setReviewApproved, OFFER_LIMIT } from "./offer.ts";
+import { listReviews, setReviewApproved } from "./offer.ts";
 import { statsPage } from "./stats.ts";
 
 // The operator's queue: paid orders get reviewed, printed (or sent to a print partner), then marked mailed.
@@ -41,14 +41,14 @@ admin.get("/", async (req, res) => {
     .map(
       (o) => `<tr><td><a href="/admin/orders/${o.id}">${o.id}</a></td><td>${esc(PRODUCTS[o.product].name)}</td>
       <td>${esc(o.status)}</td><td>${esc(o.to_address.name)}, ${esc(o.to_address.city)} ${esc(o.to_address.state)}</td>
-      <td>${esc(o.source)}${o.client ? ` / ${esc(o.client)}` : ""}</td><td>${o.free_offer ? "<b>FREE</b>" : `$${(o.price_cents / 100).toFixed(2)}`}</td>
+      <td>${esc(o.source)}${o.client ? ` / ${esc(o.client)}` : ""}</td><td>${o.free_offer ? "<b>FREE</b>" : `$${(o.price_cents / 100).toFixed(2)}${o.discount_cents ? " (−$1)" : ""}`}</td>
       <td>${o.created_at.toISOString().slice(0, 16).replace("T", " ")}</td></tr>`,
     )
     .join("");
   res.send(
     page(
       "Admin",
-      `<section><h1>Orders</h1><p>${tabs}</p><p class="soft">First postcard free: ${await offerRemaining()} of ${OFFER_LIMIT} free postcards left (internal; not shown publicly) · <a href="/admin/stats"><b>Stats</b></a> · <a href="/admin/reviews">Reviews</a></p><div class="scroll"><table>
+      `<section><h1>Orders</h1><p>${tabs}</p><p class="soft"><a href="/admin/stats"><b>Stats</b></a> · <a href="/admin/reviews">Reviews</a></p><div class="scroll"><table>
       <tr><th>Id</th><th>Product</th><th>Status</th><th>To</th><th>Source</th><th>Price</th><th>Created (UTC)</th></tr>
       ${rows || `<tr><td colspan="7" class="soft">No ${esc(status)} orders.</td></tr>`}</table></div></section>`,
       { noindex: true },
@@ -80,7 +80,7 @@ admin.get("/orders/:id", async (req, res) => {
     page(
       `Admin · ${o.id}`,
       `<section><h1>${esc(o.id)}</h1>
-      <p><b>${esc(PRODUCTS[o.product].name)}</b> · ${esc(o.status)} · ${o.free_offer ? `<span class="pill ok">FREE · first postcard</span> (reject with "Cancel without refund")` : `$${(o.price_cents / 100).toFixed(2)}`} · ${esc(o.customer_email ?? "no email")} · via ${esc(o.source)} ${esc(o.client ?? "")}</p>
+      <p><b>${esc(PRODUCTS[o.product].name)}</b> · ${esc(o.status)} · ${o.free_offer ? `<span class="pill ok">FREE · first postcard</span> (reject with "Cancel without refund")` : `$${(o.price_cents / 100).toFixed(2)}${o.discount_cents ? ` (after $${(o.discount_cents / 100).toFixed(2)} first-order discount)` : ""}`} · ${esc(o.customer_email ?? "no email")} · via ${esc(o.source)} ${esc(o.client ?? "")}</p>
       ${EXTRA_SERVICE[o.product] ? `<p><span class="pill ok">USPS ${EXTRA_SERVICE[o.product] === "certified_return_receipt" ? "Certified + return receipt" : "Certified"}</span> ${o.tracking_number ? `Tracking <a href="https://tools.usps.com/go/TrackConfirmAction?tLabels=${esc(o.tracking_number)}" target="_blank" rel="noopener">${esc(o.tracking_number)}</a>` : "Tracking number appears after PostGrid hands it to USPS."}</p>` : ""}
       <div class="grid"><div class="card"><b>To</b>${addressBlock(o.to_address)}</div><div class="card"><b>From</b>${addressBlock(o.from_address)}</div></div>
       <p><a class="btn alt" href="/admin/orders/${o.id}/print" target="_blank">Open print sheet</a></p>

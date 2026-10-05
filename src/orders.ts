@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
-import { BASE_URL, COLOR_LETTER_CENTS, EXTRA_SERVICE, LIMITS, POSTCARD_SIZE_NAMES, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
+import { BASE_URL, COLOR_LETTER_CENTS, EXTRA_SERVICE, FIRST_ORDER_DISCOUNT_CENTS, LIMITS, POSTCARD_SIZE_NAMES, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
 import { pool } from "./db.ts";
 import { track } from "./analytics.ts";
 
@@ -127,6 +127,7 @@ export type OrderRow = {
   print_status: string | null;
   print_error: string | null;
   free_offer: boolean;
+  discount_cents: number;
   analytics_id: string | null;
   is_test: boolean;
   tracking_number: string | null;
@@ -149,30 +150,61 @@ type CreateInput = {
 export const orderPrice = (product: ProductId, content: Record<string, any>) =>
   PRODUCTS[product].cents + (isLetter(product) && content?.image_url ? COLOR_LETTER_CENTS : 0);
 
+// One first-order discount per return address (normalized street + unit + ZIP5), so a new name on the same
+// address doesn't qualify again.
+export function senderKey(a: Address) {
+  const norm = (s: string | undefined) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return `${norm(a.line1)}|${norm(a.line2)}|${(a.zip ?? "").slice(0, 5)}`;
+}
+
+// Has this return address ever paid for an order (including the old free first postcards)? Test orders don't count.
+async function senderHasPaid(from: Address, excludeId?: string) {
+  const { rows } = await pool.query<{ from_address: Address }>(
+    `SELECT from_address FROM orders WHERE status IN ('paid','printing','mailed') AND NOT is_test AND id <> $1`,
+    [excludeId ?? ""],
+  );
+  const key = senderKey(from);
+  return rows.some((r) => senderKey(r.from_address) === key);
+}
+
+// Re-check the discount right before charging: if this address paid for another order since this one was created,
+// the discount moves to that one and this order goes back to full price.
+export async function confirmDiscount(o: OrderRow): Promise<OrderRow> {
+  if (!o.discount_cents || o.status !== "awaiting_payment" || !(await senderHasPaid(o.from_address, o.id))) return o;
+  const { rows } = await pool.query<OrderRow>(
+    "UPDATE orders SET price_cents = price_cents + discount_cents, discount_cents = 0 WHERE id = $1 AND discount_cents > 0 RETURNING *",
+    [o.id],
+  );
+  return rows[0] ?? o;
+}
+
 export async function createOrder(input: CreateInput): Promise<{ order: OrderRow; existing: boolean }> {
   if (input.idempotency_key) {
     const prior = await pool.query<OrderRow>("SELECT * FROM orders WHERE idempotency_key = $1", [input.idempotency_key]);
     if (prior.rows[0]) return { order: prior.rows[0], existing: true };
   }
   const id = newId("ord");
+  const list = orderPrice(input.product, input.content);
+  const discount = (await senderHasPaid(input.from)) ? 0 : Math.min(FIRST_ORDER_DISCOUNT_CENTS, list);
   const events = [{ at: new Date().toISOString(), status: "awaiting_payment" }];
   const { rows } = await pool.query<OrderRow>(
     `INSERT INTO orders (id, product, to_address, from_address, content, price_cents, customer_email,
-                         source, client, idempotency_key, events, analytics_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+                         source, client, idempotency_key, events, analytics_id, discount_cents)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
     [
       id,
       input.product,
       input.to,
       input.from,
       input.content,
-      orderPrice(input.product, input.content),
+      list - discount,
       input.customer_email ?? null,
       input.source,
       input.client?.slice(0, 120) ?? null,
       input.idempotency_key ?? null,
       JSON.stringify(events),
       input.analytics_id?.slice(0, 120) ?? null,
+      discount,
     ],
   );
   const o = rows[0];
@@ -239,6 +271,8 @@ export function publicOrder(o: OrderRow, checkoutUrl?: string | null) {
     status: o.status,
     status_detail: STATUS_COPY[o.status],
     price: { amount_cents: o.price_cents, currency: "usd", display: `$${(o.price_cents / 100).toFixed(2)}` },
+    // Present when "$1 off your first order" is applied; price.amount_cents already has it taken off.
+    discount: o.discount_cents ? { amount_cents: o.discount_cents, display: `$${(o.discount_cents / 100).toFixed(2)} off`, reason: "First order from this return address" } : null,
     to: o.to_address,
     from: o.from_address,
     content: o.content,
