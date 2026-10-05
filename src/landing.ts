@@ -27,7 +27,7 @@ const CSS = `
 .lede { font-size: 1.15rem; color: var(--soft); max-width: 46ch; }
 .lede b { color: var(--ink); font-weight: 600; }
 /* Motion (all of it is added by JS only when the visitor hasn't asked for reduced motion; without JS the page is static and complete) */
-.rot { display: inline-grid; vertical-align: top; height: 1.5em; line-height: 1.5; overflow: hidden; clip-path: inset(0); }
+.rot { display: inline-grid; vertical-align: top; height: 1.6em; line-height: 1.6; overflow: hidden; clip-path: inset(0); }
 .rot b { grid-area: 1 / 1; opacity: 0; transform: translateY(100%); transition: opacity .35s ease, transform .35s ease; }
 .rot b.on { opacity: 1; transform: none; }
 .rot b.off { opacity: 0; transform: translateY(-100%); }
@@ -69,7 +69,10 @@ const CSS = `
 .prices.three { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
 .pcard { display: flex; flex-direction: column; gap: 12px; padding: 26px; }
 .pcard h3 { margin: 0; font-size: 1.15rem; }
-.pcard.cert { border-color: var(--green-line); background: var(--green-soft); }
+.pcard .purpose { color: var(--ink); font-weight: 500; }
+.pcard dl { margin: 0; display: grid; gap: 8px; font-size: .9rem; }
+.pcard dt { font: 600 .72rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
+.pcard dd { margin: 2px 0 0; color: var(--soft); }
 .pcard p { margin: 0; font-size: .92rem; }
 .pcard .btn { margin-top: auto; }
 .prices .price small { font: 500 .85rem var(--f-ui); color: var(--faint); margin-right: 4px; }
@@ -122,7 +125,7 @@ export function landing() {
           ${OFFER_ACTIVE ? `<a class="stat" href="/send"><b>${FIRST_ORDER_DISCOUNT_PCT}% off</b> Your first order, any product →</a>` : ""}
           <h1>Physical mail for AI agents</h1>
           <p class="lede">Real postcards and letters from <b>Codex</b>, <b>Muse</b> and <b>Claude</b>.</p>
-          <div class="ctas"><a class="btn" href="${esc(docsUrl("/quickstart"))}">Read the quickstart ›</a><a class="btn alt" href="/send">Send mail now</a></div>
+          <div class="ctas"><a class="btn" href="${esc(docsUrl("/quickstart"))}">Read the quickstart ›</a><a class="btn green" href="/send">Send mail now</a></div>
           <div class="cmd">
             <a id="setup" href="${esc(docsUrl("/agents/codex"))}">Full setup for Codex in the docs →</a>
           </div>
@@ -133,7 +136,7 @@ export function landing() {
     <div class="works"><span>Works with</span>${CLIENTS.map(([n, p]) => `<a href="${esc(docsUrl(p))}">${esc(n)}</a>`).join("")}<span>and anything that speaks MCP or REST</span></div>
 
     <section class="showcase">
-      <div class="section-head"><span class="eyebrow">See it in action</span><h2>One sentence in. Done.</h2><p class="soft">Ask your agent to send something. It confirms the address and wording, pays with your approval, and tells you when it's on its way. You don't have to open a website.</p></div>
+      <div class="section-head"><span class="eyebrow">See it in action</span><h2>From prompt to post</h2><p class="soft">Tell your AI agent what to send and where. Review the message, approve the payment, and we'll print and mail it. Your agent lets you know when it's on its way, all from your chat.</p></div>
       <div class="shot" aria-label="Example: an agent sending and paying for a postcard">
         <div class="bar"><i></i><i></i><i></i><span>muse · sendpaper</span></div>
         <div class="body">
@@ -150,15 +153,14 @@ export function landing() {
     <section id="pricing">
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
       <div class="prices three">
-        <div class="card pcard"><h3>Postcard</h3><div class="price"><small>from</small> ${usd(PRODUCTS.postcard_4x6.cents)}</div>
-          <p class="soft">Three sizes, photo or text front. Postage included.</p>
-          <a class="btn green" href="/send?product=postcard_4x6">Send a postcard</a></div>
-        <div class="card pcard"><h3>Letter</h3><div class="price"><small>from</small> ${usd(PRODUCTS.letter.cents)}</div>
-          <p class="soft">Up to 3 pages, or upload a PDF. Postage included.</p>
-          <a class="btn green" href="/send?product=letter">Send a letter</a></div>
-        <div class="card pcard cert"><h3>Certified letter</h3><div class="price"><small>from</small> ${usd(PRODUCTS.letter_certified.cents)}</div>
-          <p class="soft">Tracking and proof of delivery. Postage included.</p>
-          <a class="btn green" href="/send?product=letter_certified">Send certified</a></div>
+${[
+          ["Postcard", PRODUCTS.postcard_4x6.cents, "For photos and quick notes", "4×6, 6×9 or 6×11 card, photo or text front", "Printing and postage", "USPS First-Class, express available", "/send?product=postcard_4x6", "Send a postcard"],
+          ["Letter", PRODUCTS.letter.cents, "For documents and correspondence", "Up to 3 printed pages on 8.5×11", "Printing, envelope and postage", "USPS First-Class, express available", "/send?product=letter", "Send a letter"],
+          ["Certified letter", PRODUCTS.letter_certified.cents, "For mail that needs delivery documentation", "Up to 3 printed pages on 8.5×11", "Printing, envelope, postage and USPS tracking", "Proof of delivery, return receipt available", "/send?product=letter_certified", "Send a certified letter"],
+        ].map(([name, cents, purpose, format, incl, delivery, href, cta]) => `<div class="card pcard"><h3>${name}</h3><div class="price"><small>from</small> ${usd(cents as number)}</div>
+          <p class="purpose">${purpose}</p>
+          <dl><div><dt>Format</dt><dd>${format}</dd></div><div><dt>Included</dt><dd>${incl}</dd></div><div><dt>Delivery</dt><dd>${delivery}</dd></div></dl>
+          <a class="btn green" href="${href}">${cta}</a></div>`).join("")}
       </div>
     </section>
 
