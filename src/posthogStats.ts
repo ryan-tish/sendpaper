@@ -17,22 +17,20 @@ export type WebTraffic = {
   sendVisitors: number;
 };
 
-let projectId = env.posthogProjectId;
+const projectId = env.posthogProjectId;
 let cache: { at: number; data: WebTraffic | null } = { at: 0, data: null };
 
 async function hogql(query: string): Promise<unknown[][]> {
   const headers = { Authorization: `Bearer ${env.posthogPersonalKey}`, "Content-Type": "application/json" };
-  if (!projectId) {
-    const r = await fetch(`${APP}/api/projects/@current/`, { headers });
-    if (!r.ok) throw new Error(`PostHog project lookup ${r.status}`);
-    projectId = String(((await r.json()) as { id: number }).id);
-  }
-  const r = await fetch(`${APP}/api/projects/${projectId}/query/`, { method: "POST", headers, body: JSON.stringify({ query: { kind: "HogQLQuery", query } }) });
+  // "@current" works for the query endpoint with a Query: Read key, while looking the project up needs project:read
+  // (verified 2026-10-05: it resolves to project 321902). POSTHOG_PROJECT_ID still wins when set.
+  const r = await fetch(`${APP}/api/projects/${projectId || "@current"}/query/`, { method: "POST", headers, body: JSON.stringify({ query: { kind: "HogQLQuery", query } }) });
   if (!r.ok) throw new Error(`PostHog query ${r.status}: ${(await r.text()).slice(0, 200)}`);
   return ((await r.json()) as { results: unknown[][] }).results ?? [];
 }
 
-const PV = "event = '$pageview'";
+// The PostHog project (321902) is SHARED with older apps (w9-tracker, localhost tests), so count only this site.
+const PV = "event = '$pageview' AND properties.$host = 'sendmypaper.com'";
 const UTC_DAY = "toDate(toTimeZone(timestamp, 'UTC'))";
 const TODAY = "toDate(toTimeZone(now(), 'UTC'))";
 const LAST30 = `${PV} AND timestamp > now() - INTERVAL 31 DAY AND ${UTC_DAY} >= ${TODAY} - 29`;
@@ -55,7 +53,7 @@ export async function webTraffic(): Promise<WebTraffic | null> {
           AND host != '$direct' AND host NOT LIKE '%sendmypaper.com' GROUP BY host ORDER BY v DESC LIMIT 10`),
       hogql(`SELECT properties.$device_type AS d, count(DISTINCT distinct_id) AS v FROM events WHERE ${LAST30} GROUP BY d ORDER BY v DESC LIMIT 6`),
       hogql(`SELECT properties.$geoip_country_name AS c, count(DISTINCT distinct_id) AS v FROM events WHERE ${LAST30} GROUP BY c ORDER BY v DESC LIMIT 10`),
-      hogql(`SELECT count(DISTINCT distinct_id) FROM events WHERE ${LAST30} AND properties.$pathname = '/send'`),
+      hogql(`SELECT count(DISTINCT distinct_id) FROM events WHERE ${LAST30} AND (properties.$pathname = '/send' OR properties.$pathname LIKE '/send/%')`),
     ]);
     // Fill the 30 days so the chart has a column for every day, including empty ones.
     const byDay = new Map(daily.map(([d, v, n]) => [String(d), { visitors: num(v), views: num(n) }]));
