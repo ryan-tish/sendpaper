@@ -220,7 +220,7 @@ export async function statsPage() {
       ${barTable("Tools used", ["Tool", "Calls"], tools.map((t) => ({ label: t.tool, value: n(t.calls) })), "No tool calls yet.")}
     </div>
     <div class="two">
-      <div class="card" style="gap:6px"><h3>$1 off first order</h3><p><b>${fmt(n(d?.used))}</b> paid orders used it · $${(n(d?.cents) / 100).toFixed(2)} given · ${fmt(n(d?.pending))} unpaid orders carry it</p><p class="soft">The old "First postcard free" orders still show in the Free column above.</p></div>
+      <div class="card" style="gap:6px"><h3>First-order discount</h3><p><b>${fmt(n(d?.used))}</b> paid orders used it · $${(n(d?.cents) / 100).toFixed(2)} given · ${fmt(n(d?.pending))} unpaid orders carry it</p><p class="soft">The old "First postcard free" orders still show in the Free column above.</p></div>
       <div class="card" style="gap:6px"><h3>Reviews</h3><p><b>${fmt(n(r?.total))}</b> total${n(r?.total) ? ` · average ${r.avg} ★` : ""} · ${fmt(n(r?.pending))} waiting for approval</p><p><a href="/admin/reviews">Review queue →</a></p></div>
     </div>
   </section>`;

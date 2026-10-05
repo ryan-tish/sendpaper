@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { BASE_URL, BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, FIRST_ORDER_DISCOUNT_CENTS, OFFER_LINE, PRODUCTS, env, letterProduct, postcardProduct } from "./config.ts";
+import { BASE_URL, BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, FIRST_ORDER_DISCOUNT_PCT, OFFER_ACTIVE, OFFER_LINE, PRODUCTS, env, letterProduct, postcardProduct } from "./config.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import { track } from "./analytics.ts";
 import { recordToolCall } from "./stats.ts";
@@ -64,7 +64,7 @@ const PricingOutput = z.object({
       stripe_network_id: z.string().optional().describe("Scope Stripe shared payment tokens to this network id"),
     })
     .loose(),
-  first_order_discount: z.object({ amount_cents: z.number(), description: z.string() }),
+  first_order_discount: z.object({ percent: z.number(), description: z.string() }).describe("Current first-order discount (0 when none)"),
   letter_photo: z.object({ amount_cents: z.number(), description: z.string() }).describe("Surcharge for a letter printed in color (a photo, or a PDF with color on)"),
   express: z.object({ amount_cents: z.number(), description: z.string() }).describe("Surcharge for express delivery"),
   pdf_letters: z.object({ max_pages: z.number(), description: z.string() }).describe("Mailing your own PDF as a letter"),
@@ -119,8 +119,8 @@ function build(client: string | undefined) {
           ...(env.stripeNetworkId ? { stripe_network_id: env.stripeNetworkId } : {}),
         },
         first_order_discount: {
-          amount_cents: FIRST_ORDER_DISCOUNT_CENTS,
-          description: `${OFFER_LINE}: taken off automatically when the order is created, once per return address (any product).`,
+          percent: FIRST_ORDER_DISCOUNT_PCT,
+          description: OFFER_ACTIVE ? `${OFFER_LINE}: taken off automatically when the order is created, once per return address (any product).` : "No first-order discount right now.",
         },
         letter_photo: {
           amount_cents: COLOR_LETTER_CENTS,

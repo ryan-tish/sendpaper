@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
-import { BASE_URL, COLOR_LETTER_CENTS, EXPRESS_CENTS, EXTRA_SERVICE, FIRST_ORDER_DISCOUNT_CENTS, LIMITS, POSTCARD_SIZE_NAMES, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
+import { BASE_URL, COLOR_LETTER_CENTS, EXPRESS_CENTS, EXTRA_SERVICE, firstOrderDiscount, LIMITS, POSTCARD_SIZE_NAMES, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
 import { pool } from "./db.ts";
 import { postcardLayout, THEME_NAMES } from "./render.ts";
 import { track } from "./analytics.ts";
@@ -228,7 +228,7 @@ export async function createOrder(input: CreateInput): Promise<{ order: OrderRow
   }
   const id = newId("ord");
   const list = orderPrice(input.product, input.content as Record<string, any>, input.express);
-  const discount = (await senderHasPaid(input.from)) ? 0 : Math.min(FIRST_ORDER_DISCOUNT_CENTS, list);
+  const discount = (await senderHasPaid(input.from)) ? 0 : Math.min(firstOrderDiscount(list), list);
   const events = [{ at: new Date().toISOString(), status: "awaiting_payment" }];
   const { rows } = await pool.query<OrderRow>(
     `INSERT INTO orders (id, product, to_address, from_address, content, price_cents, customer_email,
@@ -316,7 +316,7 @@ export function publicOrder(o: OrderRow, checkoutUrl?: string | null) {
     status: o.status,
     status_detail: STATUS_COPY[o.status],
     price: { amount_cents: o.price_cents, currency: "usd", display: `$${(o.price_cents / 100).toFixed(2)}` },
-    // Present when "$1 off your first order" is applied; price.amount_cents already has it taken off.
+    // Present when the first-order discount is applied; price.amount_cents already has it taken off.
     discount: o.discount_cents ? { amount_cents: o.discount_cents, display: `$${(o.discount_cents / 100).toFixed(2)} off`, reason: "First order from this return address" } : null,
     to: o.to_address,
     from: o.from_address,

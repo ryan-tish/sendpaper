@@ -1,4 +1,4 @@
-import { BASE_URL, BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
+import { BASE_URL, BRAND, EXPRESS_CENTS, FIRST_ORDER_DISCOUNT_PCT, LIMITS, OFFER_ACTIVE, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
 
@@ -66,22 +66,12 @@ const CSS = `
 .section-head { display: grid; gap: 12px; max-width: 640px; }
 .section-head .soft { font-size: 1.05rem; }
 .prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.prices.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.prices.three { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
 .pcard { display: flex; flex-direction: column; gap: 12px; padding: 26px; }
-.prices .pcard .size { margin-bottom: 0; }
+.pcard h3 { margin: 0; font-size: 1.15rem; }
+.pcard.cert { border-color: var(--green-line); background: var(--green-soft); }
 .pcard p { margin: 0; font-size: .92rem; }
 .pcard .btn { margin-top: auto; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { font: 500 .82rem var(--f-mono); color: var(--soft); background: var(--tint); border: 1px solid var(--rule); border-radius: 999px; padding: 5px 11px; }
-.chip b { color: var(--ink); font-weight: 600; }
-.certband { margin-top: 0; display: grid; grid-template-columns: minmax(0, 1.5fr) auto auto; align-items: center; gap: 20px 40px; padding: 28px; border-color: var(--green-line); background: var(--green-soft); }
-.certband h3 { margin: 2px 0 6px; font-size: 1.35rem; }
-.certband p { margin: 0; }
-.cb-opts { display: flex; gap: 28px; }
-.cb-opts > div { display: grid; gap: 2px; }
-.cb-opts .price { font: 600 1.6rem var(--f-ui); letter-spacing: -0.02em; }
-.cb-cta { display: grid; gap: 8px; justify-items: start; }
-@media (max-width: 860px) { .certband { grid-template-columns: minmax(0, 1fr); } }
 .prices .price small { font: 500 .85rem var(--f-ui); color: var(--faint); margin-right: 4px; }
 .prices .card { padding: 24px; gap: 14px; }
 .prices .btn { justify-content: center; }
@@ -129,7 +119,7 @@ export function landing() {
       <div class="art" aria-hidden="true"><canvas id="lines"></canvas></div>
       <div class="hero">
         <div class="stack">
-          <a class="stat" href="/send"><b>$1 off</b> Your first order, any product →</a>
+          ${OFFER_ACTIVE ? `<a class="stat" href="/send"><b>${FIRST_ORDER_DISCOUNT_PCT}% off</b> Your first order, any product →</a>` : ""}
           <h1>Physical mail for AI agents</h1>
           <p class="lede">Real postcards and letters from <b>Codex</b>, <b>Muse</b> and <b>Claude</b>.</p>
           <div class="ctas"><a class="btn" href="${esc(docsUrl("/quickstart"))}">Read the quickstart ›</a><a class="btn alt" href="/send">Send from the web</a></div>
@@ -159,26 +149,18 @@ export function landing() {
 
     <section id="pricing">
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
-      <div class="offer-banner"><span><b>$1 off your first order.</b> Any postcard or letter. Taken off automatically, one per return address.</span><a href="/send" class="more">Send one →</a></div>
-      <div class="prices two">
-        <div class="card pcard"><span class="size">Postcard</span><div class="price"><small>from</small> ${usd(PRODUCTS.postcard_4x6.cents)}</div>
-          <div class="chips">${(["postcard_4x6", "postcard_6x9", "postcard_6x11"] as const).map((id) => `<span class="chip">${esc(PRODUCTS[id].size.replace(/ in$/, "").replace(/ /g, ""))} <b>${usd(PRODUCTS[id].cents)}</b></span>`).join("")}</div>
-          <p class="soft">Text, photo, caption or collage front. First-Class postage included.</p>
+      <div class="prices three">
+        <div class="card pcard"><h3>Postcard</h3><div class="price"><small>from</small> ${usd(PRODUCTS.postcard_4x6.cents)}</div>
+          <p class="soft">Three sizes. Text, photo, caption or collage on the front. Postage included.</p>
           <a class="btn green" href="/send?product=postcard_4x6">Send a postcard</a></div>
-        <div class="card pcard"><span class="size">Letter</span><div class="price"><small>from</small> ${usd(PRODUCTS.letter.cents)}</div>
-          <div class="chips"><span class="chip">Color <b>+${usd(COLOR_LETTER_CENTS)}</b></span><span class="chip">Express <b>+${usd(EXPRESS_CENTS)}</b></span></div>
-          <p class="soft">Up to 3 pages you write, or your own PDF (up to ${LIMITS.pdfPages} pages). Envelope and postage included.</p>
+        <div class="card pcard"><h3>Letter</h3><div class="price"><small>from</small> ${usd(PRODUCTS.letter.cents)}</div>
+          <p class="soft">Write it with your agent or upload a PDF. Envelope and postage included.</p>
           <a class="btn green" href="/send?product=letter">Send a letter</a></div>
+        <div class="card pcard cert"><h3>Certified letter</h3><div class="price"><small>from</small> ${usd(PRODUCTS.letter_certified.cents)}</div>
+          <p class="soft">USPS tracking and proof of delivery. Add a return receipt for a signature.</p>
+          <a class="btn green" href="/send?product=letter_certified">Send certified</a></div>
       </div>
-      <div class="card certband">
-        <div class="cb-copy"><span class="eyebrow">USPS Certified Mail</span><h3>Need proof it arrived?</h3>
-          <p class="soft">Any letter can go by Certified Mail: a USPS tracking number and proof of delivery, plus the recipient's signature with a return receipt. For tax replies, lease notices and disputes.</p></div>
-        <div class="cb-opts">
-          <div><span class="price">${usd(PRODUCTS.letter_certified.cents)}</span><span class="soft">Certified</span></div>
-          <div><span class="price">${usd(PRODUCTS.letter_certified_rr.cents)}</span><span class="soft">+ return receipt</span></div>
-        </div>
-        <div class="cb-cta"><a class="btn green" href="/send?product=letter_certified">Send certified</a><a class="more" href="/certified-mail-online">How it works →</a></div>
-      </div>
+      <p class="soft" style="margin:0;font-size:.9rem">Color printing and express delivery are options when you order. <a href="/certified-mail-online">How certified mail works →</a></p>
     </section>
 
     <section class="pay-line">
@@ -189,7 +171,7 @@ export function landing() {
     <section class="faq">
       <div class="section-head"><span class="eyebrow">FAQ</span><h2>Questions</h2></div>
       <div>
-        <details class="q"><summary>Is there a first-order discount?</summary><p>Yes: $1 off your first order, any postcard or letter, one per return address. It's taken off the price automatically when the order is created, so the checkout total already includes it. <a href="/reviews">See what senders say</a>.</p></details>
+        <details class="q"><summary>Is there a first-order discount?</summary><p>${OFFER_ACTIVE ? `Right now, yes: ${FIRST_ORDER_DISCOUNT_PCT}% off your first order, any postcard or letter, one per return address.` : "Not at the moment."} It's taken off the price automatically when the order is created, so the checkout total already includes it. <a href="/reviews">See what senders say</a>.</p></details>
         <details class="q"><summary>Can you send certified mail?</summary><p>Yes. Letters can go by USPS Certified Mail ($14.99) with a tracking number and proof of delivery, or with a return receipt ($19.99) that adds the recipient's signature. Ask your agent to "send it certified", or choose it under Mailing on the <a href="/send?product=letter_certified">web form</a>.</p></details>
         <details class="q"><summary>Can I mail my own PDF?</summary><p>Yes. Upload a PDF of up to ${LIMITS.pdfPages} pages (any page size is fitted to 8.5×11) and we print and mail it as a letter, by First-Class, Certified Mail or express. We add an address page in front, so your document needs no room for addresses. <a href="/mail-a-pdf">How it works</a>.</p></details>
         <details class="q"><summary>Can it get there faster?</summary><p>Yes. Express sends postcards and letters by USPS Priority Mail, usually 2 to 3 days with tracking, for ${usd(EXPRESS_CENTS)} more. It can't be combined with Certified Mail, which already includes tracking.</p></details>

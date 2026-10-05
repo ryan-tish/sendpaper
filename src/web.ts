@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import express, { Router } from "express";
 import { readFileSync } from "node:fs";
-import { BASE_URL, BRAND, COLOR_LETTER_CENTS, DOCS_URL, EXPRESS_CENTS, LIMITS, PRODUCTS, SUPPORT_EMAIL, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
+import { BASE_URL, BRAND, FIRST_ORDER_DISCOUNT_PCT, OFFER_ACTIVE, OFFER_LINE, COLOR_LETTER_CENTS, DOCS_URL, EXPRESS_CENTS, LIMITS, PRODUCTS, SUPPORT_EMAIL, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
 import { pool } from "./db.ts";
 import { landing } from "./landing.ts";
 import { sendPage } from "./send.ts";
@@ -232,8 +232,8 @@ ${GUIDES.map((g) => `- ${g.title}: ${BASE_URL}/${g.slug}`).join("\n")}
 - Parameters: ${Object.entries(QUICK_PARAMS).map(([k, v]) => `${k} (${v})`).join("; ")}
 - Example: ${QUICK_EXAMPLE}
 
-## $1 off your first order
-- The first order from each return address (any product) is $1 off. It's taken off price automatically when the order is created; the order's discount field shows it. Pay the order's price as usual (pay_order or checkout_url).
+## First-order discount
+- ${OFFER_ACTIVE ? `${OFFER_LINE}: the first order from each return address (any product) gets ${FIRST_ORDER_DISCOUNT_PCT}% off.` : "No first-order discount right now."} It's taken off price automatically when the order is created; the order's discount field shows it. Pay the order's price as usual (pay_order or checkout_url).
 
 ## Payment
 - Agents can pay with a Stripe shared payment token (spt_…) the user approved, scoped to the order amount in USD: call pay_order, or POST /v1/orders/{id}/pay with {"shared_payment_token": "spt_…"}.${env.stripeNetworkId ? `\n- Sendpaper's Stripe network ID: ${env.stripeNetworkId}` : ""}

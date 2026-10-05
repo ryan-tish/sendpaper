@@ -54,9 +54,13 @@ export const POSTCARD_SIZE_NAMES = Object.keys(POSTCARD_SIZES) as [PostcardSize,
 export const postcardProduct = (size: string | undefined): ProductId => (POSTCARD_SIZES[size as PostcardSize] ?? POSTCARD_SIZES["4x6"]).product;
 export const postcardSpec = (p: ProductId) => Object.values(POSTCARD_SIZES).find((s) => s.product === p) ?? POSTCARD_SIZES["4x6"];
 
-// "$1 off your first order" (Ryan, 2026-10-04; replaced "First postcard free"): any product, once per return address.
-export const FIRST_ORDER_DISCOUNT_CENTS = 100;
-export const OFFER_LINE = "$1 off your first order";
+// First-order discount (Ryan): "First postcard free" (10-04) -> "$1 off" (10-04) -> 20% off as a temporary promo
+// (10-05), shown in a site-wide banner. Any product, once per return address. Set to 0 to end the promotion: the
+// discount, the banner and every mention of it switch off together.
+export const FIRST_ORDER_DISCOUNT_PCT = 20;
+export const OFFER_ACTIVE = FIRST_ORDER_DISCOUNT_PCT > 0;
+export const OFFER_LINE = `${FIRST_ORDER_DISCOUNT_PCT}% off your first order`;
+export const firstOrderDiscount = (listCents: number) => Math.round((listCents * FIRST_ORDER_DISCOUNT_PCT) / 100);
 
 // Express delivery (Ryan, 2026-10-05): PostGrid mailingClass "express" = USPS Priority Mail, 2–3 days, tracked.
 // Postcards and letters; NOT with Certified Mail (PostGrid rejects express + extraService). PLACEHOLDER PRICE:

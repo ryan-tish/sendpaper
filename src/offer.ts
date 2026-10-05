@@ -1,5 +1,5 @@
 // Offers and reviews.
-// "$1 off your first order" (2026-10-04) replaced "First postcard free": the discount is taken off price_cents when
+// The first-order discount (now a percentage, see config) replaced "First postcard free" (2026-10-04): the discount is taken off price_cents when
 // the order is created and re-checked right before charging (see createOrder / confirmDiscount in orders.ts).
 // Orders and reviews from the old free-postcard offer keep free_offer = true, so their history and labels stay honest.
 import { pool } from "./db.ts";

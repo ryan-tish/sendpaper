@@ -1,5 +1,5 @@
 import { analyticsSnippet } from "./analytics.ts";
-import { BRAND, DOCS_URL, SUPPORT_EMAIL } from "./config.ts";
+import { BRAND, DOCS_URL, OFFER_ACTIVE, OFFER_LINE, SUPPORT_EMAIL } from "./config.ts";
 import { readFileSync } from "node:fs";
 import { esc } from "./render.ts";
 
@@ -74,6 +74,11 @@ textarea { resize: vertical; min-height: 120px; }
 fieldset { border: 1px solid var(--rule); border-radius: 12px; padding: 18px; display: grid; gap: 12px; margin: 0; min-width: 0; background: var(--card); }
 legend { font: 600 .98rem var(--f-ui); padding: 0 6px; }
 .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.promo { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 10px; padding: 9px 16px; background: #0d1512; font-size: .86rem; text-decoration: none; text-align: center; }
+.promo, .promo:hover { color: #f4f7f5; }
+.promo b { font-weight: 600; color: var(--lime); }
+.promo span, .promo i { color: #f4f7f5; opacity: .85; font-style: normal; }
+.promo:hover span, .promo:hover i { opacity: 1; }
 footer.site { border-top: 1px solid var(--rule); margin-top: 112px; padding-block: 28px 44px; font-size: .88rem; color: var(--soft); display: flex; gap: 10px 22px; flex-wrap: wrap; align-items: center; }
 footer.site a { color: var(--soft); text-decoration: none; }
 footer.site a:hover { color: var(--ink); }
@@ -120,6 +125,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
 <script>try { if (localStorage.getItem("theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch {}</script>
 <style>${CSS}</style>${analyticsSnippet()}</head><body>
+${OFFER_ACTIVE ? `<a class="promo" href="/send"><b>${esc(OFFER_LINE)}</b><span>Taken off automatically · any postcard or letter</span><i aria-hidden="true">→</i></a>` : ""}
 <header class="site"><div class="wrap"><nav>
   <a class="logo" href="/">${LOGO_FULL}</a>
   <div class="links"><a href="/use-cases">Use cases</a><a href="/guides">Guides</a><a href="${docsUrl()}">Docs</a><a href="/#pricing">Pricing</a><a href="/send">Send from the web</a><button class="theme" type="button" id="theme" aria-label="Toggle dark mode"><svg class="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><a class="btn" href="${docsUrl("/quickstart")}">Connect your agent</a></div>

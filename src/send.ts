@@ -1,4 +1,4 @@
-import { BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, POSTCARD_SIZES, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
+import { BRAND, OFFER_ACTIVE, OFFER_LINE, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, POSTCARD_SIZES, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc, THEMES } from "./render.ts";
 
@@ -189,7 +189,7 @@ export function sendPage(initial: string) {
           <div class="total"><span>Total</span><b id="total">${usd(PRODUCTS[start].cents)}</b></div>
           <p id="err" class="err" role="alert" style="margin:0"></p>
           <button class="btn" id="go" type="submit" form="f">Preview the print and pay</button>
-          <p class="note" id="offerNote"><b style="color:var(--green)">$1 off your first order.</b> Taken off on the next page if it's your first one from this return address.</p>
+          ${OFFER_ACTIVE ? `<p class="note" id="offerNote"><b style="color:var(--green)">${esc(OFFER_LINE)}.</b> Taken off on the next page if it's your first one from this return address.</p>` : ""}
           <p class="note">Nothing is mailed until you pay. Checkout by Stripe.</p>
         </div>
       </aside>
