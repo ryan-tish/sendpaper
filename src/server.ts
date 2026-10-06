@@ -9,7 +9,7 @@ import { handleWebhook } from "./payments.ts";
 import { startPrintSync } from "./fulfill.ts";
 import { web } from "./web.ts";
 import { quick } from "./quick.ts";
-import { trackViews } from "./stats.ts";
+import { trackApi, trackViews } from "./stats.ts";
 import { pingIndexNow, seo } from "./seo.ts";
 import { posthogProxy } from "./analytics.ts";
 
@@ -63,6 +63,7 @@ app.all("/mcp", (_req, res) => {
   res.status(405).set("Allow", "POST").json({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed" }, id: null });
 });
 
+app.use("/v1", trackApi); // logs every API request (stats.ts), including 404s and validation errors
 app.use("/v1", api);
 app.use("/v1", (_req, res) => apiError(res, 404, "not_found", "No such endpoint. See /docs."));
 app.use("/admin", admin);

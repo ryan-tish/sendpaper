@@ -70,6 +70,22 @@ export async function migrate() {
       client  text NOT NULL
     );
     CREATE INDEX IF NOT EXISTS mcp_calls_at_idx ON mcp_calls (at);
+    -- Every REST API request and agent (MCP) tool call, first-party (2026-10-05): what was called, whether it worked,
+    -- how long it took, which app called, and for failures the error type and field paths (never field values or addresses).
+    -- Agent tool calls before this table exist only in mcp_calls (tool + client).
+    CREATE TABLE IF NOT EXISTS api_calls (
+      id        bigserial PRIMARY KEY,
+      at        timestamptz NOT NULL DEFAULT now(),
+      channel   text NOT NULL,          -- 'api' or 'mcp'
+      endpoint  text NOT NULL,          -- 'POST /v1/postcards' or a tool name such as 'create_postcard'
+      status    integer NOT NULL,       -- HTTP status; for MCP 200 = ok, 422 = invalid input, 400 = tool error, 500 = server error
+      ok        boolean NOT NULL,
+      ms        integer NOT NULL,
+      client    text NOT NULL,
+      error     text,
+      order_id  text
+    );
+    CREATE INDEX IF NOT EXISTS api_calls_at_idx ON api_calls (at);
 
     CREATE TABLE IF NOT EXISTS reviews (
       id          serial PRIMARY KEY,

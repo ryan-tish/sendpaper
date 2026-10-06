@@ -8,6 +8,7 @@ import { pool } from "./db.ts";
 import { esc } from "./render.ts";
 import { webTraffic } from "./posthogStats.ts";
 import { env } from "./config.ts";
+import { track } from "./analytics.ts";
 
 const BOT = /bot|crawl|spider|slurp|preview|fetch|headless|python|curl|wget|httpx|axios|node|go-http|java|monitor|uptime|lighthouse|scan|facebookexternalhit|whatsapp|telegram|discord|slack|skype|embedly|vkshare|pinterest|redditbot|applebot|bingpreview|google-read-aloud|mediapartners|ia_archiver|semrush|ahrefs|gptbot|claude|perplexity|chatgpt|ccbot|bytespider/i;
 const SKIP = /^\/(admin|v1|mcp|webhooks|images|files|healthz|ingest|\.well-known|review)(\/|$)|\.(svg|png|jpg|ico|js|css|json|txt|xml|mp4|webmanifest)$|\/preview$/;
@@ -59,9 +60,45 @@ export function trackViews(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Agents never load the website, so their tool calls are logged here too.
-export function recordToolCall(tool: string, client: string) {
-  pool.query("INSERT INTO mcp_calls (tool, client) VALUES ($1, $2)", [tool, client.slice(0, 120)]).catch((e) => console.error("mcp_calls", e));
+// API requests and agent tool calls never load the website, so PostHog's browser snippet can't see them: every one
+// is logged here (and mirrored to PostHog as `api_request` / `mcp_tool_called`).
+export type ApiCall = { channel: "api" | "mcp"; endpoint: string; status: number; ms: number; client: string; error?: string | null; order_id?: string | null };
+export function recordApiCall(c: ApiCall) {
+  const client = (c.client || "unknown").slice(0, 120);
+  pool
+    .query("INSERT INTO api_calls (channel, endpoint, status, ok, ms, client, error, order_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", [
+      c.channel, c.endpoint.slice(0, 120), c.status, c.status < 400, Math.round(c.ms), client, c.error?.slice(0, 300) ?? null, c.order_id ?? null,
+    ])
+    .catch((e) => console.error("api_calls", e));
+  track(c.channel === "mcp" ? "mcp_tool_called" : "api_request", `${c.channel === "mcp" ? "agent" : "api"}:${client.split("/")[0]}`, {
+    endpoint: c.endpoint, tool: c.channel === "mcp" ? c.endpoint : undefined, status: c.status, ok: c.status < 400, ms: Math.round(c.ms), client, error: c.error ?? undefined, order_id: c.order_id ?? undefined,
+  });
+}
+
+// "/v1/orders/ord_abc/pay" -> "/v1/orders/:id/pay", so endpoints group in the stats.
+export const apiEndpoint = (method: string, path: string) => `${method} ${path.replace(/\/(ord|batch|file|img)_[A-Za-z0-9]+/g, "/:id").replace(/\/$/, "") || "/"}`;
+
+// REST: one row per /v1 request, written when the response finishes. The error is read from our own JSON error body.
+export function trackApi(req: Request, res: Response, next: NextFunction) {
+  if (req.method === "OPTIONS") return next();
+  const start = performance.now();
+  let body: any = null;
+  const json = res.json.bind(res);
+  res.json = (b: any) => { body = b; return json(b); };
+  res.on("finish", () => {
+    const err = body?.error;
+    const fields = Array.isArray(err?.fields) ? err.fields.map((f: { field?: string }) => f.field).filter(Boolean).join(", ") : "";
+    recordApiCall({
+      channel: "api",
+      endpoint: apiEndpoint(req.method, req.baseUrl + req.path),
+      status: res.statusCode,
+      ms: performance.now() - start,
+      client: req.get("x-client") ?? req.get("user-agent")?.split(" ")[0] ?? "unknown",
+      error: err ? `${err.type ?? "error"}${fields ? `: ${fields}` : err.message ? `: ${String(err.message).slice(0, 160)}` : ""}` : null,
+      order_id: body?.batch?.id ?? (typeof body?.id === "string" ? body.id : null),
+    });
+  });
+  next();
 }
 
 type Day = { day: string; visitors: number; views: number };
@@ -127,17 +164,40 @@ export async function statsPage() {
       GROUP BY s.span`),
     q<{ path: string; views: string }>(`SELECT path, count(*) AS views FROM page_views WHERE at > now() - interval '30 days' GROUP BY path ORDER BY views DESC LIMIT 10`),
     q<{ host: string; visitors: string }>(`SELECT referrer_host AS host, count(DISTINCT visitor) AS visitors FROM page_views WHERE at > now() - interval '30 days' AND referrer_host IS NOT NULL GROUP BY host ORDER BY visitors DESC LIMIT 10`),
-    q<{ source: string; created: string; paid: string; free: string; mailed: string }>(`
+    q<{ source: string; created: string; checkout: string; paid: string; free: string; mailed: string }>(`
       SELECT source, count(*) AS created,
+             count(*) FILTER (WHERE stripe_session IS NOT NULL OR status IN ('paid','printing','mailed')) AS checkout,
              count(*) FILTER (WHERE status IN ('paid','printing','mailed')) AS paid,
              count(*) FILTER (WHERE free_offer AND status IN ('paid','printing','mailed')) AS free,
              count(*) FILTER (WHERE status = 'mailed') AS mailed
       FROM orders WHERE created_at > now() - interval '30 days' AND NOT is_test GROUP BY source`),
     q<{ used: string; cents: string; pending: string }>(`SELECT count(*) FILTER (WHERE status IN ('paid','printing','mailed')) AS used, coalesce(sum(discount_cents) FILTER (WHERE status IN ('paid','printing','mailed')), 0) AS cents, count(*) FILTER (WHERE status = 'awaiting_payment') AS pending FROM orders WHERE discount_cents > 0 AND NOT is_test`),
-    q<{ client: string; calls: string; days: string }>(`SELECT split_part(client, '/', 1) AS client, count(*) AS calls, count(DISTINCT (at AT TIME ZONE 'UTC')::date) AS days FROM mcp_calls WHERE at > now() - interval '30 days' GROUP BY 1 ORDER BY calls DESC LIMIT 10`),
-    q<{ tool: string; calls: string }>(`SELECT tool, count(*) AS calls FROM mcp_calls WHERE at > now() - interval '30 days' GROUP BY tool ORDER BY calls DESC`),
+    q<{ client: string; calls: string; days: string }>(`SELECT split_part(client, '/', 1) AS client, count(*) AS calls, count(DISTINCT (at AT TIME ZONE 'UTC')::date) AS days FROM (SELECT at, tool, client FROM mcp_calls UNION ALL SELECT at, endpoint AS tool, client FROM api_calls WHERE channel = 'mcp') c WHERE at > now() - interval '30 days' GROUP BY 1 ORDER BY calls DESC LIMIT 10`),
+    q<{ tool: string; calls: string }>(`SELECT tool, count(*) AS calls FROM (SELECT at, tool, client FROM mcp_calls UNION ALL SELECT at, endpoint AS tool, client FROM api_calls WHERE channel = 'mcp') c WHERE at > now() - interval '30 days' GROUP BY tool ORDER BY calls DESC`),
     q<{ total: string; pending: string; avg: string }>(`SELECT count(*) AS total, count(*) FILTER (WHERE NOT approved) AS pending, round(avg(rating), 1) AS avg FROM reviews`),
   ]);
+
+  // API requests and agent tool calls (first-party, api_calls; agent calls before 2026-10-05 only exist in mcp_calls).
+  const [callTotals, endpoints, clients, errors] = await Promise.all([
+    q<{ channel: string; calls: string; errors: string; clients: string; p50: string; p95: string; today: string }>(`
+      SELECT channel, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS errors, count(DISTINCT split_part(client, '/', 1)) AS clients,
+             percentile_disc(0.5) WITHIN GROUP (ORDER BY ms) AS p50, percentile_disc(0.95) WITHIN GROUP (ORDER BY ms) AS p95,
+             count(*) FILTER (WHERE (at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date) AS today
+      FROM api_calls WHERE at > now() - interval '30 days' GROUP BY channel`),
+    q<{ endpoint: string; channel: string; calls: string; errors: string; p50: string }>(`
+      SELECT endpoint, channel, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS errors, percentile_disc(0.5) WITHIN GROUP (ORDER BY ms) AS p50
+      FROM api_calls WHERE at > now() - interval '30 days' GROUP BY endpoint, channel ORDER BY calls DESC LIMIT 15`),
+    q<{ client: string; channel: string; calls: string; errors: string; orders: string; last: string }>(`
+      SELECT split_part(client, '/', 1) AS client, channel, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS errors,
+             count(DISTINCT order_id) AS orders, to_char(max(at) AT TIME ZONE 'UTC', 'Mon DD HH24:MI') AS last
+      FROM api_calls WHERE at > now() - interval '30 days' GROUP BY 1, 2 ORDER BY calls DESC LIMIT 15`),
+    q<{ at: string; channel: string; endpoint: string; status: string; client: string; error: string }>(`
+      SELECT to_char(at AT TIME ZONE 'UTC', 'Mon DD HH24:MI') AS at, channel, endpoint, status, split_part(client, '/', 1) AS client, coalesce(error, '') AS error
+      FROM api_calls WHERE NOT ok ORDER BY api_calls.at DESC LIMIT 20`),
+  ]);
+  const ch = (c: string) => callTotals.find((t) => t.channel === c);
+  const callsAll = callTotals.reduce((a, t) => a + n(t.calls), 0), errAll = callTotals.reduce((a, t) => a + n(t.errors), 0);
+  const chanName = (c: string) => (c === "mcp" ? "Agent tools" : "REST API");
 
   const days: Day[] = daysRaw.map((d) => ({ day: d.day, visitors: n(d.visitors), views: n(d.views) }));
   const span = (s: string) => totals.find((t) => t.span === s) ?? { visitors: 0, views: 0 };
@@ -182,6 +242,7 @@ export async function statsPage() {
     .stat-table td span { position: relative; padding-left: 8px; }
     .hbar { position: absolute; left: 0; top: 4px; bottom: 4px; width: var(--w); background: var(--green-soft); border-radius: 0 4px 4px 0; }
     .num { text-align: right !important; font-variant-numeric: tabular-nums; }
+    .fails td, .fails th { padding-right: 14px !important; vertical-align: top; } .fails td:not(.why) { white-space: nowrap; } .fails .why { font-size: .84rem; padding-right: 0 !important; }
     .meter { height: 12px; border-radius: 6px; background: var(--tint); border: 1px solid var(--rule); overflow: hidden; }
     .meter i { display: block; height: 100%; width: var(--w); background: var(--green); border-radius: 6px; }
   </style>
@@ -194,6 +255,7 @@ export async function statsPage() {
       ${tile("Visitors, 30 days", fmt(W.d30[0]), `${fmt(W.d30[1])} page views`)}
       ${tile("Orders, 30 days", fmt(sum("created")), `${fmt(sum("paid"))} paid or free · ${fmt(sum("mailed"))} mailed`)}
       ${tile("Agent tool calls", fmt(tools.reduce((a, t) => a + n(t.calls), 0)), `${agents.length} agent${agents.length === 1 ? "" : "s"}`)}
+      ${tile("API + agent calls", fmt(callsAll), `${fmt(errAll)} failed (${pct(errAll, callsAll) || "0%"}) · ${fmt(n(ch("api")?.today) + n(ch("mcp")?.today))} today`)}
     </div>
     <div class="card"><h3>Daily visitors</h3>${dailyChart(W.days)}
       <details><summary class="soft">Table view</summary><table class="stat-table" style="width:100%">${W.days.slice().reverse().map((d) => `<tr><td>${d.day}</td><td class="num">${d.visitors} visitors</td><td class="num">${d.views} views</td></tr>`).join("")}</table></details></div>
@@ -212,15 +274,28 @@ export async function statsPage() {
         ${funnelRow("Created an order", n(web?.created), W.send)}
         ${funnelRow("Paid or claimed free", n(web?.paid), n(web?.created))}
         ${funnelRow("Mailed", n(web?.mailed), n(web?.paid))}</table></div>
-      <div class="card stat-table"><h3>Orders by channel</h3><table><tr><th>Channel</th><th class="num">Created</th><th class="num">Paid</th><th class="num">Free</th><th class="num">Mailed</th></tr>
-        ${["web", "mcp", "api"].map((s) => { const o = orders.find((x) => x.source === s); return `<tr><td>${s === "mcp" ? "Agents (MCP)" : s === "api" ? "API" : "Website"}</td><td class="num">${fmt(n(o?.created))}</td><td class="num">${fmt(n(o?.paid) - n(o?.free))}</td><td class="num">${fmt(n(o?.free))}</td><td class="num">${fmt(n(o?.mailed))}</td></tr>`; }).join("")}</table></div>
+      <div class="card stat-table"><h3>Orders by channel</h3><table><tr><th>Channel</th><th class="num">Created</th><th class="num">Opened checkout</th><th class="num">Paid</th><th class="num">Mailed</th></tr>
+        ${["web", "mcp", "api"].map((s) => { const o = orders.find((x) => x.source === s); return `<tr><td>${s === "mcp" ? "Agents (MCP)" : s === "api" ? "API" : "Website"}</td><td class="num">${fmt(n(o?.created))}</td><td class="num">${fmt(n(o?.checkout))} <span class="soft">${pct(n(o?.checkout), n(o?.created))}</span></td><td class="num">${fmt(n(o?.paid))} <span class="soft">${pct(n(o?.paid), n(o?.checkout))}</span></td><td class="num">${fmt(n(o?.mailed))}</td></tr>`; }).join("")}</table>
+        <p class="soft" style="font-size:.82rem;margin:8px 0 0">Opened checkout = the pay link was visited (or it was paid by an agent token). Percentages are of the previous column.</p></div>
     </div>
     <div class="two">
       ${barTable("Agents (tool calls)", ["Agent", "Calls"], agents.map((a) => ({ label: `${a.client} · ${a.days} day${n(a.days) === 1 ? "" : "s"} active`, value: n(a.calls) })), "No agent calls yet.")}
       ${barTable("Tools used", ["Tool", "Calls"], tools.map((t) => ({ label: t.tool, value: n(t.calls) })), "No tool calls yet.")}
     </div>
+    <div class="card stat-table"><h3>API and agent traffic</h3>
+      <p class="soft" style="margin:0 0 8px">Every REST API request and agent tool call, logged by our server (the website snippet can't see them). Failed = HTTP 4xx/5xx, or a tool that returned an error.</p>
+      <table><tr><th>Channel</th><th class="num">Calls</th><th class="num">Failed</th><th class="num">Apps</th><th class="num">Median</th><th class="num">95th %</th></tr>
+        ${["api", "mcp"].map((c) => { const t = ch(c); return `<tr><td>${chanName(c)}</td><td class="num">${fmt(n(t?.calls))}</td><td class="num">${fmt(n(t?.errors))} <span class="soft">${pct(n(t?.errors), n(t?.calls))}</span></td><td class="num">${fmt(n(t?.clients))}</td><td class="num">${t ? `${fmt(n(t.p50))} ms` : "–"}</td><td class="num">${t ? `${fmt(n(t.p95))} ms` : "–"}</td></tr>`; }).join("")}</table></div>
     <div class="two">
-      <div class="card" style="gap:6px"><h3>First-order discount</h3><p><b>${fmt(n(d?.used))}</b> paid orders used it · $${(n(d?.cents) / 100).toFixed(2)} given · ${fmt(n(d?.pending))} unpaid orders carry it</p><p class="soft">The old "First postcard free" orders still show in the Free column above.</p></div>
+      <div class="card stat-table"><h3>Endpoints and tools</h3>${endpoints.length ? `<table><tr><th>Endpoint / tool</th><th class="num">Calls</th><th class="num">Failed</th><th class="num">Median</th></tr>
+        ${endpoints.map((e) => `<tr><td><code>${esc(e.endpoint)}</code></td><td class="num">${fmt(n(e.calls))}</td><td class="num">${fmt(n(e.errors))}</td><td class="num">${fmt(n(e.p50))} ms</td></tr>`).join("")}</table>` : `<p class="soft">No calls yet.</p>`}</div>
+      <div class="card stat-table"><h3>Apps calling us</h3>${clients.length ? `<table><tr><th>App</th><th class="num">Calls</th><th class="num">Failed</th><th class="num">Orders</th><th class="num">Last seen</th></tr>
+        ${clients.map((c) => `<tr><td>${esc(c.client)} <span class="soft">${chanName(c.channel)}</span></td><td class="num">${fmt(n(c.calls))}</td><td class="num">${fmt(n(c.errors))}</td><td class="num">${fmt(n(c.orders))}</td><td class="num soft">${esc(c.last)}</td></tr>`).join("")}</table>` : `<p class="soft">No calls yet.</p>`}</div>
+    </div>
+    <div class="card stat-table"><h3>Recent failures</h3>${errors.length ? `<p class="soft" style="margin:0 0 8px">The last 20 failed calls (UTC). Only field names and our own error messages are stored, never addresses or what the customer wrote.</p><table class="fails"><tr><th>When</th><th>Call</th><th class="num">Status</th><th>App</th><th>Reason</th></tr>
+      ${errors.map((e) => `<tr><td class="soft">${esc(e.at)}</td><td><code>${esc(e.endpoint)}</code></td><td class="num">${esc(e.status)}</td><td>${esc(e.client)}</td><td class="why">${esc(e.error)}</td></tr>`).join("")}</table>` : `<p class="soft">No failures in the log.</p>`}</div>
+    <div class="two">
+      <div class="card" style="gap:6px"><h3>First-order discount</h3><p><b>${fmt(n(d?.used))}</b> paid orders used it · $${(n(d?.cents) / 100).toFixed(2)} given · ${fmt(n(d?.pending))} unpaid orders carry it</p></div>
       <div class="card" style="gap:6px"><h3>Reviews</h3><p><b>${fmt(n(r?.total))}</b> total${n(r?.total) ? ` · average ${r.avg} ★` : ""} · ${fmt(n(r?.pending))} waiting for approval</p><p><a href="/admin/reviews">Review queue →</a></p></div>
     </div>
   </section>`;

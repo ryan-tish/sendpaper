@@ -4,8 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import { BASE_URL, BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, FIRST_ORDER_DISCOUNT_PCT, OFFER_ACTIVE, OFFER_LINE, PRODUCTS, env, letterProduct, postcardProduct } from "./config.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
-import { track } from "./analytics.ts";
-import { recordToolCall } from "./stats.ts";
+import { recordApiCall } from "./stats.ts";
 import { PdfError, prepareLetterContent } from "./pdf.ts";
 import {
   AddressSchema,
@@ -127,15 +126,11 @@ function build(client: string | undefined) {
     },
     { instructions: INSTRUCTIONS },
   );
-  // Count every tool call per agent (analytics only; the handler runs unchanged).
+  // Mirror each tool's title into annotations.title (Anthropic's directory reads it from there). Tool calls are
+  // logged in handleMcp, where failures the SDK rejects before the handler runs (invalid input) are visible too.
   const register = server.registerTool.bind(server) as typeof server.registerTool;
-  // Also mirror each tool's title into annotations.title (Anthropic's directory reads it from there).
   server.registerTool = ((name: string, config: any, cb: any) =>
-    register(name, { ...config, annotations: { title: config.title, ...config.annotations } }, (async (...args: any[]) => {
-      track("mcp_tool_called", `agent:${client ?? "unknown"}`, { tool: name, client: client ?? "unknown" });
-      recordToolCall(name, client ?? "unknown");
-      return cb(...args);
-    }) as any)) as typeof server.registerTool;
+    register(name, { ...config, annotations: { title: config.title, ...config.annotations } }, cb)) as typeof server.registerTool;
 
   server.registerTool(
     "get_pricing",
@@ -294,8 +289,43 @@ function build(client: string | undefined) {
 }
 
 // Stateless Streamable HTTP: a fresh server per request, so it scales on any instance with no session store.
+// One api_calls row per tools/call: the tool, ok or not, time taken, the agent app, and for failures a short reason.
+// Read from the JSON-RPC response itself (JSON response mode), so input-validation errors are counted as well.
+function logToolCalls(req: Request, res: Response, client: string | undefined) {
+  const calls = (Array.isArray(req.body) ? req.body : [req.body]).filter((m: any) => m?.method === "tools/call");
+  if (!calls.length) return;
+  const start = performance.now();
+  const chunks: Buffer[] = [];
+  const write = res.write.bind(res), end = res.end.bind(res);
+  res.write = ((c: any, ...a: any[]) => { if (c) chunks.push(Buffer.from(c)); return write(c, ...a); }) as typeof res.write;
+  res.end = ((c: any, ...a: any[]) => { if (c && typeof c !== "function") chunks.push(Buffer.from(c)); return end(c, ...a); }) as typeof res.end;
+  res.on("finish", () => {
+    let replies: any[] = [];
+    try { const b = JSON.parse(Buffer.concat(chunks).toString("utf8")); replies = Array.isArray(b) ? b : [b]; } catch { /* not JSON */ }
+    for (const call of calls) {
+      const r = replies.find((x) => x?.id === call.id);
+      const text = r?.error?.message ?? (r?.result?.isError ? r.result.content?.[0]?.text : null);
+      // The SDK reports invalid tool input as an isError result whose text starts "MCP error -32602"; count it as 422.
+      const invalid = r?.error?.code === -32602 || /^MCP error -32602/.test(String(text ?? ""));
+      const status = res.statusCode >= 400 ? res.statusCode : invalid ? 422 : r?.error ? 500 : r?.result?.isError ? 400 : 200;
+      const sc = r?.result?.structuredContent;
+      recordApiCall({
+        channel: "mcp",
+        endpoint: String(call.params?.name ?? "unknown"),
+        status,
+        ms: performance.now() - start,
+        client: client ?? "unknown",
+        error: text ? String(text).slice(0, 200) : null,
+        order_id: sc?.batch?.id ?? (typeof sc?.id === "string" ? sc.id : null),
+      });
+    }
+  });
+}
+
 export async function handleMcp(req: Request, res: Response) {
-  const server = build(req.get("user-agent")?.split(" ")[0]);
+  const client = req.get("user-agent")?.split(" ")[0];
+  logToolCalls(req, res, client);
+  const server = build(client);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   res.on("close", () => {
     transport.close();
