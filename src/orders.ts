@@ -259,6 +259,42 @@ export async function getBatch(batchId: string): Promise<OrderRow[]> {
   return rows;
 }
 
+// `recipients` (2–25 addresses) instead of `to`: one order per recipient, grouped by a batch id, ONE checkout (/b/<batch>/pay).
+export const RecipientsSchema = z.object({
+  recipients: z.array(AddressSchema).min(2, "Give at least 2 recipients, or use `to` for one.").max(MAX_RECIPIENTS, `Up to ${MAX_RECIPIENTS} recipients per order.`),
+});
+
+// Creates the group; each recipient's order reuses the idempotency key with its index, so a retry returns the same group.
+export async function createGroupOrders(
+  recipients: Address[],
+  make: (to: Address, key: string | undefined, batchId: string) => Promise<{ order: OrderRow; existing: boolean }>,
+  key?: string,
+): Promise<{ batchId: string; orders: OrderRow[]; existing: boolean }> {
+  let batchId = newId("batch"), existing = false;
+  const orders: OrderRow[] = [];
+  for (const [i, to] of recipients.entries()) {
+    const r = await make(to, key ? `${key}:${i}` : undefined, batchId);
+    if (i === 0 && r.existing && r.order.batch_id) { batchId = r.order.batch_id; existing = true; }
+    orders.push(r.order);
+  }
+  return { batchId, orders: existing ? await getBatch(batchId) : orders, existing };
+}
+
+export function batchSummary(batchId: string, orders: OrderRow[]) {
+  const unpaid = orders.filter((o) => o.status === "awaiting_payment");
+  const cents = orders.reduce((t, o) => t + o.price_cents, 0), off = orders.reduce((t, o) => t + o.discount_cents, 0);
+  return {
+    id: batchId,
+    count: orders.length,
+    url: `${BASE_URL}/b/${batchId}`,
+    checkout_url: unpaid.length ? `${BASE_URL}/b/${batchId}/pay` : null,
+    price: { amount_cents: cents, currency: "usd", display: `$${(cents / 100).toFixed(2)}` },
+    discount: off ? { amount_cents: off, display: `$${(off / 100).toFixed(2)} off`, reason: "First order from this return address" } : null,
+  };
+}
+
+export const publicBatch = (batchId: string, orders: OrderRow[]) => ({ batch: batchSummary(batchId, orders), orders: orders.map((o) => publicOrder(o)) });
+
 export async function createOrder(input: CreateInput): Promise<{ order: OrderRow; existing: boolean }> {
   if (input.idempotency_key) {
     const prior = await pool.query<OrderRow>("SELECT * FROM orders WHERE idempotency_key = $1", [input.idempotency_key]);

@@ -208,7 +208,12 @@ export async function payWithSharedToken(o: OrderRow, token: string): Promise<Or
   if (!env.stripeSecret) throw new PaymentError("payments_unavailable", "Payments are not configured.");
   if (o.status !== "awaiting_payment") throw new PaymentError("not_payable", `Order is ${o.status}; nothing to pay.`);
   if (!/^spt_[A-Za-z0-9_]+$/.test(token)) throw new PaymentError("invalid_token", "shared_payment_token must look like spt_…");
-  o = await confirmDiscount(o);
+  // A group member pays for its whole group (every still-unpaid order) with one token: one design to many people.
+  const group = o.batch_id ? (await getBatch(o.batch_id)).filter((x) => x.status === "awaiting_payment") : [o];
+  const orders: OrderRow[] = [];
+  for (const x of group) orders.push(await confirmDiscount(x));
+  const amount = orders.reduce((t, x) => t + x.price_cents, 0);
+  const label = orders.length > 1 ? `these ${orders.length} orders (group ${o.batch_id})` : "this order";
 
   // Check the grant before charging so the agent gets a precise reason instead of a generic decline.
   const grant = await stripeForm(`/shared_payment/granted_tokens/${token}`, {}, undefined, "GET");
@@ -216,27 +221,31 @@ export async function payWithSharedToken(o: OrderRow, token: string): Promise<Or
   const limits = grant.body.usage_limits ?? {};
   if (grant.body.deactivated_at) throw new PaymentError("token_inactive", `Token is ${grant.body.deactivated_reason ?? "deactivated"}. Ask the user to approve a new one.`);
   if (limits.currency && limits.currency !== "usd") throw new PaymentError("token_currency", "Token must be scoped to USD.");
-  if (limits.max_amount != null && limits.max_amount < o.price_cents)
-    throw new PaymentError("token_amount", `Token allows ${limits.max_amount} cents but this order costs ${o.price_cents}. Request a token for at least ${o.price_cents} cents.`);
+  if (limits.max_amount != null && limits.max_amount < amount)
+    throw new PaymentError("token_amount", `Token allows ${limits.max_amount} cents but ${label} cost ${amount}. Request a token for at least ${amount} cents.`);
 
   const pi = await stripeForm(
     "/payment_intents",
     {
-      amount: String(o.price_cents),
+      amount: String(amount),
       currency: "usd",
       "payment_method_data[shared_payment_granted_token]": token,
       confirm: "true",
-      "metadata[order_id]": o.id,
+      ...(orders.length > 1 ? { "metadata[batch_id]": o.batch_id! } : { "metadata[order_id]": o.id }),
       "metadata[paid_via]": "shared_payment_token",
-      description: `${BRAND} ${PRODUCTS[o.product].name} to ${o.to_address.name}`,
+      description: orders.length > 1 ? `${BRAND} ${orders.length} × ${PRODUCTS[o.product].name}` : `${BRAND} ${PRODUCTS[o.product].name} to ${o.to_address.name}`,
     },
-    `spt-pay-${o.id}-${token}`, // retrying the same token never double-charges; a new token after a decline gets a fresh attempt
+    orders.length > 1 ? `spt-pay-${o.batch_id}-${token}` : `spt-pay-${o.id}-${token}`, // retrying the same token never double-charges; a new token after a decline gets a fresh attempt
   );
   if (!pi.ok) throw stripeFailure("payment", pi.body, pi.status);
   if (pi.body.status !== "succeeded")
     throw new PaymentError("requires_action", `Payment is ${pi.body.status}. Send the user to the checkout link instead.`);
 
-  const paid = await setStatus(o.id, "paid", "paid by agent with a shared payment token", { stripe_payment: pi.body.id });
-  if (paid) await notifyPaid(paid).catch((e) => console.error("notify failed", e));
-  return paid!;
+  let mine: OrderRow | null = null;
+  for (const x of orders) {
+    const paid = await setStatus(x.id, "paid", "paid by agent with a shared payment token", { stripe_payment: pi.body.id });
+    if (paid) await notifyPaid(paid).catch((e) => console.error("notify failed", e));
+    if (x.id === o.id) mine = paid;
+  }
+  return mine ?? (await getOrder(o.id))!;
 }

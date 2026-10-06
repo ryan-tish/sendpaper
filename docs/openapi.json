@@ -41,7 +41,7 @@
     "/postcards": {
       "post": {
         "summary": "Create a postcard",
-        "description": "Creates a 4\u00d76 or 6\u00d79 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.",
+        "description": "Creates a 4×6, 6×9 or 6×11 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.\n\nTo send the same postcard to several people, pass `recipients` (2–25 addresses) instead of `to`. You get back a Batch: one order per recipient and a single `batch.checkout_url`. `POST /orders/{id}/pay` with any order in the batch pays for every unpaid order in it (scope the token to `batch.price`).",
         "operationId": "createPostcard",
         "parameters": [
           {
@@ -55,49 +55,103 @@
               "schema": {
                 "$ref": "#/components/schemas/CreatePostcard"
               },
-              "example": {
-                "size": "4x6",
-                "to": {
-                  "name": "Sam Rivera",
-                  "line1": "12 Oak St",
-                  "city": "Austin",
-                  "state": "TX",
-                  "zip": "78701"
+              "examples": {
+                "one": {
+                  "summary": "One recipient",
+                  "value": {
+                    "size": "4x6",
+                    "to": {
+                      "name": "Sam Rivera",
+                      "line1": "12 Oak St",
+                      "city": "Austin",
+                      "state": "TX",
+                      "zip": "78701"
+                    },
+                    "from": {
+                      "name": "Alex Kim",
+                      "line1": "88 Pine Ave",
+                      "city": "Denver",
+                      "state": "CO",
+                      "zip": "80202"
+                    },
+                    "content": {
+                      "front_headline": "Happy birthday, Sam!",
+                      "front_theme": "sunset",
+                      "message": "Thirty looks great on you."
+                    },
+                    "customer_email": "alex@example.com"
+                  }
                 },
-                "from": {
-                  "name": "Alex Kim",
-                  "line1": "88 Pine Ave",
-                  "city": "Denver",
-                  "state": "CO",
-                  "zip": "80202"
-                },
-                "content": {
-                  "front_headline": "Happy birthday, Sam!",
-                  "front_theme": "sunset",
-                  "message": "Thirty looks great on you."
-                },
-                "customer_email": "alex@example.com"
+                "many": {
+                  "summary": "Same postcard to several people",
+                  "value": {
+                    "size": "4x6",
+                    "from": {
+                      "name": "Alex Kim",
+                      "line1": "88 Pine Ave",
+                      "city": "Denver",
+                      "state": "CO",
+                      "zip": "80202"
+                    },
+                    "content": {
+                      "front_headline": "Happy birthday, Sam!",
+                      "front_theme": "sunset",
+                      "message": "Thirty looks great on you."
+                    },
+                    "customer_email": "alex@example.com",
+                    "recipients": [
+                      {
+                        "name": "Sam Rivera",
+                        "line1": "12 Oak St",
+                        "city": "Austin",
+                        "state": "TX",
+                        "zip": "78701"
+                      },
+                      {
+                        "name": "Jo Park",
+                        "line1": "12 Oak St",
+                        "city": "Dayton",
+                        "state": "OH",
+                        "zip": "45402"
+                      }
+                    ]
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Order created",
+            "description": "Order created (a Batch when the request used `recipients`)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Order"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Order"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Batch"
+                    }
+                  ]
                 }
               }
             }
           },
           "200": {
-            "description": "Idempotency-Key already used: the original order is returned",
+            "description": "Idempotency-Key already used: the original order is returned (a Batch when the request used `recipients`)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Order"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Order"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Batch"
+                    }
+                  ]
                 }
               }
             }
@@ -111,7 +165,7 @@
     "/letters": {
       "post": {
         "summary": "Create a letter",
-        "description": "Creates a printed letter (up to ~3 pages, 8.5\u00d711, #10 envelope) in `awaiting_payment` and returns a `checkout_url`. Set `certified` to send it by USPS Certified Mail.",
+        "description": "Creates a printed letter (up to ~3 pages, 8.5×11, #10 envelope) in `awaiting_payment` and returns a `checkout_url`. Set `certified` to send it by USPS Certified Mail.\n\nTo send the same letter to several people, pass `recipients` (2–25 addresses) instead of `to`. You get back a Batch: one order per recipient and a single `batch.checkout_url`. `POST /orders/{id}/pay` with any order in the batch pays for every unpaid order in it (scope the token to `batch.price`).",
         "operationId": "createLetter",
         "parameters": [
           {
@@ -125,25 +179,62 @@
               "schema": {
                 "$ref": "#/components/schemas/CreateLetter"
               },
-              "example": {
-                "to": {
-                  "name": "Pat Lee",
-                  "line1": "500 Main St",
-                  "line2": "Apt 4",
-                  "city": "Boston",
-                  "state": "MA",
-                  "zip": "02110"
+              "examples": {
+                "one": {
+                  "summary": "One recipient",
+                  "value": {
+                    "to": {
+                      "name": "Pat Lee",
+                      "line1": "500 Main St",
+                      "line2": "Apt 4",
+                      "city": "Boston",
+                      "state": "MA",
+                      "zip": "02110"
+                    },
+                    "from": {
+                      "name": "Alex Kim",
+                      "line1": "88 Pine Ave",
+                      "city": "Denver",
+                      "state": "CO",
+                      "zip": "80202"
+                    },
+                    "content": {
+                      "body": "Dear Pat,\n\nThank you for fixing the roof so quickly.\n\nBest,\nAlex",
+                      "font": "serif"
+                    }
+                  }
                 },
-                "from": {
-                  "name": "Alex Kim",
-                  "line1": "88 Pine Ave",
-                  "city": "Denver",
-                  "state": "CO",
-                  "zip": "80202"
-                },
-                "content": {
-                  "body": "Dear Pat,\n\nThank you for fixing the roof so quickly.\n\nBest,\nAlex",
-                  "font": "serif"
+                "many": {
+                  "summary": "Same letter to several people",
+                  "value": {
+                    "from": {
+                      "name": "Alex Kim",
+                      "line1": "88 Pine Ave",
+                      "city": "Denver",
+                      "state": "CO",
+                      "zip": "80202"
+                    },
+                    "content": {
+                      "body": "Dear Pat,\n\nThank you for fixing the roof so quickly.\n\nBest,\nAlex",
+                      "font": "serif"
+                    },
+                    "recipients": [
+                      {
+                        "name": "Sam Rivera",
+                        "line1": "12 Oak St",
+                        "city": "Austin",
+                        "state": "TX",
+                        "zip": "78701"
+                      },
+                      {
+                        "name": "Jo Park",
+                        "line1": "12 Oak St",
+                        "city": "Dayton",
+                        "state": "OH",
+                        "zip": "45402"
+                      }
+                    ]
+                  }
                 }
               }
             }
@@ -151,21 +242,35 @@
         },
         "responses": {
           "201": {
-            "description": "Order created",
+            "description": "Order created (a Batch when the request used `recipients`)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Order"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Order"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Batch"
+                    }
+                  ]
                 }
               }
             }
           },
           "200": {
-            "description": "Idempotency-Key already used: the original order is returned",
+            "description": "Idempotency-Key already used: the original order is returned (a Batch when the request used `recipients`)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Order"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Order"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Batch"
+                    }
+                  ]
                 }
               }
             }
@@ -253,7 +358,7 @@
     "/orders/{id}/pay": {
       "post": {
         "summary": "Pay with an agent token",
-        "description": "Pay an unpaid order with a Stripe shared payment token (`spt_\u2026`) the user approved, scoped to at least the order amount in USD. Safe to retry with the same token.",
+        "description": "Pay an unpaid order with a Stripe shared payment token (`spt_…`) the user approved, scoped to at least the order amount in USD. Safe to retry with the same token.\n\nFor an order that belongs to a batch, this charges one token for every unpaid order in the batch; scope the token to the batch total.",
         "operationId": "payOrder",
         "parameters": [
           {
@@ -405,7 +510,6 @@
       "CreatePostcard": {
         "type": "object",
         "required": [
-          "to",
           "from",
           "content"
         ],
@@ -420,7 +524,8 @@
             "default": "4x6"
           },
           "to": {
-            "$ref": "#/components/schemas/Address"
+            "$ref": "#/components/schemas/Address",
+            "description": "Recipient address Use `recipients` instead to send to several people."
           },
           "from": {
             "$ref": "#/components/schemas/Address",
@@ -513,25 +618,46 @@
           },
           "idempotency_key": {
             "type": "string",
-            "description": "Alternative to the Idempotency-Key header"
+            "description": "Alternative to the Idempotency-Key header With `recipients`, a retry with the same key returns the same batch."
           },
           "express": {
             "type": "boolean",
             "default": false,
             "description": "USPS Priority Mail (2-3 days, tracked) for an extra charge."
+          },
+          "recipients": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 25,
+            "items": {
+              "$ref": "#/components/schemas/Address"
+            },
+            "description": "Send the same postcard or letter to several people: 2–25 addresses, used instead of `to`. Each recipient becomes its own order (own review, tracking and refund), grouped into a batch that is paid with one checkout link. The response is a Batch, not an Order."
           }
-        }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "to"
+            ]
+          },
+          {
+            "required": [
+              "recipients"
+            ]
+          }
+        ]
       },
       "CreateLetter": {
         "type": "object",
         "required": [
-          "to",
           "from",
           "content"
         ],
         "properties": {
           "to": {
-            "$ref": "#/components/schemas/Address"
+            "$ref": "#/components/schemas/Address",
+            "description": "Recipient address Use `recipients` instead to send to several people."
           },
           "from": {
             "$ref": "#/components/schemas/Address"
@@ -574,7 +700,8 @@
             "format": "email"
           },
           "idempotency_key": {
-            "type": "string"
+            "type": "string",
+            "description": " With `recipients`, a retry with the same key returns the same batch."
           },
           "certified": {
             "type": "string",
@@ -590,8 +717,29 @@
             "type": "boolean",
             "default": false,
             "description": "USPS Priority Mail (2-3 days, tracked); not with certified."
+          },
+          "recipients": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 25,
+            "items": {
+              "$ref": "#/components/schemas/Address"
+            },
+            "description": "Send the same postcard or letter to several people: 2–25 addresses, used instead of `to`. Each recipient becomes its own order (own review, tracking and refund), grouped into a batch that is paid with one checkout link. The response is a Batch, not an Order."
           }
-        }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "to"
+            ]
+          },
+          {
+            "required": [
+              "recipients"
+            ]
+          }
+        ]
       },
       "Product": {
         "type": "object",
@@ -761,6 +909,13 @@
                 "format": "uri"
               }
             }
+          },
+          "batch_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Set when the order is part of a batch (created with `recipients`). Its checkout_url is then the batch's single payment link."
           }
         }
       },
@@ -792,6 +947,87 @@
                 }
               }
             }
+          }
+        }
+      },
+      "Batch": {
+        "type": "object",
+        "required": [
+          "batch",
+          "orders"
+        ],
+        "properties": {
+          "batch": {
+            "type": "object",
+            "required": [
+              "id",
+              "count",
+              "url",
+              "price"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Batch id, batch_…"
+              },
+              "count": {
+                "type": "integer",
+                "description": "Number of recipients (one order each)"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Batch page listing every recipient with links to each preview"
+              },
+              "checkout_url": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri",
+                "description": "One payment link for every unpaid order in the batch; null once all are paid"
+              },
+              "price": {
+                "type": "object",
+                "properties": {
+                  "amount_cents": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "display": {
+                    "type": "string"
+                  }
+                },
+                "description": "Total for the whole batch"
+              },
+              "discount": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "amount_cents": {
+                    "type": "integer"
+                  },
+                  "display": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "description": "First-order discount across the batch, already taken off price"
+              }
+            }
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Order"
+            },
+            "description": "One order per recipient, in the order given"
           }
         }
       }

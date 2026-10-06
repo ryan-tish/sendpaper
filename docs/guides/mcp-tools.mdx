@@ -15,7 +15,8 @@ description: "The tools Sendpaper exposes to your agent."
 ## create_postcard
 
 <ParamField path="size" type="string" default="4x6">`4x6`, `6x9` or `6x11`.</ParamField>
-<ParamField path="to" type="Address" required>Recipient: `name`, `line1`, optional `line2`, `city`, two-letter `state`, `zip`. US only.</ParamField>
+<ParamField path="to" type="Address">Recipient: `name`, `line1`, optional `line2`, `city`, two-letter `state`, `zip`. US only. Send this **or** `recipients`.</ParamField>
+<ParamField path="recipients" type="Address[]">Send the same card to several people: 2 to 25 addresses, instead of `to`. Each gets its own order; one payment covers all. See [Send to several people](/guides/send-to-many).</ParamField>
 <ParamField path="from" type="Address" required>Return address, printed on the card.</ParamField>
 <ParamField path="content.layout" type="string">`headline`, `photo`, `photo_caption` or `collage`. Inferred from the fields you send when omitted.</ParamField>
 <ParamField path="content.front_headline" type="string">`headline` layout: up to 60 characters of big text, with `front_theme`: `ink`, `sky`, `sunset`, `forest`, `rose`, `sand`, `night` or `mint`.</ParamField>
@@ -30,7 +31,7 @@ description: "The tools Sendpaper exposes to your agent."
 
 ## create_letter
 
-Same `to`, `from` and `idempotency_key`, plus:
+Same `to` or `recipients`, `from` and `idempotency_key`, plus:
 
 <ParamField path="content.body" type="string">Plain text, blank lines between paragraphs, up to about 3 pages. Send this **or** `content.pdf_url`.</ParamField>
 <ParamField path="content.pdf_url" type="string">Mail your own document: a public https link to a PDF of up to 6 pages. Any page size is fitted to 8.5×11, and a blank address page is added in front.</ParamField>
@@ -43,7 +44,7 @@ Same `to`, `from` and `idempotency_key`, plus:
 ## pay_order
 
 <ParamField path="order_id" type="string" required>The order to pay (`ord_…`).</ParamField>
-<ParamField path="shared_payment_token" type="string" required>A Stripe shared payment token (`spt_…`) scoped to at least the order amount in USD.</ParamField>
+<ParamField path="shared_payment_token" type="string" required>A Stripe shared payment token (`spt_…`) scoped to at least the order amount in USD. For an order created with `recipients`, this pays for the whole group: scope the token to `batch.price`.</ParamField>
 
 ## What the agent gets back
 
@@ -53,5 +54,7 @@ Both create tools return a sentence telling the agent what to do next, followed 
 Order created (ord_…, $2.99). Preview: https://sendmypaper.com/o/ord_…/preview. To pay: call pay_order
 with a Stripe shared payment token for 299 cents USD, or have the user pay at https://sendmypaper.com/o/ord_…/pay.
 ```
+
+With `recipients`, the result also carries `batch` (the group: `count`, `url`, one `checkout_url` and the total `price`) and `orders` (one per recipient). The top-level fields describe the first recipient's order.
 
 <Info>The server also sends instructions at connection time telling the agent to confirm addresses and wording with the user before creating an order.</Info>

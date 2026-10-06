@@ -1,17 +1,18 @@
 import express, { Router, type Request, type Response } from "express";
-import { ZodError, z } from "zod";
+import { ZodError } from "zod";
 import { PdfError, normalizePdf, prepareLetterContent, storePdf } from "./pdf.ts";
 import { BASE_URL, LIMITS, PRODUCTS, letterProduct, postcardProduct } from "./config.ts";
 import { pool } from "./db.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import {
-  AddressSchema,
   CreateLetterSchema,
   CreatePostcardSchema,
-  MAX_RECIPIENTS,
+  RecipientsSchema,
+  createGroupOrders,
   createOrder,
-  getBatch,
   getOrder,
+  publicBatch,
+  type Address,
   type OrderRow,
   newId,
   publicOrder,
@@ -42,36 +43,10 @@ const handle = (fn: (req: Request, res: Response) => Promise<unknown>) => async 
 const client = (req: Request) => req.get("x-client") ?? req.get("user-agent")?.split(" ")[0];
 const idem = (req: Request, body: { idempotency_key?: string }) => req.get("idempotency-key") ?? body.idempotency_key;
 
-// One design to many people (2026-10-05): `recipients` (2–25 addresses) instead of `to` creates one order per
-// recipient, grouped by a batch id and paid with ONE checkout link (/b/<batch>/pay).
-const RecipientsSchema = z.object({ recipients: z.array(AddressSchema).min(2, "Give at least 2 recipients, or use `to` for one.").max(MAX_RECIPIENTS, `Up to ${MAX_RECIPIENTS} recipients per order.`) });
-
-export function publicBatch(batchId: string, orders: OrderRow[]) {
-  const unpaid = orders.filter((o) => o.status === "awaiting_payment");
-  const cents = orders.reduce((t, o) => t + o.price_cents, 0), off = orders.reduce((t, o) => t + o.discount_cents, 0);
-  return {
-    batch: {
-      id: batchId,
-      count: orders.length,
-      url: `${BASE_URL}/b/${batchId}`,
-      checkout_url: unpaid.length ? `${BASE_URL}/b/${batchId}/pay` : null,
-      price: { amount_cents: cents, currency: "usd", display: `$${(cents / 100).toFixed(2)}` },
-      discount: off ? { amount_cents: off, display: `$${(off / 100).toFixed(2)} off`, reason: "First order from this return address" } : null,
-    },
-    orders: orders.map((o) => publicOrder(o)),
-  };
-}
-
-// Creates the group; each recipient's order reuses the idempotency key with its index, so a retry returns the same group.
-async function createGroup(req: Request, res: Response, recipients: z.infer<typeof AddressSchema>[], make: (to: z.infer<typeof AddressSchema>, key: string | undefined, batchId: string) => Promise<{ order: OrderRow; existing: boolean }>, key?: string) {
-  let batchId = newId("batch"), existing = false;
-  const orders: OrderRow[] = [];
-  for (const [i, to] of recipients.entries()) {
-    const r = await make(to, key ? `${key}:${i}` : undefined, batchId);
-    if (i === 0 && r.existing && r.order.batch_id) { batchId = r.order.batch_id; existing = true; }
-    orders.push(r.order);
-  }
-  res.status(existing ? 200 : 201).json(publicBatch(batchId, existing ? await getBatch(batchId) : orders));
+// One design to many people: see createGroupOrders / publicBatch in orders.ts.
+async function createGroup(res: Response, recipients: Address[], make: (to: Address, key: string | undefined, batchId: string) => Promise<{ order: OrderRow; existing: boolean }>, key?: string) {
+  const g = await createGroupOrders(recipients, make, key);
+  res.status(g.existing ? 200 : 201).json(publicBatch(g.batchId, g.orders));
 }
 
 export const api = Router();
@@ -89,7 +64,7 @@ api.post(
     if (req.body?.recipients !== undefined) {
       const { recipients } = RecipientsSchema.parse(req.body);
       const { size, content, ...rest } = CreatePostcardSchema.parse({ ...req.body, recipients: undefined, to: recipients[0] });
-      return createGroup(req, res, recipients, (to, key, batch_id) => createOrder({
+      return createGroup(res, recipients, (to, key, batch_id) => createOrder({
         ...rest, to, content, idempotency_key: key, batch_id, product: postcardProduct(size), source: "api", client: client(req), analytics_id: req.get("x-analytics-id") || undefined,
       }), idem(req, rest));
     }
@@ -114,7 +89,7 @@ api.post(
       const { recipients } = RecipientsSchema.parse(req.body);
       const { certified, ...input } = CreateLetterSchema.parse({ ...req.body, recipients: undefined, to: recipients[0] });
       const content = await prepareLetterContent(input.content); // a PDF is fetched and stored once for the whole group
-      return createGroup(req, res, recipients, (to, key, batch_id) => createOrder({
+      return createGroup(res, recipients, (to, key, batch_id) => createOrder({
         ...input, to, content, idempotency_key: key, batch_id, product: letterProduct(certified), source: "api", client: client(req), analytics_id: req.get("x-analytics-id") || undefined,
       }), idem(req, input));
     }

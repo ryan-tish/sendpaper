@@ -48,6 +48,7 @@
             "pages": [
               "guides/send-a-postcard",
               "guides/send-a-letter",
+              "guides/send-to-many",
               "guides/agent-payments",
               "guides/order-links",
               "guides/track-and-cancel",
@@ -191,7 +192,7 @@
     "codeblocks": "system"
   },
   "banner": {
-    "content": "New: your agent can now pay for you. [See how agent payments work \u2192](/guides/agent-payments)",
+    "content": "New: your agent can now pay for you. [See how agent payments work →](/guides/agent-payments)",
     "dismissible": true,
     "color": {
       "light": "#0D1512",

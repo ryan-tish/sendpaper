@@ -288,6 +288,7 @@ ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}, 
 - Letters: write the text (content.body, optional photo via content.image_url) OR mail the user's own PDF (content.pdf_url, a public https link, up to ${LIMITS.pdfPages} pages; any page size is fitted to 8.5×11 and an address page is added in front; content.color: true prints in color for ${usd(COLOR_LETTER_CENTS)} more).
 - Certified Mail for letters: certified "certified" or "certified_return_receipt" (recipient's signature). Use it when the user needs proof: tax notice replies, lease notices, disputes, demand letters.
 - Express (postcards and letters): express: true, USPS Priority Mail, usually 2–3 days with tracking, ${usd(EXPRESS_CENTS)} more. Not combinable with certified.
+- Several recipients: pass recipients (2–25 addresses) instead of to on create_postcard / create_letter (or POST /v1/postcards, /v1/letters). Each person gets their own order and tracking; the response has batch.checkout_url and batch.price, and pay_order with any order in the group pays for all of it.
 - Postcard fronts: layout headline (front_headline + front_theme: ${Object.keys(THEMES).join(", ")}), photo (front_image_url), photo_caption (front_image_url + caption) or collage (front_images: 2–4 https URLs). headline_font: serif, sans or script; message_font: handwriting, serif or sans.
 - ${BRAND} prints and mails what the user or agent writes; it doesn't give legal or tax advice.
 
