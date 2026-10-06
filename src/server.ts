@@ -45,7 +45,7 @@ app.use("/ingest", express.raw({ type: () => true, limit: "5mb" }), posthogProxy
 app.use(["/v1", "/mcp"], (req, res, next) => {
   res.set({
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type, Idempotency-Key, X-Client, Mcp-Session-Id, Mcp-Protocol-Version, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Idempotency-Key, X-Client, X-Sendpaper-Owner, Mcp-Session-Id, Mcp-Protocol-Version, Authorization",
     "Access-Control-Expose-Headers": "Mcp-Session-Id",
   });
   if (req.method === "OPTIONS") return res.sendStatus(204);

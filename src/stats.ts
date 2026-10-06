@@ -2,7 +2,7 @@
 // digging; this is the day-to-day view and needs no third party.
 // Privacy: no cookies and no stored IPs. A visitor is a hash of IP + user agent + a salt that changes daily, so the
 // same person counts once per day and can't be followed across days (the approach Plausible uses).
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { pool } from "./db.ts";
 import { esc } from "./render.ts";
@@ -62,14 +62,21 @@ export function trackViews(req: Request, res: Response, next: NextFunction) {
 
 // API requests and agent tool calls never load the website, so PostHog's browser snippet can't see them: every one
 // is logged here (and mirrored to PostHog as `api_request` / `mcp_tool_called`).
-export type ApiCall = { channel: "api" | "mcp"; endpoint: string; status: number; ms: number; client: string; error?: string | null; order_id?: string | null };
+export type ApiCall = { channel: "api" | "mcp"; endpoint: string; status: number; ms: number; client: string; error?: string | null; order_id?: string | null; owner?: boolean };
+
+// Ryan's own API / agent calls send `X-Sendpaper-Owner: <ADMIN_TOKEN>` (set once in his agent's MCP config or curl).
+export function isOwnerRequest(req: Request) {
+  const v = req.get("x-sendpaper-owner") ?? "";
+  return env.adminToken.length >= 12 && v.length === env.adminToken.length && timingSafeEqual(Buffer.from(v), Buffer.from(env.adminToken));
+}
 export function recordApiCall(c: ApiCall) {
   const client = (c.client || "unknown").slice(0, 120);
   pool
-    .query("INSERT INTO api_calls (channel, endpoint, status, ok, ms, client, error, order_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", [
-      c.channel, c.endpoint.slice(0, 120), c.status, c.status < 400, Math.round(c.ms), client, c.error?.slice(0, 300) ?? null, c.order_id ?? null,
+    .query("INSERT INTO api_calls (channel, endpoint, status, ok, ms, client, error, order_id, owner) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)", [
+      c.channel, c.endpoint.slice(0, 120), c.status, c.status < 400, Math.round(c.ms), client, c.error?.slice(0, 300) ?? null, c.order_id ?? null, Boolean(c.owner),
     ])
     .catch((e) => console.error("api_calls", e));
+  if (c.owner) return;
   track(c.channel === "mcp" ? "mcp_tool_called" : "api_request", `${c.channel === "mcp" ? "agent" : "api"}:${client.split("/")[0]}`, {
     endpoint: c.endpoint, tool: c.channel === "mcp" ? c.endpoint : undefined, status: c.status, ok: c.status < 400, ms: Math.round(c.ms), client, error: c.error ?? undefined, order_id: c.order_id ?? undefined,
   });
@@ -96,6 +103,7 @@ export function trackApi(req: Request, res: Response, next: NextFunction) {
       client: req.get("x-client") ?? req.get("user-agent")?.split(" ")[0] ?? "unknown",
       error: err ? `${err.type ?? "error"}${fields ? `: ${fields}` : err.message ? `: ${String(err.message).slice(0, 160)}` : ""}` : null,
       order_id: body?.batch?.id ?? (typeof body?.id === "string" ? body.id : null),
+      owner: isOwnerRequest(req),
     });
   });
   next();
@@ -172,8 +180,8 @@ export async function statsPage() {
              count(*) FILTER (WHERE status = 'mailed') AS mailed
       FROM orders WHERE created_at > now() - interval '30 days' AND NOT is_test GROUP BY source`),
     q<{ used: string; cents: string; pending: string }>(`SELECT count(*) FILTER (WHERE status IN ('paid','printing','mailed')) AS used, coalesce(sum(discount_cents) FILTER (WHERE status IN ('paid','printing','mailed')), 0) AS cents, count(*) FILTER (WHERE status = 'awaiting_payment') AS pending FROM orders WHERE discount_cents > 0 AND NOT is_test`),
-    q<{ client: string; calls: string; days: string }>(`SELECT split_part(client, '/', 1) AS client, count(*) AS calls, count(DISTINCT (at AT TIME ZONE 'UTC')::date) AS days FROM (SELECT at, tool, client FROM mcp_calls UNION ALL SELECT at, endpoint AS tool, client FROM api_calls WHERE channel = 'mcp') c WHERE at > now() - interval '30 days' GROUP BY 1 ORDER BY calls DESC LIMIT 10`),
-    q<{ tool: string; calls: string }>(`SELECT tool, count(*) AS calls FROM (SELECT at, tool, client FROM mcp_calls UNION ALL SELECT at, endpoint AS tool, client FROM api_calls WHERE channel = 'mcp') c WHERE at > now() - interval '30 days' GROUP BY tool ORDER BY calls DESC`),
+    q<{ client: string; calls: string; days: string }>(`SELECT split_part(client, '/', 1) AS client, count(*) AS calls, count(DISTINCT (at AT TIME ZONE 'UTC')::date) AS days FROM (SELECT at, tool, client FROM mcp_calls UNION ALL SELECT at, endpoint AS tool, client FROM api_calls WHERE channel = 'mcp' AND NOT owner) c WHERE at > now() - interval '30 days' GROUP BY 1 ORDER BY calls DESC LIMIT 10`),
+    q<{ tool: string; calls: string }>(`SELECT tool, count(*) AS calls FROM (SELECT at, tool, client FROM mcp_calls UNION ALL SELECT at, endpoint AS tool, client FROM api_calls WHERE channel = 'mcp' AND NOT owner) c WHERE at > now() - interval '30 days' GROUP BY tool ORDER BY calls DESC`),
     q<{ total: string; pending: string; avg: string }>(`SELECT count(*) AS total, count(*) FILTER (WHERE NOT approved) AS pending, round(avg(rating), 1) AS avg FROM reviews`),
   ]);
 
@@ -183,17 +191,17 @@ export async function statsPage() {
       SELECT channel, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS errors, count(DISTINCT split_part(client, '/', 1)) AS clients,
              percentile_disc(0.5) WITHIN GROUP (ORDER BY ms) AS p50, percentile_disc(0.95) WITHIN GROUP (ORDER BY ms) AS p95,
              count(*) FILTER (WHERE (at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date) AS today
-      FROM api_calls WHERE at > now() - interval '30 days' GROUP BY channel`),
+      FROM api_calls WHERE NOT owner AND at > now() - interval '30 days' GROUP BY channel`),
     q<{ endpoint: string; channel: string; calls: string; errors: string; p50: string }>(`
       SELECT endpoint, channel, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS errors, percentile_disc(0.5) WITHIN GROUP (ORDER BY ms) AS p50
-      FROM api_calls WHERE at > now() - interval '30 days' GROUP BY endpoint, channel ORDER BY calls DESC LIMIT 15`),
+      FROM api_calls WHERE NOT owner AND at > now() - interval '30 days' GROUP BY endpoint, channel ORDER BY calls DESC LIMIT 15`),
     q<{ client: string; channel: string; calls: string; errors: string; orders: string; last: string }>(`
       SELECT split_part(client, '/', 1) AS client, channel, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS errors,
              count(DISTINCT order_id) AS orders, to_char(max(at) AT TIME ZONE 'UTC', 'Mon DD HH24:MI') AS last
-      FROM api_calls WHERE at > now() - interval '30 days' GROUP BY 1, 2 ORDER BY calls DESC LIMIT 15`),
+      FROM api_calls WHERE NOT owner AND at > now() - interval '30 days' GROUP BY 1, 2 ORDER BY calls DESC LIMIT 15`),
     q<{ at: string; channel: string; endpoint: string; status: string; client: string; error: string }>(`
       SELECT to_char(at AT TIME ZONE 'UTC', 'Mon DD HH24:MI') AS at, channel, endpoint, status, split_part(client, '/', 1) AS client, coalesce(error, '') AS error
-      FROM api_calls WHERE NOT ok ORDER BY api_calls.at DESC LIMIT 20`),
+      FROM api_calls WHERE NOT ok AND NOT owner ORDER BY api_calls.at DESC LIMIT 20`),
   ]);
   const ch = (c: string) => callTotals.find((t) => t.channel === c);
   const callsAll = callTotals.reduce((a, t) => a + n(t.calls), 0), errAll = callTotals.reduce((a, t) => a + n(t.errors), 0);

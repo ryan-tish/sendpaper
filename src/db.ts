@@ -86,6 +86,8 @@ export async function migrate() {
       order_id  text
     );
     CREATE INDEX IF NOT EXISTS api_calls_at_idx ON api_calls (at);
+    -- Calls carrying X-Sendpaper-Owner: <ADMIN_TOKEN> are Ryan's own tests: kept, hidden from stats, not sent to PostHog.
+    ALTER TABLE api_calls ADD COLUMN IF NOT EXISTS owner boolean NOT NULL DEFAULT false;
 
     CREATE TABLE IF NOT EXISTS reviews (
       id          serial PRIMARY KEY,

@@ -4,7 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import { BASE_URL, BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, FIRST_ORDER_DISCOUNT_PCT, OFFER_ACTIVE, OFFER_LINE, PRODUCTS, env, letterProduct, postcardProduct } from "./config.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
-import { recordApiCall } from "./stats.ts";
+import { isOwnerRequest, recordApiCall } from "./stats.ts";
 import { PdfError, prepareLetterContent } from "./pdf.ts";
 import {
   AddressSchema,
@@ -294,6 +294,7 @@ function build(client: string | undefined) {
 function logToolCalls(req: Request, res: Response, client: string | undefined) {
   const calls = (Array.isArray(req.body) ? req.body : [req.body]).filter((m: any) => m?.method === "tools/call");
   if (!calls.length) return;
+  const owner = isOwnerRequest(req);
   const start = performance.now();
   const chunks: Buffer[] = [];
   const write = res.write.bind(res), end = res.end.bind(res);
@@ -317,6 +318,7 @@ function logToolCalls(req: Request, res: Response, client: string | undefined) {
         client: client ?? "unknown",
         error: text ? String(text).slice(0, 200) : null,
         order_id: sc?.batch?.id ?? (typeof sc?.id === "string" ? sc.id : null),
+        owner,
       });
     }
   });
