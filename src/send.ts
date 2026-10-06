@@ -1,4 +1,5 @@
 import { BRAND, OFFER_ACTIVE, OFFER_LINE, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, POSTCARD_SIZES, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
+import { MAX_RECIPIENTS } from "./orders.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc, THEMES } from "./render.ts";
 
@@ -9,6 +10,9 @@ const CSS = `
 .send h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
 .form { display: grid; gap: 28px; min-width: 0; }
 .step { display: grid; gap: 14px; }
+.step > .note { font-size: .84rem; color: var(--faint); line-height: 1.5; }
+.recip-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; padding-top: 14px; border-top: 1px solid var(--rule); }
+.recip-h b { font-size: .92rem; }
 .back-link { font-size: .9rem; color: var(--green); text-decoration: none; font-weight: 500; justify-self: start; }
 .back-link:hover { color: var(--ink); }
 .step-h { display: flex; align-items: baseline; gap: 10px; }
@@ -253,7 +257,10 @@ export function sendPage(initial: string, fixed: SendKind) {
             <p class="note" style="margin:0">${fixed === "certified" ? "Certified Mail gets a USPS tracking number and proof of delivery; the return receipt adds the recipient's signature, which landlords, courts and agencies often ask for." : "Express goes by USPS Priority Mail, usually 2–3 days, with tracking. Need proof of delivery? <a href=\"/send/certified\">Send a certified letter</a>."}</p></div>
         </div>
 
-        <div class="step" data-step="3"><div class="step-h"><span>02</span><h2>Who's it going to?</h2></div>${addressFields("to", "Recipient address")}</div>
+        <div class="step" data-step="3"><div class="step-h"><span>02</span><h2>Who's it going to?</h2></div>
+          <div id="recips" style="display:grid;gap:18px"><div class="recip" data-p="to">${addressFields("to", "Recipient address")}</div></div>
+          <button type="button" class="linkbtn" id="addRecip" style="justify-self:start">+ Add another recipient</button>
+          <p class="note" style="margin:0">Sending the same ${fixed === "postcard" ? "card" : "letter"} to several people? Add up to ${MAX_RECIPIENTS}; each is mailed separately and you pay once.</p></div>
         <div class="step" data-step="4"><div class="step-h"><span>03</span><h2>Who's it from?</h2></div>${addressFields("from", "Return address")}
           <label class="field"><span class="sr">Your email</span><input id="email" type="email" required autocomplete="email" placeholder="Your email, for the receipt and updates"></label>
           <label class="consent"><input id="ok" type="checkbox"><span>This mail isn't threatening, harassing, fraudulent or obscene, and a person at ${esc(BRAND)} may review it before printing. <a href="/content-policy" target="_blank">Content policy</a></span></label>
@@ -349,8 +356,12 @@ export function sendPage(initial: string, fixed: SendKind) {
         return $("message").value.trim() ? "" : "Write the message for the back.";
       }
       if (n === 3) {
-        const a = addr("to");
-        return a.name && a.line1 && a.city && a.state && a.zip ? "" : "Fill in the recipient's name and full address.";
+        const ps = prefixes();
+        for (let i = 0; i < ps.length; i++) {
+          const a = addr(ps[i]);
+          if (!(a.name && a.line1 && a.city && a.state && a.zip)) return ps.length > 1 ? "Fill in recipient " + (i + 1) + "'s name and full address." : "Fill in the recipient's name and full address.";
+        }
+        return "";
       }
       return "";
     }
@@ -375,7 +386,9 @@ export function sendPage(initial: string, fixed: SendKind) {
       $("pvName").textContent = PRODUCTS[product].name;
       $("postageLine").textContent = product === "letter_certified" ? "Printing, envelope, Certified Mail" : product === "letter_certified_rr" ? "Printing, envelope, Certified Mail + return receipt" : isExpress() ? (letter ? "Printing, envelope, Express (USPS Priority)" : "Printing, Express (USPS Priority)") : (letter ? "Printing, envelope, First-Class postage" : "Printing, First-Class postage");
       const color = letter && (isPdf() ? $("pdfColor").checked : Boolean(letterPhoto));
-      $("total").textContent = "$" + ((PRODUCTS[product].cents + (color ? COLOR_LETTER : 0) + (isExpress() ? EXPRESS : 0)) / 100).toFixed(2);
+      const count = prefixes().length;
+      $("total").textContent = "$" + (count * (PRODUCTS[product].cents + (color ? COLOR_LETTER : 0) + (isExpress() ? EXPRESS : 0)) / 100).toFixed(2);
+      if (count > 1) $("pvName").textContent = PRODUCTS[product].name + " × " + count;
       $("pdfBox").hidden = !isPdf(); $("writeBox").hidden = isPdf();
       $("pvCard").hidden = letter; $("pvLetter").hidden = !letter; $("flip").hidden = letter;
       $("hc").textContent = $("headline").value.length + "/${LIMITS.postcardHeadline}";
@@ -662,13 +675,41 @@ export function sendPage(initial: string, fixed: SendKind) {
           }
           body = { size: SIZE_OF[product] || "4x6", content, express: isExpress() };
         }
-        Object.assign(body, { to: addr("to"), from: addr("from"), customer_email: $("email").value.trim() || undefined });
+        const ps = prefixes();
+        if (ps.length > 1) body.recipients = ps.map(addr); else body.to = addr("to");
+        Object.assign(body, { from: addr("from"), customer_email: $("email").value.trim() || undefined });
         const r = await fetch(url, { method: "POST", headers: Object.assign({ "Content-Type": "application/json", "X-Client": "web" }, window.posthog && posthog.get_distinct_id ? { "X-Analytics-Id": String(posthog.get_distinct_id()) } : {}), body: JSON.stringify(body) });
         const j = await r.json();
-        if (!r.ok) throw new Error(j.error.fields ? j.error.fields.map(f => (f.field || "form").replace(/^to\\./, "Send to: ").replace(/^from\\./, "From: ").replace(/^content\\./, "") + " " + f.message.toLowerCase()).join(" · ") : j.error.message);
-        location.href = "/o/" + j.id;
+        if (!r.ok) throw new Error(j.error.fields ? j.error.fields.map(f => recipField(f.field || "form").replace(/^to\\./, "Send to: ").replace(/^from\\./, "From: ").replace(/^content\\./, "") + " " + f.message.toLowerCase()).join(" · ") : j.error.message);
+        location.href = j.batch ? "/b/" + j.batch.id : "/o/" + j.id;
       } catch (err) { $("err").textContent = err.message; go.disabled = false; go.textContent = "Preview the print and pay"; }
     });
+    // Several recipients (one design to many people): each extra address block copies the first one's fields with a
+    // new id prefix (to2_, to3_…); addr(prefix) reads any of them.
+    const MAXR = ${MAX_RECIPIENTS};
+    const prefixes = () => [...document.querySelectorAll(".recip")].map((r) => r.dataset.p);
+    let nextR = 2;
+    function renumber() {
+      const rs = [...document.querySelectorAll(".recip")];
+      rs.forEach((r, i) => { const b = r.querySelector(".recip-h b"); if (b) b.textContent = "Recipient " + (i + 1); });
+      $("addRecip").hidden = rs.length >= MAXR;
+    }
+    $("addRecip").addEventListener("click", () => {
+      if (prefixes().length >= MAXR) return;
+      const p = "to" + nextR++;
+      const wrap = document.createElement("div"); wrap.className = "recip"; wrap.dataset.p = p;
+      const fields = document.querySelector('.recip[data-p="to"] fieldset').outerHTML.split('id="to_').join('id="' + p + "_");
+      wrap.innerHTML = '<div class="recip-h"><b></b><button type="button" class="linkbtn">Remove</button></div>' + fields;
+      wrap.querySelectorAll("input").forEach((el) => (el.value = ""));
+      wrap.querySelector(".recip-h button").addEventListener("click", () => { wrap.remove(); renumber(); render(); });
+      $("recips").appendChild(wrap); renumber(); render();
+      wrap.querySelector("input").focus();
+    });
+    // API field paths like recipients.2.zip read as "Recipient 3: zip".
+    function recipField(f) {
+      const parts = f.split(".");
+      return parts[0] === "recipients" && parts.length > 2 ? "Recipient " + (Number(parts[1]) + 1) + ": " + parts.slice(2).join(".") : f;
+    }
     // Prefill from order-link style parameters (/send?type=…&to_name=…), e.g. "Edit in the full form" from /quick.
     (function prefill() {
       const q = new URLSearchParams(location.search);

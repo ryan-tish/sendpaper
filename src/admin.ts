@@ -165,11 +165,13 @@ admin.post("/orders/:id/status", async (req, res) => {
     if (!stripe || !o.stripe_payment) return res.status(400).send("No Stripe payment on this order to refund.");
     try {
       // A refund approved in the Stripe dashboard (or a retry) already exists: just record it.
-      const prior = await stripe.refunds.list({ payment_intent: o.stripe_payment, limit: 10 });
-      const done = prior.data.some((r) => r.status === "succeeded" || r.status === "pending");
+      // A group (one design to many people) shares one payment, so refunds are per order: this order's amount only,
+      // and only a refund tagged with this order counts as done. A lone order's dashboard refund has no tag but is its own.
+      const prior = await stripe.refunds.list({ payment_intent: o.stripe_payment, limit: 100 });
+      const done = prior.data.some((r) => (r.status === "succeeded" || r.status === "pending") && (r.metadata?.order_id === o.id || !o.batch_id));
       // Same key per order, so a double-click or retry can never refund twice.
       if (!done) await stripe.refunds.create(
-        { payment_intent: o.stripe_payment, metadata: { order_id: o.id } },
+        { payment_intent: o.stripe_payment, amount: o.price_cents, metadata: { order_id: o.id } },
         { idempotencyKey: `refund-${o.id}` },
       );
     } catch (e) {

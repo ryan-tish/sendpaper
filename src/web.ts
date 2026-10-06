@@ -9,8 +9,8 @@ import { useCasesPage } from "./usecases.ts";
 import { GUIDES, guidePage, guidesIndexPage } from "./guides.ts";
 import { QUICK_EXAMPLE, QUICK_PARAMS } from "./quick.ts";
 import { page } from "./layout.ts";
-import { getOrder, priceLines, publicOrder } from "./orders.ts";
-import { checkoutUrlFor, confirmFromRedirect } from "./payments.ts";
+import { getBatch, getOrder, groupLines, priceLines, publicOrder, type OrderRow } from "./orders.ts";
+import { checkoutFor, checkoutUrlFor, confirmBatchFromRedirect, confirmFromRedirect } from "./payments.ts";
 import { addReview, listReviews, reviewFor } from "./offer.ts";
 import { addressBlock, esc, printSheet, THEMES } from "./render.ts";
 
@@ -109,7 +109,9 @@ web.get("/o/:id", async (req, res) => {
         <div class="card receipt"><span class="eyebrow">${paid ? "Receipt" : "Order summary"}</span>
           ${priceLines(o).map((l) => `<div class="rl${l.kind === "discount" ? " off" : ""}"><span>${esc(l.label)}</span><span>${l.cents < 0 ? "−" : ""}$${(Math.abs(l.cents) / 100).toFixed(2)}</span></div>`).join("")}
           <div class="rl rt"><span>Total${paid ? " paid" : ""}</span><span>${esc(p.price.display)}</span></div>
-          ${o.status === "awaiting_payment"
+          ${o.status === "awaiting_payment" && o.batch_id
+            ? `<a class="btn" href="/b/${esc(o.batch_id)}" style="justify-content:center">Pay for the whole group</a><span class="soft" style="font-size:.85rem;text-align:center">This piece is part of a group sent to several people, paid together in one checkout.</span>`
+            : o.status === "awaiting_payment"
             ? `<a class="btn" href="/o/${esc(o.id)}/pay" style="justify-content:center">Pay ${esc(p.price.display)}</a><span class="soft" style="font-size:.85rem;text-align:center">Printing and postage included. Nothing is printed until you pay. Secure checkout by Stripe.</span>`
             : ""}</div>
         ${o.status === "mailed"
@@ -143,11 +145,62 @@ web.get("/o/:id/pay", async (req, res) => {
   const o = await getOrder(String(req.params.id));
   if (!o) return res.status(404).send("No such order");
   if (o.status !== "awaiting_payment") return res.redirect(`/o/${o.id}`);
+  if (o.batch_id) return res.redirect(303, `/b/${o.batch_id}/pay`);
   try {
     res.redirect(303, await checkoutUrlFor(o));
   } catch (e) {
     console.error(e);
     res.status(503).send(page("Checkout unavailable", `<section><h1>Checkout is unavailable right now</h1><p>Your order ${esc(o.id)} is saved. Try again in a few minutes, or email ${esc(SUPPORT_EMAIL)}.</p></section>`, { noindex: true }));
+  }
+});
+
+// A group: one design sent to several people, paid in one checkout (2026-10-05).
+const RECEIPT_CSS = `.receipt { display: grid; gap: 10px; max-width: 460px; padding: 22px 24px; } .receipt .rl { display: flex; justify-content: space-between; gap: 16px; font-size: .95rem; } .receipt .rl span:last-child { font-variant-numeric: tabular-nums; } .receipt .off { color: var(--green); } .receipt .rt { border-top: 1px solid var(--rule); padding-top: 10px; font-weight: 600; font-size: 1.05rem; }`;
+const money = (c: number) => `${c < 0 ? "−" : ""}$${(Math.abs(c) / 100).toFixed(2)}`;
+const STATUS_WORD: Record<string, string> = { awaiting_payment: "Not paid", paid: "Paid", printing: "Printing", mailed: "Mailed", cancelled: "Cancelled", refunded: "Refunded" };
+
+function batchPage(id: string, orders: OrderRow[]) {
+  const first = orders[0], n = orders.length, unpaid = orders.filter((o) => o.status === "awaiting_payment");
+  const name = PRODUCTS[first.product].name;
+  const due = unpaid.reduce((t, o) => t + o.price_cents, 0);
+  const lines = groupLines(unpaid.length ? unpaid : orders);
+  const total = (unpaid.length ? unpaid : orders).reduce((t, o) => t + o.price_cents, 0);
+  return page(
+    `${n} × ${name} — ${BRAND}`,
+    `<style>${RECEIPT_CSS} .who { display: grid; gap: 0; max-width: 760px; } .who a { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--rule); color: var(--ink); text-decoration: none; } .who a:hover b { color: var(--green); } .who small { color: var(--soft); } .who .st { font: 500 .78rem var(--f-mono); color: var(--faint); white-space: nowrap; }</style>
+    <section><span class="eyebrow">Group ${esc(id)}</span>
+      <h1>${n} × ${esc(name)}</h1>
+      <p class="soft">One design, mailed separately to each person below${first.express ? " by express" : ""}. Every piece gets its own order page and tracking.</p>
+      <div class="card receipt"><span class="eyebrow">${unpaid.length ? "Order summary" : "Receipt"}</span>
+        ${lines.map((l) => `<div class="rl${l.kind === "discount" ? " off" : ""}"><span>${esc(l.label)}${l.qty > 1 ? ` × ${l.qty}` : ""}</span><span>${money(l.cents * l.qty)}</span></div>`).join("")}
+        <div class="rl rt"><span>Total${unpaid.length ? "" : " paid"}</span><span>${money(total)}</span></div>
+        ${unpaid.length ? `<a class="btn" href="/b/${esc(id)}/pay" style="justify-content:center">Pay ${money(due)} for ${unpaid.length === n ? `all ${n}` : `${unpaid.length} of ${n}`}</a><span class="soft" style="font-size:.85rem;text-align:center">Printing and postage included. Nothing is printed until you pay. Secure checkout by Stripe.</span>` : ""}
+      </div>
+      <h2 style="margin-top:28px">Recipients</h2>
+      <div class="who">${orders.map((o) => `<a href="/o/${esc(o.id)}"><span><b>${esc(o.to_address.name)}</b><br><small>${esc([o.to_address.city, o.to_address.state].filter(Boolean).join(", "))}</small></span><span class="st">${STATUS_WORD[o.status] ?? esc(o.status)} · see preview →</span></a>`).join("")}</div>
+    </section>`,
+    { noindex: true },
+  );
+}
+
+web.get("/b/:id", async (req, res) => {
+  const id = String(req.params.id);
+  if (req.query.session_id) await confirmBatchFromRedirect(id, String(req.query.session_id)).catch(console.error);
+  const orders = await getBatch(id);
+  if (!orders.length) return res.status(404).send(page("Not found", `<section><h1>No such group</h1></section>`, { noindex: true }));
+  res.send(batchPage(id, orders));
+});
+
+web.get("/b/:id/pay", async (req, res) => {
+  const id = String(req.params.id);
+  const orders = await getBatch(id);
+  if (!orders.length) return res.status(404).send("No such group");
+  if (!orders.some((o) => o.status === "awaiting_payment")) return res.redirect(`/b/${id}`);
+  try {
+    res.redirect(303, await checkoutFor(orders, { kind: "batch", id }));
+  } catch (e) {
+    console.error(e);
+    res.status(503).send(page("Checkout unavailable", `<section><h1>Checkout is unavailable right now</h1><p>Your orders are saved. Try again in a few minutes, or email ${esc(SUPPORT_EMAIL)}.</p></section>`, { noindex: true }));
   }
 });
 

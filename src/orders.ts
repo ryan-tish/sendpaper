@@ -168,6 +168,7 @@ export type OrderRow = {
   free_offer: boolean;
   discount_cents: number;
   express: boolean;
+  batch_id: string | null;
   analytics_id: string | null;
   is_test: boolean;
   tracking_number: string | null;
@@ -185,6 +186,7 @@ type CreateInput = {
   // The website visitor's PostHog id, so the order's events join their browsing funnel.
   analytics_id?: string;
   express?: boolean;
+  batch_id?: string;
 };
 
 // A letter printed in color (a photo, or a PDF with color on) and express delivery cost extra; everything else is
@@ -234,6 +236,29 @@ export async function confirmDiscount(o: OrderRow): Promise<OrderRow> {
   return rows[0] ?? o;
 }
 
+// A group's receipt: identical lines across its orders combined with a quantity, discounts summed into one line.
+export type GroupLine = PriceLine & { qty: number };
+export function groupLines(orders: OrderRow[]): GroupLine[] {
+  const items = new Map<string, GroupLine>();
+  let off = 0;
+  for (const o of orders) for (const l of priceLines(o)) {
+    if (l.kind === "discount") { off += -l.cents; continue; }
+    const k = `${l.kind}|${l.label}|${l.cents}`;
+    const cur = items.get(k);
+    if (cur) cur.qty++; else items.set(k, { ...l, qty: 1 });
+  }
+  const out = [...items.values()];
+  if (off) out.push({ label: "First-order discount", cents: -off, kind: "discount", qty: 1 });
+  return out;
+}
+
+// A group of orders paid together (one design to many people). Recipients are capped so one checkout stays reviewable.
+export const MAX_RECIPIENTS = 25;
+export async function getBatch(batchId: string): Promise<OrderRow[]> {
+  const { rows } = await pool.query<OrderRow>("SELECT * FROM orders WHERE batch_id = $1 ORDER BY created_at, id", [batchId]);
+  return rows;
+}
+
 export async function createOrder(input: CreateInput): Promise<{ order: OrderRow; existing: boolean }> {
   if (input.idempotency_key) {
     const prior = await pool.query<OrderRow>("SELECT * FROM orders WHERE idempotency_key = $1", [input.idempotency_key]);
@@ -245,8 +270,8 @@ export async function createOrder(input: CreateInput): Promise<{ order: OrderRow
   const events = [{ at: new Date().toISOString(), status: "awaiting_payment" }];
   const { rows } = await pool.query<OrderRow>(
     `INSERT INTO orders (id, product, to_address, from_address, content, price_cents, customer_email,
-                         source, client, idempotency_key, events, analytics_id, discount_cents, express)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+                         source, client, idempotency_key, events, analytics_id, discount_cents, express, batch_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
     [
       id,
       input.product,
@@ -262,6 +287,7 @@ export async function createOrder(input: CreateInput): Promise<{ order: OrderRow
       input.analytics_id?.slice(0, 120) ?? null,
       discount,
       Boolean(input.express),
+      input.batch_id ?? null,
     ],
   );
   const o = rows[0];
@@ -334,7 +360,9 @@ export function publicOrder(o: OrderRow, checkoutUrl?: string | null) {
     to: o.to_address,
     from: o.from_address,
     content: o.content,
-    checkout_url: o.status === "awaiting_payment" ? (checkoutUrl ?? `${BASE_URL}/o/${o.id}/pay`) : null,
+    // A group member is paid with its group's single checkout link.
+    checkout_url: o.status === "awaiting_payment" ? (checkoutUrl ?? (o.batch_id ? `${BASE_URL}/b/${o.batch_id}/pay` : `${BASE_URL}/o/${o.id}/pay`)) : null,
+    batch_id: o.batch_id ?? null,
     order_url: orderUrl(o.id),
     preview_url: `${BASE_URL}/o/${o.id}/preview`,
     created_at: o.created_at,

@@ -11,6 +11,9 @@ export const env = {
   databaseUrl: process.env.DATABASE_URL ?? "postgres://localhost:5432/sendpaper",
   stripeSecret: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+  // Optional coupon-only restricted key (Ryan, 2026-10-05): creates the first-order discount coupons, so the main
+  // checkout key never needs Coupons: Write. Falls back to the main key when unset.
+  stripeCouponKey: process.env.STRIPE_COUPON_KEY ?? "",
   adminToken: process.env.ADMIN_TOKEN ?? "",
   // Optional: email the operator when an order is paid. Without it, paid orders only show in /admin.
   resendKey: process.env.RESEND_API_KEY ?? "",

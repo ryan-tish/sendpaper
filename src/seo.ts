@@ -21,6 +21,7 @@ seo.get("/robots.txt", (_req, res) => {
       "Allow: /",
       "Disallow: /admin",
       "Disallow: /o/",
+      "Disallow: /b/",
       "Disallow: /quick",
       "Disallow: /v1/",
       "Disallow: /webhooks/",

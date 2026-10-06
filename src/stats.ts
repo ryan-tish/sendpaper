@@ -26,7 +26,7 @@ async function dailySalt() {
 }
 
 // Order pages carry an id; group them so "top pages" isn't a list of order ids.
-const normalize = (path: string) => path.replace(/^\/o\/[^/]+(\/pay)?$/, (_m, pay) => `/o/:id${pay ?? ""}`).slice(0, 200);
+const normalize = (path: string) => path.replace(/^\/([ob])\/[^/]+(\/pay)?$/, (_m, k, pay) => `/${k}/:id${pay ?? ""}`).slice(0, 200);
 
 function referrerHost(req: Request) {
   const ref = req.get("referer");

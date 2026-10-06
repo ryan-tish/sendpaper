@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { BASE_URL, BRAND, EXTRA_SERVICE, PRODUCTS, env, isLetter } from "./config.ts";
-import { attachSession, confirmDiscount, getOrder, priceLines, setStatus, type OrderRow } from "./orders.ts";
+import { attachSession, confirmDiscount, getBatch, getOrder, groupLines, setStatus, type OrderRow } from "./orders.ts";
 import { notifyPaid } from "./notify.ts";
 
 export const stripe = env.stripeSecret ? new Stripe(env.stripeSecret) : null;
@@ -12,12 +12,21 @@ export const stripe = env.stripeSecret ? new Stripe(env.stripeSecret) : null;
 // inline product_data (remembered per process so we don't retry a missing product on every checkout).
 const missingCatalog = new Set<string>();
 
-export async function checkoutUrlFor(o: OrderRow): Promise<string> {
+const couponStripe = env.stripeCouponKey ? new Stripe(env.stripeCouponKey) : stripe;
+
+export const checkoutUrlFor = (o: OrderRow) => checkoutFor([o], { kind: "order", id: o.id });
+
+// One Checkout session for one order, or for every unpaid order in a group (one design to many people).
+export async function checkoutFor(input: OrderRow[], ref: { kind: "order" | "batch"; id: string }): Promise<string> {
   if (!stripe) throw new Error("Payments are not configured (STRIPE_SECRET_KEY missing).");
-  o = await confirmDiscount(o);
+  const orders: OrderRow[] = [];
+  for (const x of input) if (x.status === "awaiting_payment") orders.push(await confirmDiscount(x));
+  if (!orders.length) throw new Error("Nothing to pay.");
+  const o = orders[0];
+  const many = orders.length > 1;
   const p = PRODUCTS[o.product];
   const via = EXTRA_SERVICE[o.product] === "certified_return_receipt" ? "USPS Certified Mail with a return receipt" : EXTRA_SERVICE[o.product] ? "USPS Certified Mail" : "USPS First-Class";
-  const inline = { name: `${p.name} to ${o.to_address.name}`, description: EXTRA_SERVICE[o.product] ? `${p.blurb} Printed and mailed by ${BRAND}.` : `${p.blurb} Printed and mailed by ${BRAND} via ${via}.` };
+  const inline = { name: many ? p.name : `${p.name} to ${o.to_address.name}`, description: EXTRA_SERVICE[o.product] ? `${p.blurb} Printed and mailed by ${BRAND}.` : `${p.blurb} Printed and mailed by ${BRAND} via ${via}.` };
   const catalogId = `sendpaper_${o.product}`;
   const certified = EXTRA_SERVICE[o.product];
   // Brand the hosted page (Stripe allows this per session; receipts use the Dashboard's account branding instead).
@@ -30,63 +39,67 @@ export async function checkoutUrlFor(o: OrderRow): Promise<string> {
     icon: { type: "url", url: "https://docs.sendmypaper.com/logo/stripe-icon.png" },
     logo: { type: "url", url: "https://docs.sendmypaper.com/logo/wordmark.png" },
   };
+  const each = many ? "every piece" : "every piece";
   const note = certified
-    ? `A person reviews every piece before it's printed. It goes out by USPS Certified Mail${certified === "certified_return_receipt" ? " with a return receipt" : ""}, and the tracking number appears on your order page.`
+    ? `A person reviews ${each} before it's printed. ${many ? "They go" : "It goes"} out by USPS Certified Mail${certified === "certified_return_receipt" ? " with a return receipt" : ""}, and tracking numbers appear on your order page.`
     : o.express
-      ? "A person reviews every piece before it's printed. It goes out by express (USPS Priority Mail, usually 2–3 days) with tracking."
-      : "A person reviews every piece before it's printed. It's usually mailed within one business day via USPS First-Class.";
-  const offNote = o.discount_cents ? ` Includes $${(o.discount_cents / 100).toFixed(2)} off your first order.` : "";
-  // Itemized checkout (Ryan, 2026-10-05): the product, each add-on, and the first-order discount as a one-off Stripe
-  // coupon, so Checkout and the receipt email show subtotal, discount and total. Creating coupons needs the key's
-  // Coupons: Write permission; without it we fall back to the old single line at the discounted price.
-  const lines = priceLines(o);
-  const off = lines.find((l) => l.kind === "discount");
+      ? `A person reviews ${each} before it's printed. ${many ? "They go" : "It goes"} out by express (USPS Priority Mail, usually 2–3 days) with tracking.`
+      : `A person reviews ${each} before it's printed. ${many ? "They're" : "It's"} usually mailed within one business day via USPS First-Class.`;
+  const discountTotal = orders.reduce((t, x) => t + x.discount_cents, 0);
+  const total = orders.reduce((t, x) => t + x.price_cents, 0);
+  const offNote = discountTotal ? ` Includes $${(discountTotal / 100).toFixed(2)} off your first order.` : "";
+  // Itemized checkout (Ryan, 2026-10-05): the product, each add-on (identical lines across a group are combined with
+  // a quantity), and the first-order discount as a one-off Stripe coupon, so Checkout and the receipt email show
+  // subtotal, discount and total. Coupons are created with STRIPE_COUPON_KEY (a coupon-only key) when set; without a
+  // usable coupon key we fall back to one net line per order at the discounted price.
+  const items = new Map(groupLines(orders).filter((l) => l.kind !== "discount").map((l, n) => [n, l]));
+  const itemSum = [...items.values()].reduce((t, l) => t + l.cents * l.qty, 0);
   let coupon: string | null = null;
-  if (off) {
-    const id = `sp_first_${o.id}_${-off.cents}`;
+  if (discountTotal && couponStripe) {
+    const id = `sp_first_${ref.id}_${discountTotal}`;
     try {
-      coupon = (await stripe.coupons.retrieve(id).catch(() => stripe!.coupons.create({ id, amount_off: -off.cents, currency: "usd", duration: "once", max_redemptions: 1, name: off.label }))).id;
+      coupon = (await couponStripe.coupons.retrieve(id).catch(() => couponStripe.coupons.create({ id, amount_off: discountTotal, currency: "usd", duration: "once", max_redemptions: 1, name: "First-order discount" }))).id;
     } catch (e) {
-      console.warn(`checkout: no coupon for ${o.id}, using one net line (${(e as Error).message})`);
+      console.warn(`checkout: no coupon for ${ref.id}, using net lines (${(e as Error).message})`);
     }
   }
-  const itemized = !off || coupon;
+  // Only itemize when the parts provably add up to what we charge.
+  const itemized = itemSum - (coupon ? discountTotal : 0) === total && (!discountTotal || coupon);
   const create = (useCatalog: boolean) =>
     stripe!.checkout.sessions.create({
     mode: "payment",
     line_items: itemized
-      ? lines.filter((l) => l.kind !== "discount").map((l) => ({
-          quantity: 1,
-          price_data: l.kind === "product"
+      ? [...items.values()].map((l) => ({
+          quantity: l.qty,
+          price_data: l.kind === "product" && l.label === p.name
             ? useCatalog
               ? { currency: "usd", unit_amount: l.cents, product: catalogId }
               : { currency: "usd", unit_amount: l.cents, product_data: inline }
             : { currency: "usd", unit_amount: l.cents, product_data: { name: l.label } },
         }))
-      : [
-          {
-            quantity: 1,
-            price_data: useCatalog
-              ? { currency: "usd", unit_amount: o.price_cents, product: catalogId }
-              : { currency: "usd", unit_amount: o.price_cents, product_data: inline },
-          },
-        ],
-    ...(coupon ? { discounts: [{ coupon }] } : {}),
+      : orders.map((x) => ({
+          quantity: 1,
+          price_data: { currency: "usd", unit_amount: x.price_cents, product_data: { name: `${PRODUCTS[x.product].name} to ${x.to_address.name}`, description: inline.description } },
+        })),
+    ...(coupon && itemized ? { discounts: [{ coupon }] } : {}),
     customer_email: o.customer_email ?? undefined,
     // Typed loosely: branding_settings is newer than some SDK typings.
     ...({ branding_settings: branding } as object),
-    custom_text: { submit: { message: note + (coupon ? "" : offNote) } },
+    custom_text: { submit: { message: note + (coupon && itemized ? "" : offNote) } },
     // A fresh session is made on every /pay visit, so a short expiry costs nothing and avoids stale sessions.
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
-    client_reference_id: o.id,
-    metadata: { order_id: o.id, product: o.product },
+    client_reference_id: ref.id,
+    metadata: ref.kind === "batch" ? { batch_id: ref.id, orders: String(orders.length) } : { order_id: o.id, product: o.product },
     // Card statements read SENDPAPER* POSTCARD / LETTER / CERTIFIED.
-    payment_intent_data: { metadata: { order_id: o.id, product: o.product }, statement_descriptor_suffix: certified ? "CERTIFIED" : isLetter(o.product) ? "LETTER" : "POSTCARD" },
-    success_url: `${BASE_URL}/o/${o.id}?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${BASE_URL}/o/${o.id}`,
+    payment_intent_data: {
+      metadata: ref.kind === "batch" ? { batch_id: ref.id } : { order_id: o.id, product: o.product },
+      statement_descriptor_suffix: certified ? "CERTIFIED" : isLetter(o.product) ? "LETTER" : "POSTCARD",
+    },
+    success_url: `${BASE_URL}/${ref.kind === "batch" ? "b" : "o"}/${ref.id}?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${BASE_URL}/${ref.kind === "batch" ? "b" : "o"}/${ref.id}`,
   });
   let session: Stripe.Checkout.Session;
-  if (missingCatalog.has(catalogId)) session = await create(false);
+  if (!itemized || missingCatalog.has(catalogId)) session = await create(false);
   else {
     try {
       session = await create(true);
@@ -96,11 +109,27 @@ export async function checkoutUrlFor(o: OrderRow): Promise<string> {
       session = await create(false);
     }
   }
-  await attachSession(o.id, session.id);
+  for (const x of orders) await attachSession(x.id, session.id);
   return session.url!;
 }
 
 async function markPaid(session: Stripe.Checkout.Session) {
+  if (session.metadata?.batch_id) {
+    if (session.payment_status !== "paid") return null;
+    // Every still-unpaid order in the group (one paid separately, e.g. by an agent token, is already paid and skipped).
+    // A fresh session is made per /pay visit, so we can't match on stripe_session: an older tab may be the one paid.
+    const unpaid = (await getBatch(session.metadata.batch_id)).filter((x) => x.status === "awaiting_payment");
+    const due = unpaid.reduce((t, x) => t + x.price_cents, 0);
+    if (due !== session.amount_total) console.warn(`batch ${session.metadata.batch_id}: paid ${session.amount_total}, unpaid orders total ${due}; check in /admin`);
+    for (const x of unpaid) {
+      const paid = await setStatus(x.id, "paid", undefined, {
+        stripe_payment: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
+        customer_email: session.customer_details?.email ?? undefined,
+      });
+      if (paid) await notifyPaid(paid).catch((e) => console.error("notify failed", e));
+    }
+    return null;
+  }
   const id = session.metadata?.order_id ?? session.client_reference_id;
   if (!id || session.payment_status !== "paid") return null;
   const o = await getOrder(id);
@@ -122,6 +151,13 @@ export async function handleWebhook(raw: Buffer, signature: string | undefined) 
 }
 
 // Belt and braces for when the webhook is missing or slow: the success redirect verifies the session itself.
+export async function confirmBatchFromRedirect(batchId: string, sessionId: string) {
+  if (!stripe) return;
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  if (session.metadata?.batch_id !== batchId) return;
+  await markPaid(session);
+}
+
 export async function confirmFromRedirect(orderId: string, sessionId: string) {
   if (!stripe) return;
   const session = await stripe.checkout.sessions.retrieve(sessionId);
