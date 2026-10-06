@@ -9,7 +9,7 @@ import { useCasesPage } from "./usecases.ts";
 import { GUIDES, guidePage, guidesIndexPage } from "./guides.ts";
 import { QUICK_EXAMPLE, QUICK_PARAMS } from "./quick.ts";
 import { page } from "./layout.ts";
-import { getOrder, publicOrder } from "./orders.ts";
+import { getOrder, priceLines, publicOrder } from "./orders.ts";
 import { checkoutUrlFor, confirmFromRedirect } from "./payments.ts";
 import { addReview, listReviews, reviewFor } from "./offer.ts";
 import { addressBlock, esc, printSheet, THEMES } from "./render.ts";
@@ -98,17 +98,20 @@ web.get("/o/:id", async (req, res) => {
   res.send(
     page(
       `Order ${o.id} — ${BRAND}`,
-      `<section><span class="eyebrow">Order ${esc(o.id)}</span>
+      `<style>.receipt { display: grid; gap: 10px; max-width: 420px; padding: 22px 24px; } .receipt .rl { display: flex; justify-content: space-between; gap: 16px; font-size: .95rem; } .receipt .rl span:last-child { font-variant-numeric: tabular-nums; } .receipt .off { color: var(--green); } .receipt .rt { border-top: 1px solid var(--rule); padding-top: 10px; font-weight: 600; font-size: 1.05rem; }</style>
+      <section><span class="eyebrow">Order ${esc(o.id)}</span>
         <h1>${esc(p.product_name)} to ${esc(o.to_address.name)}</h1>
-        <div><span class="pill${paid ? " ok" : ""}">${esc(o.status.replace("_", " "))}</span></div>
-        <p>${esc(p.status_detail)}</p>
+        ${paid ? `<div><span class="pill ok">${esc(o.status.replace("_", " "))}</span></div>
+        <p>${esc(p.status_detail)}</p>` : ""}
         ${o.free_offer ? `<p><span class="pill ok">Free</span> Your first postcard is on us.</p>` : ""}
         ${o.express ? `<p><span class="pill ok">Express · USPS Priority Mail</span> Usually delivered 2–3 days after mailing, with tracking.</p>` : ""}
         ${EXTRA_SERVICE[o.product] ? `<p><span class="pill ok">USPS Certified Mail${EXTRA_SERVICE[o.product] === "certified_return_receipt" ? " · return receipt" : ""}</span> ${o.tracking_number ? `Tracking: <a href="https://tools.usps.com/go/TrackConfirmAction?tLabels=${esc(o.tracking_number)}" target="_blank" rel="noopener">${esc(o.tracking_number)}</a>` : "You'll get a USPS tracking number here once it's accepted for mailing."}</p>` : ""}
-        ${o.discount_cents ? `<p><span class="pill ok">${esc(p.discount!.display)}</span> Your first order from this return address. The price below already includes it.</p>` : ""}
-        ${o.status === "awaiting_payment"
-          ? `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><a class="btn" href="/o/${esc(o.id)}/pay">Pay ${esc(p.price.display)}</a><span class="soft">Secure checkout by Stripe.</span></div>`
-          : ""}
+        <div class="card receipt"><span class="eyebrow">${paid ? "Receipt" : "Order summary"}</span>
+          ${priceLines(o).map((l) => `<div class="rl${l.kind === "discount" ? " off" : ""}"><span>${esc(l.label)}</span><span>${l.cents < 0 ? "−" : ""}$${(Math.abs(l.cents) / 100).toFixed(2)}</span></div>`).join("")}
+          <div class="rl rt"><span>Total${paid ? " paid" : ""}</span><span>${esc(p.price.display)}</span></div>
+          ${o.status === "awaiting_payment"
+            ? `<a class="btn" href="/o/${esc(o.id)}/pay" style="justify-content:center">Pay ${esc(p.price.display)}</a><span class="soft" style="font-size:.85rem;text-align:center">Printing and postage included. Nothing is printed until you pay. Secure checkout by Stripe.</span>`
+            : ""}</div>
         ${o.status === "mailed"
           ? review
             ? `<div class="card"><b>Thanks for your review!</b><p class="soft">We read every one.</p></div>`

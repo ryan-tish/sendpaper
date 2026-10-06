@@ -193,6 +193,19 @@ export const printsInColor = (product: ProductId, content: Record<string, any>) 
 export const orderPrice = (product: ProductId, content: Record<string, any>, express = false) =>
   PRODUCTS[product].cents + (printsInColor(product, content) ? COLOR_LETTER_CENTS : 0) + (express ? EXPRESS_CENTS : 0);
 
+// The receipt for an order: what was ordered, each add-on, the discount, and a total that always equals
+// price_cents (what we charge). Used by the order page and Stripe Checkout (Ryan, 2026-10-05: show the amount off).
+// Older orders whose parts don't add up (e.g. the retired free first postcard) get one line at the charged price.
+export type PriceLine = { label: string; cents: number; kind: "product" | "addon" | "discount" };
+export function priceLines(o: Pick<OrderRow, "product" | "content" | "express" | "discount_cents" | "price_cents">): PriceLine[] {
+  const lines: PriceLine[] = [{ label: PRODUCTS[o.product].name, cents: PRODUCTS[o.product].cents, kind: "product" }];
+  if (printsInColor(o.product, o.content)) lines.push({ label: "Color printing", cents: COLOR_LETTER_CENTS, kind: "addon" });
+  if (o.express) lines.push({ label: "Express delivery (USPS Priority Mail)", cents: EXPRESS_CENTS, kind: "addon" });
+  if (o.discount_cents) lines.push({ label: "First-order discount", cents: -o.discount_cents, kind: "discount" });
+  const sum = lines.reduce((t, l) => t + l.cents, 0);
+  return sum === o.price_cents ? lines : [{ label: PRODUCTS[o.product].name, cents: o.price_cents, kind: "product" }];
+}
+
 // One first-order discount per return address (normalized street + unit + ZIP5), so a new name on the same
 // address doesn't qualify again.
 export function senderKey(a: Address) {

@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { BASE_URL, BRAND, EXTRA_SERVICE, PRODUCTS, env, isLetter } from "./config.ts";
-import { attachSession, confirmDiscount, getOrder, setStatus, type OrderRow } from "./orders.ts";
+import { attachSession, confirmDiscount, getOrder, priceLines, setStatus, type OrderRow } from "./orders.ts";
 import { notifyPaid } from "./notify.ts";
 
 export const stripe = env.stripeSecret ? new Stripe(env.stripeSecret) : null;
@@ -36,21 +36,46 @@ export async function checkoutUrlFor(o: OrderRow): Promise<string> {
       ? "A person reviews every piece before it's printed. It goes out by express (USPS Priority Mail, usually 2–3 days) with tracking."
       : "A person reviews every piece before it's printed. It's usually mailed within one business day via USPS First-Class.";
   const offNote = o.discount_cents ? ` Includes $${(o.discount_cents / 100).toFixed(2)} off your first order.` : "";
+  // Itemized checkout (Ryan, 2026-10-05): the product, each add-on, and the first-order discount as a one-off Stripe
+  // coupon, so Checkout and the receipt email show subtotal, discount and total. Creating coupons needs the key's
+  // Coupons: Write permission; without it we fall back to the old single line at the discounted price.
+  const lines = priceLines(o);
+  const off = lines.find((l) => l.kind === "discount");
+  let coupon: string | null = null;
+  if (off) {
+    const id = `sp_first_${o.id}_${-off.cents}`;
+    try {
+      coupon = (await stripe.coupons.retrieve(id).catch(() => stripe!.coupons.create({ id, amount_off: -off.cents, currency: "usd", duration: "once", max_redemptions: 1, name: off.label }))).id;
+    } catch (e) {
+      console.warn(`checkout: no coupon for ${o.id}, using one net line (${(e as Error).message})`);
+    }
+  }
+  const itemized = !off || coupon;
   const create = (useCatalog: boolean) =>
     stripe!.checkout.sessions.create({
     mode: "payment",
-    line_items: [
-      {
-        quantity: 1,
-        price_data: useCatalog
-          ? { currency: "usd", unit_amount: o.price_cents, product: catalogId }
-          : { currency: "usd", unit_amount: o.price_cents, product_data: inline },
-      },
-    ],
+    line_items: itemized
+      ? lines.filter((l) => l.kind !== "discount").map((l) => ({
+          quantity: 1,
+          price_data: l.kind === "product"
+            ? useCatalog
+              ? { currency: "usd", unit_amount: l.cents, product: catalogId }
+              : { currency: "usd", unit_amount: l.cents, product_data: inline }
+            : { currency: "usd", unit_amount: l.cents, product_data: { name: l.label } },
+        }))
+      : [
+          {
+            quantity: 1,
+            price_data: useCatalog
+              ? { currency: "usd", unit_amount: o.price_cents, product: catalogId }
+              : { currency: "usd", unit_amount: o.price_cents, product_data: inline },
+          },
+        ],
+    ...(coupon ? { discounts: [{ coupon }] } : {}),
     customer_email: o.customer_email ?? undefined,
     // Typed loosely: branding_settings is newer than some SDK typings.
     ...({ branding_settings: branding } as object),
-    custom_text: { submit: { message: note + offNote } },
+    custom_text: { submit: { message: note + (coupon ? "" : offNote) } },
     // A fresh session is made on every /pay visit, so a short expiry costs nothing and avoids stale sessions.
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
     client_reference_id: o.id,
