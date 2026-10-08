@@ -9,6 +9,12 @@ import { docsUrl, LOGO_FULL, page } from "./layout.ts";
 import { esc } from "./render.ts";
 
 
+// Paragraph copy may use **bold** and [text](/path) links (Ryan: bold a few key phrases, link our own guides 2–3 times).
+// Escaped first, so nothing else becomes HTML. plain() strips the markup for JSON-LD and meta text.
+const rich = (t: string) =>
+  esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\[(.+?)\]\((\/[a-z0-9\/#-]*)\)/g, '<a href="$2">$1</a>');
+const plain = (t: string) => t.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\[(.+?)\]\(.+?\)/g, "$1");
+
 type Compare = {
   slug: string; // served at /compare/<slug>
   rival: string;
@@ -35,8 +41,8 @@ export const COMPARES: Compare[] = [
     checked: "October 8, 2026",
     card: { date: "2026-10-08", label: "Sendpaper vs. Lob", blurb: "An honest look at when Lob fits better, and when we do." },
     answer: [
-      "Sending thousands of pieces, from a CRM, or abroad? Use Lob.",
-      `Want your AI agent to send a letter, a certified letter or a few postcards right now, with no account or prepaid credits? Use ${BRAND}.`,
+      "Sending thousands of pieces, from a CRM, or abroad? **Use Lob.**",
+      `Want your AI agent to send a letter, a certified letter or a few postcards right now, with no account or prepaid credits? **Use ${BRAND}.**`,
     ],
     table: [
       ["Built for", "High-volume business mail: campaigns, statements, CRM-triggered sends", "Quick, agentic mail: your AI agent drafts it, you approve it, it's sent"],
@@ -52,12 +58,12 @@ export const COMPARES: Compare[] = [
       ["Volume", "Built for large volumes", "Up to 25 recipients per order; no bulk marketing"],
     ],
     rivalFits: [
-      "Lob is the better choice when mail is part of how your business runs: hundreds or thousands of marketing pieces, or recurring statements and notices, often triggered from a CRM or marketing tool. Its per-piece prices are lower, especially at volume, and it covers more ground, with international mail, self-mailers, checks and legal-size letters.",
+      "Lob is the better choice when mail is part of how your business runs: hundreds or thousands of marketing pieces, or recurring statements and notices, often triggered from a CRM or marketing tool. **Its per-piece prices are lower, especially at volume,** and it covers more ground, with international mail, self-mailers, checks and legal-size letters.",
       "It also suits developers who want templates, webhooks, scheduled sends and a test environment, and who are happy to set up an account, a payment method and prepaid credits first.",
     ],
     usFits: [
-      `${BRAND} is the better choice when an AI agent is doing the work. Claude, Codex, Muse or any MCP client connects to our server with no key, drafts the letter or postcard with you, and you approve the payment. It's sent without you ever opening an account.`,
-      "It's also the quick path for one-off mail to US addresses: one letter, one certified letter or a few postcards. There are no prepaid credits; each order has its own checkout, and a real person looks at every piece before it prints.",
+      `${BRAND} is the better choice when **an AI agent is doing the work.** Claude, Codex, Muse or any MCP client connects to our server with no key, drafts the letter or postcard with you, and you approve the payment. It's sent **without you ever opening an account.** Here's [how to send mail from Claude](/send-mail-from-claude).`,
+      "It's also the quick path for one-off mail to US addresses: one letter, a [certified letter](/certified-mail-online) or a few postcards, or a document you already have ([mail a PDF](/mail-a-pdf)). **There are no prepaid credits;** each order has its own checkout, and **a real person looks at every piece before it prints.**",
     ],
     faqs: [
       [`Is ${BRAND} built on Lob?`, `No. ${BRAND}'s printing and mailing partner is PostGrid. We don't use Lob.`],
@@ -105,6 +111,12 @@ const CSS = `
 .cmp thead th.lob { font-size: 1.15rem; }
 @media (max-width: 640px) { .cmp { font-size: .9rem; table-layout: auto; } .cmp th, .cmp td { padding: 10px 8px; } .cmp col.k { width: 24%; } .cmp thead th.us svg { height: 18px; } }
 .prose .note { font-size: .88rem; color: var(--faint); }
+.srcbox { margin-top: 36px; border-top: 1px solid var(--rule); }
+.srcbox summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 18px 0 6px; }
+.srcbox summary::-webkit-details-marker { display: none; }
+.srcbox summary h2 { margin: 0 !important; }
+.srcbox summary::after { content: ""; width: 9px; height: 9px; border-right: 2px solid var(--soft); border-bottom: 2px solid var(--soft); transform: rotate(45deg); margin: -4px 0 0 auto; transition: transform .2s; }
+.srcbox[open] summary::after { transform: rotate(-135deg); margin-top: 4px; }
 .prose .short p { font-size: 1.08rem; margin: 0 0 8px; }
 `;
 
@@ -112,7 +124,7 @@ const CSS = `
 export function comparePage(slug: string) {
   const c = COMPARES.find((x) => x.slug === slug);
   if (!c) return null;
-  const ld = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: c.faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) };
+  const ld = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: c.faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: plain(a) } })) };
   return page(
     `${c.title} — ${BRAND}`,
     `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script><style>${ARTICLE_CSS}${INDEX_CSS}${CSS}</style>
@@ -122,21 +134,21 @@ export function comparePage(slug: string) {
           <div class="meta"><span>Written by ${esc(BRAND)}</span><span>${esc(c.rival)} facts checked ${esc(c.checked)}</span></div></header>
         <div class="prose">
           <h2 id="answer">Short answer</h2>
-          <div class="short">${c.answer.map((p) => `<p>${esc(p)}</p>`).join("")}</div>
+          <div class="short">${c.answer.map((p) => `<p>${rich(p)}</p>`).join("")}</div>
           <h2 id="side">Side by side</h2>
           <div class="cmp-wrap"><table class="cmp"><colgroup><col class="k"><col class="v"><col class="v"></colgroup>
             <thead><tr><th scope="col"><span class="sr-only">Feature</span></th><th scope="col" class="lob">${esc(c.rival)}</th><th scope="col" class="us">${LOGO_FULL}</th></tr></thead>
             <tbody>${c.table.map(([k, a, b]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(a)}</td><td class="us">${esc(b)}</td></tr>`).join("")}</tbody></table></div>
           <h2 id="fit">Which fits</h2>
-          <h3>When to choose ${esc(c.rival)}</h3>${c.rivalFits.map((p) => `<p>${esc(p)}</p>`).join("")}
-          <h3>When to choose ${esc(BRAND)}</h3>${c.usFits.map((p) => `<p>${esc(p)}</p>`).join("")}
+          <h3>When to choose ${esc(c.rival)}</h3>${c.rivalFits.map((p) => `<p>${rich(p)}</p>`).join("")}
+          <h3>When to choose ${esc(BRAND)}</h3>${c.usFits.map((p) => `<p>${rich(p)}</p>`).join("")}
           <div class="cta-box"><div><b>Need to send one now?</b><span>Letters, certified letters and postcards. No account.</span></div>
             <div class="ctas"><a class="btn green" href="/send">Send from the web</a><a class="btn alt" href="${esc(docsUrl("/quickstart"))}">Connect your AI agent</a></div></div>
           <h2 id="questions">Common questions</h2>
-          ${c.faqs.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join("")}
-          <h2 id="sources">Sources</h2>
+          ${c.faqs.map(([q, a]) => `<h3>${esc(q)}</h3><p>${rich(a)}</p>`).join("")}
+          <details class="srcbox" id="sources"><summary><h2>Sources</h2><span class="note">${c.sources.length} links</span></summary>
           <ul class="srcs">${c.sources.map(([t, u]) => `<li><a href="${esc(u)}" rel="noopener">${esc(t)}</a></li>`).join("")}</ul>
-          <p class="note">${esc(c.rival)} sources accessed ${esc(c.checked)}. We're not affiliated with ${esc(c.rival)}; our printing partner is PostGrid.</p>
+          <p class="note">${esc(c.rival)} sources accessed ${esc(c.checked)}. We're not affiliated with ${esc(c.rival)}; our printing partner is PostGrid.</p></details>
         </div>
       </article>
     </div>`,
