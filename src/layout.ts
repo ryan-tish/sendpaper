@@ -97,7 +97,7 @@ th { font-weight: 500; color: var(--soft); }
 // Drawn on a 20px grid with whole-pixel edges and a white flap so it stays crisp at 1x (the lime-on-green version looked blurry).
 // The Mintlify logo (docs/logo/light.svg: sending-envelope mark + Geist 600 wordmark as paths) so site and docs match exactly.
 // Its fixed colors become theme tokens, so one inline SVG serves light and dark.
-const LOGO_FULL = readFileSync(new URL("../docs/logo/light.svg", import.meta.url), "utf8")
+export const LOGO_FULL = readFileSync(new URL("../docs/logo/light.svg", import.meta.url), "utf8")
   .replace(/ width="(\d+)" height="28"/, (_m, w) => ` width="${Math.round((Number(w) * 26) / 28)}" height="26" role="img" aria-label="sendpaper"`)
   .replaceAll("#0F7A52", "var(--green)")
   .replaceAll("#8FD16A", "var(--lime)")

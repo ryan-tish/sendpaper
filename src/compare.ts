@@ -3,13 +3,11 @@
 // documentation we reviewed" rather than "doesn't support". Competitor prices expire: re-check on each source's
 // expiry trigger (research ledger: the private ryan-tish/sendpaper-content repo, sources/compare-<slug>.md).
 // We don't use the compared service: our printing partner is PostGrid. Say so on the page.
-import { BRAND, LIMITS, PRODUCTS } from "./config.ts";
+import { BRAND, LIMITS } from "./config.ts";
 import { ARTICLE_CSS, INDEX_CSS, type IndexCard } from "./guides.ts";
-import { docsUrl, page } from "./layout.ts";
+import { docsUrl, LOGO_FULL, page } from "./layout.ts";
 import { esc } from "./render.ts";
 
-const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
-const P = PRODUCTS;
 
 type Compare = {
   slug: string; // served at /compare/<slug>
@@ -19,11 +17,9 @@ type Compare = {
   lede: string;
   checked: string; // when the competitor facts were last checked, shown on the page
   answer: string[]; // the short answer, as paragraphs
-  table: { head: [string, string, string]; rows: [string, string, string][] };
-  prices: { note: string; rows: [string, string, string][] };
-  rivalFits: string[];
-  usFits: string[];
-  weaker: string[];
+  table: [string, string, string][]; // [row label, rival, us]; our column is highlighted
+  rivalFits: string[]; // paragraphs
+  usFits: string[]; // paragraphs
   faqs: [string, string][];
   sources: [string, string][];
   card: { date: string; label: string; blurb: string }; // the /guides index card (date = facts last checked, ISO)
@@ -33,21 +29,19 @@ export const COMPARES: Compare[] = [
   {
     slug: "lob",
     rival: "Lob",
-    title: "Sendpaper vs. Lob: which fits your mailing workflow?",
-    description: `Lob is cheaper per piece and built for high-volume mail. ${BRAND} needs no account and works from AI agents. Setup, prices and fit, compared honestly.`,
-    lede: `Lob and ${BRAND} both print and mail letters and postcards through USPS, but they're built for different jobs. Lob is a platform for businesses sending mail at volume. ${BRAND} is for sending one letter, a certified letter or a few postcards now, often from an AI agent, without opening an account.`,
+    title: "Sendpaper vs. Lob",
+    description: `Lob is built for businesses mailing at volume. ${BRAND} sends one letter, certified letter or postcard now, from you or your AI agent, with no account.`,
+    lede: `Lob is for mail at volume. ${BRAND} is for one piece now, sent by you or your AI agent.`,
     checked: "October 8, 2026",
     card: { date: "2026-10-08", label: "Sendpaper vs. Lob", blurb: "An honest look at when Lob fits better, and when we do." },
     answer: [
-      "If you send hundreds or thousands of pieces, run mail from a CRM, or need international mail, Lob fits better, and its published per-piece prices are far lower than ours.",
-      `If you (or your AI agent) need to send a single letter, a certified letter or a handful of postcards to US addresses without setting up an account, API keys or prepaid credit, ${BRAND} is the simpler path: each order has its own checkout, and a person reviews every piece before it prints.`,
+      "Sending thousands of pieces, from a CRM, or abroad? Use Lob.",
+      `Sending one letter, a certified letter or a few postcards to US addresses, maybe from an AI agent, with no account? Use ${BRAND}.`,
     ],
-    table: {
-      head: ["", "Lob", BRAND],
-      rows: [
+    table: [
         ["Built for", "Businesses sending mail at volume: marketing and operational mail, CRM-triggered sends", "People and AI agents sending one-off or small-group personal and transactional mail"],
         ["Getting started", "Create an account; before live mail, verify your email, add a payment method and fund prepaid Lob Credits (even on the free Developer plan)", "No account and no API key. Every order comes with its own checkout link"],
-        ["Plans", "Developer $0/month; Startup from $260/month; Growth from $550/month; Enterprise custom. Print and postage are charged per piece on top", "No plans or subscription. You pay per piece, all-in"],
+        ["Plans", "A free Developer plan and paid monthly plans for higher volume, with print and postage charged per piece on top", "No plans or subscription. You pay per piece, all-in"],
         ["How you pay", "Prepaid Lob Credits; card (3% fee), ACH, wire or check", "Card through Stripe Checkout, or a one-time agent payment you approve in Stripe Link"],
         ["Ways to send", "REST API with SDKs, dashboard and Campaigns, many CRM and marketing integrations (Salesforce, HubSpot, Zapier and others)", "Website, REST API and an MCP server for AI agents (Claude, Codex, Muse and other MCP clients)"],
         ["AI agents", "We found no first-party Lob MCP server as of October 8, 2026. Third-party MCP connectors (Zapier, Pipedream, Composio, open source) can reach Lob's API with your own Lob key", "First-party MCP server at sendmypaper.com/mcp; no key needed"],
@@ -56,40 +50,18 @@ export const COMPARES: Compare[] = [
         ["Review before printing", "You proof your own mail (PDF proofs, a 4-hour cancellation window for new accounts). Lob's terms say it does not review or monitor mailpiece content", "A person at Sendpaper reviews every piece before it prints"],
         ["Where it mails", "US, plus postcards and letters to international addresses (First-Class only; no certified mail abroad)", "US addresses only, including territories and military addresses"],
         ["Volume", "Designed for large volumes; plans set monthly limits", "Up to 25 recipients per order; bulk marketing isn't allowed"],
-      ],
-    },
-    prices: {
-      note: `Published self-serve prices, checked October 8, 2026. Lob: Developer plan (no subscription), First-Class, before its announced November 1, 2026 changes (small increases; certified fees unchanged). We assume Lob's letter price includes the first page and that its certified fee is added to the letter price, which its pricing page implies but doesn't spell out. ${BRAND}: list prices, before any promotion; that's the full price at checkout. Lob notes that sales tax may apply depending on your state.`,
-      rows: [
-        ["One black-and-white letter, 1 page", "$1.06", usd(P.letter.cents)],
-        ["One letter, 3 pages", "$1.26", usd(P.letter.cents)],
-        ["25 identical 4×6 postcards to 25 people", "$22.63", `${usd(P.postcard_4x6.cents * 25)} (one checkout)`],
-        ["One certified letter", "$8.01", usd(P.letter_certified.cents)],
-        ["One certified letter with return receipt", "$10.92", usd(P.letter_certified_rr.cents)],
-      ],
-    },
+    ],
     rivalFits: [
-      "You send hundreds to thousands of pieces, especially marketing or recurring operational mail like statements and notices.",
-      "You want the lowest per-piece price and are happy to set up an account, a payment method and prepaid credits.",
-      "You need international mail, self-mailers, checks or legal-size letters.",
-      "Your mail is triggered from a CRM or marketing tool, or your developers want templates, webhooks, scheduled sends and a test environment.",
+      "Lob is the better choice when mail is part of how your business runs: hundreds or thousands of marketing pieces, or recurring statements and notices, often triggered from a CRM or marketing tool. Its per-piece prices are lower, especially at volume, and it covers more ground, with international mail, self-mailers, checks and legal-size letters.",
+      "It also suits developers who want templates, webhooks, scheduled sends and a test environment, and who are happy to set up an account, a payment method and prepaid credits first.",
     ],
     usFits: [
-      "You need to send one letter, one certified letter or a few postcards now, without opening an account or managing API keys.",
-      "An AI agent is doing the work: it connects to our MCP server with no key, and you approve each payment.",
-      "You want a person to look at every piece before it's printed.",
-      "Your mail is personal or transactional and goes to US addresses.",
-    ],
-    weaker: [
-      "Our per-piece prices are higher than Lob's published self-serve prices in every scenario above.",
-      "US addresses only; no international mail.",
-      "No bulk or marketing campaigns (by policy), and at most 25 recipients per order.",
-      "Every piece waits for a person to review it, and there's no scheduling, templates with merge fields, webhooks or CRM integrations.",
-      "Fewer formats: no self-mailers, checks, legal-size letters or registered mail.",
+      `${BRAND} is the better choice when you need to send one letter, one certified letter or a few postcards now, to US addresses, without opening an account or managing API keys. Each order has its own checkout, and a person looks at every piece before it's printed.`,
+      "It's built for AI agents too: Claude, Codex, Muse or any MCP client connects to our server with no key, drafts the mail with you, and you approve each payment.",
     ],
     faqs: [
       [`Is ${BRAND} built on Lob?`, `No. ${BRAND}'s printing and mailing partner is PostGrid. We don't use Lob.`],
-      ["Is Lob cheaper?", `Per piece, yes: a one-page letter is $1.06 on Lob's free Developer plan versus ${usd(P.letter.cents)} with ${BRAND}. Lob asks you to set up an account and prepay credits first; ${BRAND} charges per order with no account.`],
+      ["Is Lob cheaper?", `Per piece, yes, especially at volume. Lob asks you to set up an account and prepay credits first; ${BRAND} charges per order with no account.`],
       ["Can an AI agent send mail through Lob?", "Yes, through third-party MCP connectors such as Zapier's or Pipedream's, using your own Lob account and API key. We found no first-party Lob MCP server as of October 8, 2026."],
       ["Can I switch between them?", `Nothing locks you in either way. You could use Lob for high-volume business mail and ${BRAND} for occasional letters sent from an agent.`],
     ],
@@ -117,58 +89,56 @@ export const COMPARES: Compare[] = [
 export const COMPARE_PATHS = COMPARES.map((c) => `/compare/${c.slug}`);
 
 const CSS = `
-.cmp { width: 100%; border-collapse: collapse; font-size: .93rem; line-height: 1.5; margin: 6px 0 18px; }
-.cmp th, .cmp td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
-.cmp thead th { font: 600 .9rem var(--f-ui); border-bottom: 2px solid var(--rule); }
-.cmp tbody th { font: 500 .74rem/1.6 var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .05em; width: 22%; }
-.cmp td.amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.cmp.jobs tbody th { width: 46%; text-transform: none; font: 400 .93rem/1.5 var(--f-ui); color: var(--ink); letter-spacing: 0; }
+.cmp { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 1rem; line-height: 1.55; margin: 10px 0 22px; }
+.cmp col.k { width: 20%; } .cmp col.v { width: 40%; }
+.cmp th, .cmp td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--rule); overflow-wrap: anywhere; }
+.cmp thead th { font: 600 1.05rem var(--f-ui); border-bottom: 2px solid var(--rule); vertical-align: middle; height: 58px; }
+.cmp tbody th { font: 500 .74rem/1.7 var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .05em; }
+.cmp .us { background: var(--green-soft); border-left: 2px solid var(--green); border-right: 2px solid var(--green); border-bottom-color: var(--green-line); }
+.cmp thead th.us { border-top: 2px solid var(--green); border-radius: 12px 12px 0 0; border-bottom-color: var(--green-line); }
+.cmp tbody tr:last-child td.us { border-bottom: 2px solid var(--green); border-radius: 0 0 12px 12px; }
+.cmp thead th.us svg { height: 26px; width: auto; display: block; }
 .cmp-wrap { overflow-x: auto; }
-@media (max-width: 640px) { .cmp { font-size: .88rem; } .cmp th, .cmp td { padding: 8px 6px; } }
+/* No TOC here: the page is short, and the table gets the full width while prose keeps a reading measure. */
+.art.wide { grid-template-columns: minmax(0, 1040px); }
+.art.wide .prose > :not(.cmp-wrap):not(.cta-box) { max-width: 720px; }
+.cmp thead th.lob { font-size: 1.15rem; }
+@media (max-width: 640px) { .cmp { font-size: .9rem; table-layout: auto; } .cmp th, .cmp td { padding: 10px 8px; } .cmp col.k { width: 24%; } .cmp thead th.us svg { height: 18px; } }
 .prose .note { font-size: .88rem; color: var(--faint); }
-.prose ul.plain { padding-left: 20px; margin: 0 0 14px; } .prose ul.plain li { margin-bottom: 6px; }
-.disclose { font-size: .9rem; color: var(--soft); border-left: 3px solid var(--rule); padding-left: 12px; margin: 18px 0 0; }
+.prose .short p { font-size: 1.08rem; margin: 0 0 8px; }
 `;
 
-const SECTIONS = [["answer", "Short answer"], ["side", "Side by side"], ["prices", "Prices"], ["fit", "Which fits"], ["questions", "Common questions"], ["sources", "Sources"]];
 
 export function comparePage(slug: string) {
   const c = COMPARES.find((x) => x.slug === slug);
   if (!c) return null;
   const ld = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: c.faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) };
-  const list = (xs: string[]) => `<ul class="plain">${xs.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
   return page(
     `${c.title} — ${BRAND}`,
     `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script><style>${ARTICLE_CSS}${INDEX_CSS}${CSS}</style>
-    <div class="art">
+    <div class="art wide">
       <article>
         <header><div class="crumbs"><a href="/guides">Guides</a> › Comparisons</div><h1>${esc(c.title)}</h1><p class="dek">${esc(c.lede)}</p>
-          <div class="meta"><span>Written by ${esc(BRAND)}</span><span>${esc(c.rival)} facts checked ${esc(c.checked)}</span></div>
-          <p class="disclose">${esc(BRAND)} wrote this comparison. We're not affiliated with or endorsed by ${esc(c.rival)}, and we don't use it (our printing partner is PostGrid). Prices and features change, so check ${esc(c.rival)}'s own pages, linked below, before deciding.</p></header>
+          <div class="meta"><span>Written by ${esc(BRAND)}</span><span>${esc(c.rival)} facts checked ${esc(c.checked)}</span></div></header>
         <div class="prose">
           <h2 id="answer">Short answer</h2>
-          ${c.answer.map((p) => `<p>${esc(p)}</p>`).join("")}
+          <div class="short">${c.answer.map((p) => `<p>${esc(p)}</p>`).join("")}</div>
           <h2 id="side">Side by side</h2>
-          <div class="cmp-wrap"><table class="cmp"><thead><tr>${c.table.head.map((h) => `<th scope="col">${esc(h)}</th>`).join("")}</tr></thead>
-            <tbody>${c.table.rows.map(([k, a, b]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join("")}</tbody></table></div>
-          <h2 id="prices">Prices for common jobs</h2>
-          <div class="cmp-wrap"><table class="cmp jobs"><thead><tr><th scope="col">Job</th><th scope="col">${esc(c.rival)}</th><th scope="col">${esc(BRAND)}</th></tr></thead>
-            <tbody>${c.prices.rows.map(([k, a, b]) => `<tr><th scope="row">${esc(k)}</th><td class="amt">${esc(a)}</td><td class="amt">${esc(b)}</td></tr>`).join("")}</tbody></table></div>
-          <p class="note">${esc(c.prices.note)}</p>
+          <div class="cmp-wrap"><table class="cmp"><colgroup><col class="k"><col class="v"><col class="v"></colgroup>
+            <thead><tr><th scope="col"><span class="sr-only">Feature</span></th><th scope="col" class="lob">${esc(c.rival)}</th><th scope="col" class="us">${LOGO_FULL}</th></tr></thead>
+            <tbody>${c.table.map(([k, a, b]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(a)}</td><td class="us">${esc(b)}</td></tr>`).join("")}</tbody></table></div>
           <h2 id="fit">Which fits</h2>
-          <h3>Choose ${esc(c.rival)} when</h3>${list(c.rivalFits)}
-          <h3>Choose ${esc(BRAND)} when</h3>${list(c.usFits)}
-          <h3>Where ${esc(BRAND)} is weaker</h3>${list(c.weaker)}
-          <div class="cta-box"><div><b>Need to send one now?</b><span>Postcards from ${usd(P.postcard_4x6.cents)}, letters from ${usd(P.letter.cents)}, certified from ${usd(P.letter_certified.cents)}. No account.</span></div>
+          <h3>When to choose ${esc(c.rival)}</h3>${c.rivalFits.map((p) => `<p>${esc(p)}</p>`).join("")}
+          <h3>When to choose ${esc(BRAND)}</h3>${c.usFits.map((p) => `<p>${esc(p)}</p>`).join("")}
+          <div class="cta-box"><div><b>Need to send one now?</b><span>Letters, certified letters and postcards. No account.</span></div>
             <div class="ctas"><a class="btn green" href="/send">Send from the web</a><a class="btn alt" href="${esc(docsUrl("/quickstart"))}">Connect your AI agent</a></div></div>
           <h2 id="questions">Common questions</h2>
           ${c.faqs.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join("")}
           <h2 id="sources">Sources</h2>
           <ul class="srcs">${c.sources.map(([t, u]) => `<li><a href="${esc(u)}" rel="noopener">${esc(t)}</a></li>`).join("")}</ul>
-          <p class="note">${esc(c.rival)} sources accessed ${esc(c.checked)}.</p>
+          <p class="note">${esc(c.rival)} sources accessed ${esc(c.checked)}. We're not affiliated with ${esc(c.rival)}; our printing partner is PostGrid.</p>
         </div>
       </article>
-      <nav class="toc" aria-label="On this page"><span>On this page</span>${SECTIONS.map(([id, t]) => `<a href="#${id}">${t}</a>`).join("")}</nav>
     </div>`,
     { description: c.description },
   );
