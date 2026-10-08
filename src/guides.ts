@@ -30,6 +30,7 @@ type Guide = {
   figure?: { src: string; alt: string; caption: string };
   ctas?: [string, string][]; // [label, href]; the first is the green primary button
   group?: "agents"; // agent how-tos are listed apart from the proof-of-delivery guides on /guides
+  sources?: [string, string][]; // [label, url]: primary sources for factual claims, listed at the end
 };
 
 export const GUIDES: Guide[] = [
@@ -38,21 +39,37 @@ export const GUIDES: Guide[] = [
     kicker: "Certified mail",
     blurb: "Tracking and proof of delivery, without the post office.",
     title: "Send certified mail online",
-    description: `Send a letter by USPS Certified Mail without going to the post office: tracking and proof of delivery from ${CERT}, return receipt ${RR}. Write it, upload a PDF, or ask your AI agent.`,
-    lede: `Skip the post office line. Write your letter or upload a PDF, choose Certified Mail, and we print it, mail it by USPS Certified Mail, and give you the tracking number. ${CERT}, or ${RR} with a return receipt.`,
+    description: `Send USPS Certified Mail online: tracking and proof of delivery for ${CERT}, or ${RR} with an electronic return receipt. Type it or upload a PDF.`,
+    lede: `Skip the post office line. Write your letter or upload a PDF, choose Certified Mail, and we print it, mail it by USPS Certified Mail and give you the tracking number. ${CERT}, or ${RR} with a return receipt that carries the recipient's signature.`,
+    glance: [
+      ["Price", `${CERT} Certified Mail, or ${RR} with a return receipt. Printing, envelope and postage included.`],
+      ["You get", "A USPS tracking number and a record of mailing and delivery. With a return receipt, also a PDF of the recipient's signature from USPS."],
+      ["Return receipt", "Request it at USPS Tracking with the tracking number after delivery; USPS emails the signed receipt as a PDF (per USPS, usually within 48 hours of delivery)."],
+      ["Your letter", `Type it (about 3 pages) or upload a PDF of up to ${LIMITS.pdfPages} pages. US addresses only.`],
+      ["Not available", "Express delivery (Certified travels by First-Class Mail), and mail outside the US."],
+    ],
     steps: [
-      ["Write it or upload it", `Type the letter, have your AI agent draft it, or upload a PDF (up to ${LIMITS.pdfPages} pages).`],
-      ["Choose Certified Mail", "Certified gives you a USPS tracking number and proof of mailing and delivery. Add a return receipt for the recipient's signature."],
-      ["Check the print and pay", "You see exactly what will be printed before you pay. A person reviews every piece, and it's usually mailed within one business day."],
+      ["Write it or upload it", `Type the letter, have your AI agent draft it, or upload a PDF (up to ${LIMITS.pdfPages} pages) on the certified letter form.`],
+      ["Choose Certified, with or without a return receipt", `Certified (${CERT}) gives you a USPS tracking number and a record of mailing and delivery. Add a return receipt (${RR}) when you need the recipient's signature.`],
+      ["Check the print and pay", "You see exactly what will be printed before you pay. A person reviews every piece, and we aim to mail it within one business day of payment."],
+      ["Track it, then get the receipt", "The tracking number appears on your order page after the letter is printed and handed to USPS. If you chose a return receipt, request it from USPS Tracking after delivery (see below)."],
     ],
     include: ["The recipient's full mailing address (US only)", "Your return address, which shows through the envelope window with the recipient's", "A clear subject line and date in the letter", "Copies of any documents you reference (never originals)"],
     prompt: "Write a short letter to [recipient] about [topic] and send it by certified mail with a return receipt. My return address is [address].",
     send: "/send?product=letter_certified",
     faqs: [
-      ["What's the difference between Certified Mail and a return receipt?", "Certified Mail gives you a tracking number and proof that the letter was mailed and delivered. A return receipt adds the recipient's signature as proof of who received it."],
-      ["How do I track it?", "The USPS tracking number appears on your order page once the letter is accepted for mailing, with a link to USPS tracking."],
+      ["What's the difference between Certified Mail and a return receipt?", "Certified Mail gives you a USPS tracking number and a record that the letter was mailed and delivered. A return receipt adds the recipient's signature as proof of who received it."],
+      ["How do I get the return receipt?", "After the letter is delivered, go to USPS Tracking, enter the tracking number from your order page, choose Return Receipt (Electronic) and enter your email address. USPS emails the signed receipt as a PDF; USPS says it's usually available within 48 hours of delivery. This is how our print partner, PostGrid, says to retrieve it. If you can't get it, email us with your order number."],
+      ["When do I get the tracking number?", "After your letter is printed and handed to USPS. It appears on your order page with a link to USPS Tracking, and your AI agent can read it with get_order."],
       ["Can I send my own PDF?", `Yes. Upload a PDF of up to ${LIMITS.pdfPages} pages; any page size is fitted to 8.5×11 and an address page is added in front, so your document needs no space for addresses.`],
-      ["How fast does it arrive?", "It's usually mailed within one business day of payment and travels by First-Class Mail, typically 1 to 5 business days within the US."],
+      ["How fast does it arrive?", "Certified Mail travels by First-Class Mail, which USPS estimates at 1 to 5 business days within the US (not guaranteed). We aim to mail it within one business day of payment, after review. Express isn't available with Certified Mail."],
+      ["Does certified mail meet my legal or contract requirement?", "We can't tell you that. Some rules ask for certified mail, others for a return receipt or a specific method. Check the notice, contract or rule you're following, or ask a professional."],
+    ],
+    sources: [
+      ["USPS: Certified Mail, the basics", "https://faq.usps.com/s/article/Certified-Mail-The-Basics"],
+      ["USPS: Electronic Return Receipt", "https://faq.usps.com/s/article/What-is-Electronic-Return-Receipt"],
+      ["USPS: First-Class Mail delivery times", "https://www.usps.com/ship/first-class-mail.htm"],
+      ["PostGrid: how to get the return receipt for certified mail", "https://www.postgrid.com/how-to-send-certified-mail-via-api/"],
     ],
   },
   {
@@ -221,13 +238,13 @@ export const GUIDE_PATHS = GUIDES.map((g) => `/${g.slug}`);
 // Guides read as articles (Ryan, 2026-10-05: "more article-like, more different from the use cases"): the site font
 // (Geist; a serif was tried and dropped the same day for consistency),
 // a narrow reading column, written-out steps and Q&A, an "On this page" rail on wide screens. Use cases stay cards.
-const UPDATED = "October 2026"; // bump when guide copy changes
+export const UPDATED = "October 2026"; // bump when guide copy changes
 const minutes = (g: Guide) => Math.max(2, Math.round([g.lede, ...g.steps.flat(), ...g.include, g.prompt, ...g.faqs.flat(), ...(g.glance ?? []).flat(), ...(g.setup ?? []).map((x) => x.body)].join(" ").split(/\s+/).length / 200));
 const priceFor = (g: Guide) => (g.group === "agents" ? `Postcards from ${usd(PRODUCTS.postcard_4x6.cents)}, letters from ${LETTER}` : g.send.includes("certified") ? `Certified letter from ${CERT}` : `Letters from ${LETTER}`);
 // Setup text may mark commands with backticks; everything else is escaped.
 const inline = (t: string) => esc(t).replace(/`([^`]+)`/g, "<code>$1</code>");
 
-const CSS = `
+export const ARTICLE_CSS = `
 .art { display: grid; grid-template-columns: minmax(0, 680px) 200px; justify-content: space-between; gap: 56px; padding-block: 44px 8px; }
 @media (max-width: 960px) { .art { grid-template-columns: minmax(0, 680px); } .toc { display: none; } }
 .art .crumbs { font-size: .88rem; color: var(--faint); } .art .crumbs a { color: var(--soft); text-decoration: none; } .art .crumbs a:hover { color: var(--green); }
@@ -258,13 +275,14 @@ const CSS = `
 @media (max-width: 560px) { .glance { grid-template-columns: minmax(0, 1fr); gap: 2px; } .glance dd { margin-bottom: 10px; } }
 .prose pre { margin: 6px 0 16px; font-size: .86rem; }
 .prose figure { margin: 26px 0 8px; } .prose figure img { width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 10px; display: block; }
+.prose ul.srcs { padding-left: 20px; margin: 0 0 6px; font-size: .95rem; }
 .prose figcaption { font-size: .86rem; color: var(--faint); margin-top: 8px; line-height: 1.5; }
 .keep { grid-column: 1 / -1; border-top: 1px solid var(--rule); padding-top: 28px; margin-top: 12px; display: grid; gap: 4px; }
 .keep > span { font: 500 .74rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
 `;
 
 const SECTIONS = [["how", "How it works"], ["include", "What to include"], ["agent", "Ask your agent"], ["questions", "Common questions"]];
-const sectionsFor = (g: Guide) => (g.setup ? [["setup", "Set it up"], ...SECTIONS] : SECTIONS);
+const sectionsFor = (g: Guide) => [...(g.setup ? [["setup", "Set it up"]] : []), ...SECTIONS, ...(g.sources ? [["sources", "Sources"]] : [])];
 
 export function guidePage(slug: string) {
   const g = GUIDES.find((x) => x.slug === slug);
@@ -277,7 +295,7 @@ export function guidePage(slug: string) {
   const others = GUIDES.filter((x) => x.slug !== slug).slice(0, 3);
   return page(
     `${g.title} — ${BRAND}`,
-    `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script><style>${CSS}${INDEX_CSS}</style>
+    `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script><style>${ARTICLE_CSS}${INDEX_CSS}</style>
     <div class="art">
       <article>
         <header><div class="crumbs"><a href="/guides">Guides</a> › ${esc(g.kicker)}</div><h1>${esc(g.title)}</h1><p class="dek">${esc(g.lede)}</p>
@@ -297,6 +315,7 @@ export function guidePage(slug: string) {
           <div class="prompt">${esc(g.prompt)}</div>
           <h2 id="questions">Common questions</h2>
           ${g.faqs.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join("")}
+          ${g.sources ? `<h2 id="sources">Sources</h2><ul class="srcs">${g.sources.map(([t, u]) => `<li><a href="${esc(u)}" rel="noopener">${esc(t)}</a></li>`).join("")}</ul><p class="soft" style="font-size:.88rem">Checked ${UPDATED}.</p>` : ""}
           <p class="guard">${esc(GUARDRAIL)}</p>
         </div>
       </article>
@@ -313,7 +332,7 @@ export const guideUrl = (slug: string) => `${BASE_URL}/${slug}`;
 export function guideList(list: Guide[] = GUIDES) {
   return `<div class="glist">${list.map((g) => `<a class="gitem" href="/${g.slug}"><span class="gk">${esc(g.kicker)} · ${minutes(g)} min read</span><b>${esc(g.title)}</b><span class="gb">${esc(g.blurb)}</span></a>`).join("")}</div>`;
 }
-const INDEX_CSS = `
+export const INDEX_CSS = `
 .glist { display: grid; }
 .gitem { display: grid; gap: 6px; padding: 22px 0; border-bottom: 1px solid var(--rule); color: var(--ink); text-decoration: none; }
 .glist .gitem:first-child { padding-top: 6px; }
@@ -324,7 +343,7 @@ const INDEX_CSS = `
 .keep .gitem b { font-size: 1.15rem; } .keep .gitem { padding: 14px 0; }
 `;
 
-export function guidesIndexPage() {
+export function guidesIndexPage(comparisons: { href: string; title: string; rival: string }[] = []) {
   return page(
     `Guides — ${BRAND}`,
     `<style>${INDEX_CSS} .gi { display: grid; gap: 28px; max-width: 760px; padding-block: 52px 8px; } .gi h1 { font: 600 clamp(2.1rem, 4.6vw, 3rem)/1.08 var(--f-ui); letter-spacing: -0.035em; } .gi .dek { font: 400 1.15rem/1.55 var(--f-ui); color: var(--soft); margin: 0; } .gi .gh { font: 600 1.05rem var(--f-ui); color: var(--soft); margin: 8px 0 -16px; } .more-uc { display: grid; gap: 4px; padding: 18px 20px; border: 1px solid var(--rule); border-radius: 12px; background: var(--tint); color: var(--ink); text-decoration: none; } .more-uc b { font-weight: 600; } .more-uc span { color: var(--soft); font-size: .95rem; } .more-uc:hover b { color: var(--green); }</style>
@@ -334,6 +353,7 @@ export function guidesIndexPage() {
       ${guideList(GUIDES.filter((g) => g.group !== "agents"))}
       <h2 class="gh">Send mail from your AI agent</h2>
       ${guideList(GUIDES.filter((g) => g.group === "agents"))}
+      ${comparisons.length ? `<h2 class="gh">Comparisons</h2><div class="glist">${comparisons.map((c) => `<a class="gitem" href="${esc(c.href)}"><span class="gk">Comparison</span><b>${esc(c.title)}</b><span class="gb">An honest look at when ${esc(c.rival)} fits better, and when we do.</span></a>`).join("")}</div>` : ""}
       <a class="more-uc" href="/use-cases"><b>Looking for a ready-made prompt?</b><span>Browse use cases: birthday cards, landlord notices, tax replies and more, each with a prompt to copy →</span></a>
       <p class="soft" style="font-size:.88rem;margin:0">${esc(GUARDRAIL)}</p></section>`,
     { description: `Guides to mailing a PDF, sending certified mail online, demand letters and disputes, and sending real mail from Claude and other AI agents.` },

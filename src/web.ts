@@ -7,6 +7,7 @@ import { landing } from "./landing.ts";
 import { SEND_KINDS, type SendKind, kindFromQuery, sendChooser, sendPage } from "./send.ts";
 import { useCasesPage } from "./usecases.ts";
 import { GUIDES, guidePage, guidesIndexPage } from "./guides.ts";
+import { COMPARES, compareList, comparePage } from "./compare.ts";
 import { QUICK_EXAMPLE, QUICK_PARAMS } from "./quick.ts";
 import { page } from "./layout.ts";
 import { getBatch, getOrder, groupLines, priceLines, publicOrder, type OrderRow } from "./orders.ts";
@@ -67,7 +68,8 @@ web.get("/use-cases", (_req, res) => {
 });
 
 // Search pages for professional, proof-of-delivery mail (src/guides.ts).
-web.get("/guides", (_req, res) => res.send(guidesIndexPage()));
+web.get("/guides", (_req, res) => res.send(guidesIndexPage(compareList())));
+for (const c of COMPARES) web.get(`/compare/${c.slug}`, (_req, res) => res.send(comparePage(c.slug)));
 for (const g of GUIDES) web.get(`/${g.slug}`, (_req, res) => res.send(guidePage(g.slug)));
 
 web.get("/send", async (req, res) => {
@@ -105,7 +107,7 @@ web.get("/o/:id", async (req, res) => {
         <p>${esc(p.status_detail)}</p>` : ""}
         ${o.free_offer ? `<p><span class="pill ok">Free</span> Your first postcard is on us.</p>` : ""}
         ${o.express ? `<p><span class="pill ok">Express · USPS Priority Mail</span> Usually delivered 2–3 days after mailing, with tracking.</p>` : ""}
-        ${EXTRA_SERVICE[o.product] ? `<p><span class="pill ok">USPS Certified Mail${EXTRA_SERVICE[o.product] === "certified_return_receipt" ? " · return receipt" : ""}</span> ${o.tracking_number ? `Tracking: <a href="https://tools.usps.com/go/TrackConfirmAction?tLabels=${esc(o.tracking_number)}" target="_blank" rel="noopener">${esc(o.tracking_number)}</a>` : "You'll get a USPS tracking number here once it's accepted for mailing."}</p>` : ""}
+        ${EXTRA_SERVICE[o.product] ? `<p><span class="pill ok">USPS Certified Mail${EXTRA_SERVICE[o.product] === "certified_return_receipt" ? " · return receipt" : ""}</span> ${o.tracking_number ? `Tracking: <a href="https://tools.usps.com/go/TrackConfirmAction?tLabels=${esc(o.tracking_number)}" target="_blank" rel="noopener">${esc(o.tracking_number)}</a>` : "You'll get a USPS tracking number here once it's accepted for mailing."}${EXTRA_SERVICE[o.product] === "certified_return_receipt" && o.tracking_number ? ` <span class="soft">Return receipt: once the letter is delivered, open USPS Tracking with this number, choose Return Receipt (Electronic) and enter your email; USPS emails you the signed receipt as a PDF. Can't get it? Email us with your order number.</span>` : ""}</p>` : ""}
         <div class="card receipt"><span class="eyebrow">${paid ? "Receipt" : "Order summary"}</span>
           ${priceLines(o).map((l) => `<div class="rl${l.kind === "discount" ? " off" : ""}"><span>${esc(l.label)}</span><span>${l.cents < 0 ? "−" : ""}$${(Math.abs(l.cents) / 100).toFixed(2)}</span></div>`).join("")}
           <div class="rl rt"><span>Total${paid ? " paid" : ""}</span><span>${esc(p.price.display)}</span></div>
@@ -294,7 +296,7 @@ ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}, 
 
 ## Options
 - Letters: write the text (content.body, optional photo via content.image_url) OR mail the user's own PDF (content.pdf_url, a public https link, up to ${LIMITS.pdfPages} pages; any page size is fitted to 8.5×11 and an address page is added in front; content.color: true prints in color for ${usd(COLOR_LETTER_CENTS)} more).
-- Certified Mail for letters: certified "certified" or "certified_return_receipt" (recipient's signature). Use it when the user needs proof: tax notice replies, lease notices, disputes, demand letters.
+- Certified Mail for letters: certified "certified" or "certified_return_receipt" (recipient's signature; after delivery the sender requests the signed receipt PDF at USPS Tracking with the tracking number, choosing Return Receipt (Electronic)). Use it when the user needs proof: tax notice replies, lease notices, disputes, demand letters.
 - Express (postcards and letters): express: true, USPS Priority Mail, usually 2–3 days with tracking, ${usd(EXPRESS_CENTS)} more. Not combinable with certified.
 - Several recipients: pass recipients (2–25 addresses) instead of to on create_postcard / create_letter (or POST /v1/postcards, /v1/letters). Each person gets their own order and tracking; the response has batch.checkout_url and batch.price, and pay_order with any order in the group pays for all of it.
 - Postcard fronts: layout headline (front_headline + front_theme: ${Object.keys(THEMES).join(", ")}), photo (front_image_url), photo_caption (front_image_url + caption) or collage (front_images: 2–4 https URLs). headline_font: serif, sans or script; message_font: handwriting, serif or sans.
@@ -302,6 +304,9 @@ ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}, 
 
 ## Guides (proof-of-delivery mail)
 ${GUIDES.map((g) => `- ${g.title}: ${BASE_URL}/${g.slug}`).join("\n")}
+
+## Comparisons
+${COMPARES.map((c) => `- ${c.title}: ${BASE_URL}/compare/${c.slug}`).join("\n")}
 
 ## Order links (for agents using a web browser)
 - Can't call tools or HTTP APIs? Open one URL with every field: ${BASE_URL}/quick?type=postcard&size=4x6&headline=…&message=…&to_name=…&to_line1=…&to_city=…&to_state=…&to_zip=…&from_name=…&from_line1=…&from_city=…&from_state=…&from_zip=…
