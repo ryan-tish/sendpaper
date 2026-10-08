@@ -4,7 +4,7 @@
 // expiry trigger (research ledger: the private ryan-tish/sendpaper-content repo, sources/compare-<slug>.md).
 // We don't use the compared service: our printing partner is PostGrid. Say so on the page.
 import { BRAND, LIMITS, PRODUCTS } from "./config.ts";
-import { ARTICLE_CSS, INDEX_CSS } from "./guides.ts";
+import { ARTICLE_CSS, INDEX_CSS, type IndexCard } from "./guides.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
 
@@ -26,6 +26,7 @@ type Compare = {
   weaker: string[];
   faqs: [string, string][];
   sources: [string, string][];
+  card: { date: string; label: string; blurb: string }; // the /guides index card (date = facts last checked, ISO)
 };
 
 export const COMPARES: Compare[] = [
@@ -36,6 +37,7 @@ export const COMPARES: Compare[] = [
     description: `Lob is cheaper per piece and built for high-volume mail. ${BRAND} needs no account and works from AI agents. Setup, prices and fit, compared honestly.`,
     lede: `Lob and ${BRAND} both print and mail letters and postcards through USPS, but they're built for different jobs. Lob is a platform for businesses sending mail at volume. ${BRAND} is for sending one letter, a certified letter or a few postcards now, often from an AI agent, without opening an account.`,
     checked: "October 8, 2026",
+    card: { date: "2026-10-08", label: "Sendpaper vs. Lob", blurb: "An honest look at when Lob fits better, and when we do." },
     answer: [
       "If you send hundreds or thousands of pieces, run mail from a CRM, or need international mail, Lob fits better, and its published per-piece prices are far lower than ours.",
       `If you (or your AI agent) need to send a single letter, a certified letter or a handful of postcards to US addresses without setting up an account, API keys or prepaid credit, ${BRAND} is the simpler path: each order has its own checkout, and a person reviews every piece before it prints.`,
@@ -172,4 +174,5 @@ export function comparePage(slug: string) {
   );
 }
 
-export const compareList = () => COMPARES.map((c) => ({ href: `/compare/${c.slug}`, title: c.title, rival: c.rival }));
+export const compareList = (): IndexCard[] =>
+  COMPARES.map((c) => ({ href: `/compare/${c.slug}`, title: c.title, blurb: c.card.blurb, tag: "Comparison", cat: "compare", date: c.card.date, art: "compare", label: c.card.label }));
