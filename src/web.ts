@@ -261,6 +261,14 @@ web.get("/review/demo.mp4", (_req, res) => {
   res.set("Cache-Control", "public, max-age=3600").sendFile(fileURLToPath(new URL("../assets/review/demo.mp4", import.meta.url)));
 });
 
+// Guide screenshots (2026-10-08): only files in assets/guides with a plain name, so no path can escape the folder.
+web.get("/guides/img/:name", (req, res) => {
+  if (!/^[a-z0-9-]+\.png$/.test(req.params.name)) return res.status(404).send("Not found");
+  res.set("Cache-Control", "public, max-age=86400").sendFile(fileURLToPath(new URL(`../assets/guides/${req.params.name}`, import.meta.url)), (err) => {
+    if (err && !res.headersSent) res.status(404).send("Not found");
+  });
+});
+
 web.get("/favicon.svg", (_req, res) => {
   res.type("image/svg+xml").set("Cache-Control", "public, max-age=86400").send(readFileSync(new URL("../docs/logo/favicon.svg", import.meta.url)));
 });
@@ -274,7 +282,7 @@ web.get("/llms.txt", (_req, res) => {
 ## Connect
 - MCP endpoint (Streamable HTTP, no auth): ${MCP_URL}
 - Tools: get_pricing, create_postcard, create_letter, pay_order, get_order, cancel_order
-- Setup for Codex, Muse Code, Claude and other clients: ${BASE_URL}/#connect
+- Setup for Codex, Muse Code, Claude and other clients: ${DOCS_URL ? `${DOCS_URL}/quickstart` : `${BASE_URL}/docs`}
 
 ## Docs
 - Documentation: ${docs}${DOCS_URL ? `\n- Full docs for LLMs: ${DOCS_URL}/llms-full.txt` : ""}

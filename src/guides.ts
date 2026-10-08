@@ -23,6 +23,13 @@ type Guide = {
   prompt: string;
   send: string; // /send link with the right options preselected
   faqs: [string, string][];
+  // Optional extras (content plan, 2026-10-08): a facts table under the header, setup blocks with copyable code
+  // (agent guides), one screenshot from a real run, and CTA buttons that replace the default send/agent pair.
+  glance?: [string, string][];
+  setup?: { title: string; body: string; code?: string }[];
+  figure?: { src: string; alt: string; caption: string };
+  ctas?: [string, string][]; // [label, href]; the first is the green primary button
+  group?: "agents"; // agent how-tos are listed apart from the proof-of-delivery guides on /guides
 };
 
 export const GUIDES: Guide[] = [
@@ -38,7 +45,7 @@ export const GUIDES: Guide[] = [
       ["Choose Certified Mail", "Certified gives you a USPS tracking number and proof of mailing and delivery. Add a return receipt for the recipient's signature."],
       ["Check the print and pay", "You see exactly what will be printed before you pay. A person reviews every piece, and it's usually mailed within one business day."],
     ],
-    include: ["The recipient's full mailing address (US only)", "Your return address, which is printed on the envelope", "A clear subject line and date in the letter", "Copies of any documents you reference (never originals)"],
+    include: ["The recipient's full mailing address (US only)", "Your return address, which shows through the envelope window with the recipient's", "A clear subject line and date in the letter", "Copies of any documents you reference (never originals)"],
     prompt: "Write a short letter to [recipient] about [topic] and send it by certified mail with a return receipt. My return address is [address].",
     send: "/send?product=letter_certified",
     faqs: [
@@ -137,21 +144,74 @@ export const GUIDES: Guide[] = [
     slug: "mail-a-pdf",
     kicker: "Documents",
     blurb: "Upload a document; we print, envelope and mail it.",
-    title: "Mail a PDF as a letter",
-    description: `Upload a PDF and we print and mail it: ${LETTER} by First-Class Mail, ${CERT} by Certified Mail, express available. Any page size, up to ${LIMITS.pdfPages} pages, US addresses.`,
-    lede: `Have a signed form, an application or a letter you already wrote? Upload the PDF and we print it, put it in an envelope and mail it. ${LETTER} First-Class, ${CERT} Certified, or express for ${usd(EXPRESS_CENTS)} more.`,
-    steps: [
-      ["Upload your PDF", `Up to ${LIMITS.pdfPages} pages. Any page size is fitted to 8.5×11, and an address page is added in front, so you don't need to leave room for addresses.`],
-      ["Choose how it goes", `First-Class, Certified Mail (tracking and proof of delivery), or express (USPS Priority Mail, usually 2 to 3 days). Black and white, or color for ${usd(COLOR_LETTER_CENTS)} more.`],
-      ["Check and pay", "You see the exact print before paying. A person reviews every piece before it's mailed."],
+    title: "Mail a PDF online",
+    description: `Upload a PDF and we print and mail it by USPS: ${LETTER} First-Class or ${CERT} Certified. Up to ${LIMITS.pdfPages} pages, any page size. See the exact print first.`,
+    lede: `Have a signed form, an application or a letter you already wrote? Upload the PDF and we print it, put it in an envelope and mail it by USPS. ${LETTER} First-Class, ${CERT} Certified, or express for ${usd(EXPRESS_CENTS)} more. No printer, no stamps, no post office.`,
+    glance: [
+      ["Price", `${LETTER} First-Class, the same for 1 to ${LIMITS.pdfPages} pages. Printing, envelope and postage included.`],
+      ["Proof of delivery", `Certified Mail ${CERT}, or ${RR} with a return receipt (the recipient's signature).`],
+      ["Faster", `Express (USPS Priority Mail, usually 2 to 3 days, tracked): ${usd(EXPRESS_CENTS)} more. Not combinable with Certified.`],
+      ["Your file", `PDF, up to ${LIMITS.pdfPages} pages and ${LIMITS.pdfBytes / 1024 / 1024} MB. Any page size; each page is fitted to 8.5×11.`],
+      ["Printing", `One-sided, black and white. Color is ${usd(COLOR_LETTER_CENTS)} more.`],
+      ["Addresses", "We add an address page in front, so your document needs no room for them. US addresses only."],
     ],
+    steps: [
+      ["Pick the form, then upload", `Need tracking and proof of delivery? Start from the Certified letter form (${CERT}). Otherwise use the Letter form (${LETTER} First-Class, or Express). Choose Upload a PDF and drop in your file: each page is fitted to US Letter (8.5×11), and a file over ${LIMITS.pdfPages} pages is turned back right away with a message saying so.`],
+      ["Add the addresses", "Enter who it's going to and your return address. Sending the same document to several people? Add up to 25 recipients; each is mailed separately and you pay once."],
+      ["Check the print and pay", "Preview the print and pay opens your order page: an itemized total and the exact print, starting with the address page we add. Nothing is printed until you pay, and a person reviews every piece before it's mailed."],
+    ],
+    figure: {
+      src: "/guides/img/mail-a-pdf-address-page.png",
+      alt: "Print preview of the address page Sendpaper adds in front of an uploaded PDF, showing the return address, the recipient's address and the note: Address page, added automatically. Your document follows (6 pages, black and white).",
+      caption: "The address page we add in front of a 6-page PDF, from the print preview of a test order (sample names). The printed page uses USPS-standardized address formatting.",
+    },
     include: ["The recipient's full US mailing address", "Your return address", "Every page you need them to receive, in one PDF", "Signatures already on the document (we print what you upload)"],
-    prompt: "Mail this PDF to [recipient], [address], by certified mail. My return address is [address].",
+    prompt: "Mail the PDF at [public https link] to [recipient], [address], by certified mail. My return address is [address].",
     send: "/send?type=letter&source=pdf",
     faqs: [
-      ["What happens to the page size?", "Each page is scaled to fit US Letter (8.5×11), keeping its proportions, so A4 and other sizes print correctly."],
+      ["Does it cost more for more pages?", `No. A PDF letter is ${LETTER} First-Class for anything from 1 to ${LIMITS.pdfPages} pages, or ${CERT} by Certified Mail.`],
+      ["What if my PDF is longer than six pages?", `The upload is turned back with a message giving the page count. Split it and send two letters, or trim pages you don't need. The limit is ${LIMITS.pdfPages} pages.`],
+      ["What happens to the page size?", "Each page is scaled to fit US Letter (8.5×11), keeping its proportions, so A4 and other sizes print correctly. We keep our own normalized copy, so what prints is exactly what you previewed."],
+      ["Is it printed on both sides?", `No. Every page prints on one side, in black and white unless you choose color (${usd(COLOR_LETTER_CENTS)} more).`],
       ["Where do the addresses go?", "On an extra address page we add in front, which shows through the envelope window. Your document prints exactly as it is."],
-      ["Can my AI agent mail a PDF?", "Yes. Agents pass a public link to the PDF to create_letter (content.pdf_url), and the order works like any other."],
+      ["Can my AI agent mail a PDF?", "Yes. Agents pass a public link to the PDF to create_letter (content.pdf_url), and the order works like any other: you get a preview and a checkout link."],
+    ],
+  },
+  {
+    slug: "send-mail-from-claude",
+    group: "agents",
+    kicker: "AI agents",
+    blurb: "Connect Sendpaper to Claude and have it mail real letters and postcards.",
+    title: "How to send a physical letter from Claude",
+    description: `Connect Sendpaper to Claude Code, Claude Desktop or claude.ai and Claude can mail letters, PDFs and postcards by USPS. No API key; pay per piece.`,
+    lede: "Claude can't mail anything on its own, but connected to Sendpaper it can. Add one connector, ask Claude to send a letter, a PDF or a postcard, check the preview, and pay. We print it and mail it by USPS.",
+    glance: [
+      ["Works in", "Claude Code, Claude Desktop and claude.ai. Setup steps for each are below."],
+      ["Account or API key", "None. Sendpaper's connector needs no sign-in; you pay per piece."],
+      ["What Claude can send", `Postcards from ${usd(PRODUCTS.postcard_4x6.cents)}, letters from ${LETTER}, your own PDF (up to ${LIMITS.pdfPages} pages), and Certified Mail from ${CERT}. US addresses only.`],
+      ["Who pays", "You do, at a checkout link. In Claude Code with Stripe's Link CLI set up, Claude can instead pay with a one-time payment you approve for that amount."],
+      ["Tested", "Claude Code 2.1.290 on October 8, 2026: setup, and a PDF letter ordered up to the checkout link (against a test copy of Sendpaper; nothing was mailed)."],
+    ],
+    setup: [
+      { title: "Claude Code", body: "Run this once in your terminal; `--scope user` makes it available in every project. Then `claude mcp list` should show sendpaper as Connected.", code: "claude mcp add --scope user --transport http sendpaper https://sendmypaper.com/mcp" },
+      { title: "claude.ai and Claude Desktop", body: "Open Customize, then Connectors. Click + Add, choose Add custom connector, name it Sendpaper and paste this URL. For authentication, choose No sign in. In a chat, make sure Sendpaper is switched on under + then Connectors. Custom connectors work on every Claude plan (the Free plan allows one); on Team and Enterprise plans an Owner adds them in Organization settings.", code: "https://sendmypaper.com/mcp" },
+    ],
+    steps: [
+      ["Ask in plain words", "Say what to send, to whom and from which return address. Claude fills in Sendpaper's create_letter or create_postcard tool; for your own document, give it a public link to the PDF."],
+      ["Approve the tool call", "Claude asks before it uses a connector tool. Read what it's about to send and allow it; only choose Allow always for tools you're comfortable running unsupervised."],
+      ["Check the preview and pay", "Claude gets back a preview link and a checkout link. Open the preview to see the exact print, then pay at the checkout link. Nothing is printed until the order is paid. (This walkthrough was tested up to the checkout link.)"],
+      ["We review, print and mail it", "A person reviews every piece before it's printed. It goes by USPS First-Class unless you chose Express or Certified Mail. Ask Claude for the order status any time; certified letters get a USPS tracking number."],
+    ],
+    include: ["The recipient's full US mailing address", "Your return address (it's required, and shows through the envelope window)", "The message, or a public https link to a PDF you want mailed", "Certified Mail, if you need proof of delivery"],
+    prompt: "Mail a letter to [name], [street, city, state ZIP], from [my name and address]. Say: [your message]. Show me the preview and the checkout link, and don't pay.",
+    send: "/send",
+    ctas: [["Connect Sendpaper to Claude", docsUrl("/agents/claude")], ["Send from the web instead", "/send"]],
+    faqs: [
+      ["Do I need a Sendpaper account or API key?", "No. The connector needs no authentication. Each order comes with its own checkout link, so you pay per piece."],
+      ["Can Claude spend money without me?", "Not by default: Claude gives you a checkout link and you pay. The exception is Claude Code with Stripe's Link CLI set up, where Claude can pay using a one-time payment that you approve in Link for that exact amount. Either way, avoid choosing Allow always for Sendpaper's pay_order tool if you want to approve each payment yourself."],
+      ["Can Claude mail my own PDF?", `Yes, if the PDF is at a public https link: Claude passes it to create_letter and we fetch it, fit each page to 8.5×11 and add an address page. Up to ${LIMITS.pdfPages} pages. For a file on your computer, upload it on the website instead.`],
+      ["Can I cancel?", "Claude can cancel an order that hasn't been paid. Once it's paid, email support before it's printed."],
+      ["How do I know it was mailed?", "Ask Claude to check the order: its status moves from paid to printing to mailed. Certified letters also get a USPS tracking number."],
     ],
   },
 ];
@@ -162,8 +222,10 @@ export const GUIDE_PATHS = GUIDES.map((g) => `/${g.slug}`);
 // (Geist; a serif was tried and dropped the same day for consistency),
 // a narrow reading column, written-out steps and Q&A, an "On this page" rail on wide screens. Use cases stay cards.
 const UPDATED = "October 2026"; // bump when guide copy changes
-const minutes = (g: Guide) => Math.max(2, Math.round([g.lede, ...g.steps.flat(), ...g.include, g.prompt, ...g.faqs.flat()].join(" ").split(/\s+/).length / 200));
-const priceFor = (g: Guide) => (g.send.includes("certified") ? `Certified letter from ${CERT}` : `Letters from ${LETTER}`);
+const minutes = (g: Guide) => Math.max(2, Math.round([g.lede, ...g.steps.flat(), ...g.include, g.prompt, ...g.faqs.flat(), ...(g.glance ?? []).flat(), ...(g.setup ?? []).map((x) => x.body)].join(" ").split(/\s+/).length / 200));
+const priceFor = (g: Guide) => (g.group === "agents" ? `Postcards from ${usd(PRODUCTS.postcard_4x6.cents)}, letters from ${LETTER}` : g.send.includes("certified") ? `Certified letter from ${CERT}` : `Letters from ${LETTER}`);
+// Setup text may mark commands with backticks; everything else is escaped.
+const inline = (t: string) => esc(t).replace(/`([^`]+)`/g, "<code>$1</code>");
 
 const CSS = `
 .art { display: grid; grid-template-columns: minmax(0, 680px) 200px; justify-content: space-between; gap: 56px; padding-block: 44px 8px; }
@@ -190,11 +252,19 @@ const CSS = `
 .toc { position: sticky; top: 96px; align-self: start; display: grid; gap: 8px; font-size: .88rem; padding-top: 6px; }
 .toc span { font: 500 .72rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
 .toc a { color: var(--soft); text-decoration: none; } .toc a:hover { color: var(--green); }
+.glance { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px 22px; margin: 26px 0 0; padding: 18px 20px; border: 1px solid var(--rule); border-radius: 12px; background: var(--tint); font-size: .95rem; line-height: 1.55; }
+.glance dt { font: 500 .74rem/1.9 var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
+.glance dd { margin: 0; }
+@media (max-width: 560px) { .glance { grid-template-columns: minmax(0, 1fr); gap: 2px; } .glance dd { margin-bottom: 10px; } }
+.prose pre { margin: 6px 0 16px; font-size: .86rem; }
+.prose figure { margin: 26px 0 8px; } .prose figure img { width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 10px; display: block; }
+.prose figcaption { font-size: .86rem; color: var(--faint); margin-top: 8px; line-height: 1.5; }
 .keep { grid-column: 1 / -1; border-top: 1px solid var(--rule); padding-top: 28px; margin-top: 12px; display: grid; gap: 4px; }
 .keep > span { font: 500 .74rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
 `;
 
 const SECTIONS = [["how", "How it works"], ["include", "What to include"], ["agent", "Ask your agent"], ["questions", "Common questions"]];
+const sectionsFor = (g: Guide) => (g.setup ? [["setup", "Set it up"], ...SECTIONS] : SECTIONS);
 
 export function guidePage(slug: string) {
   const g = GUIDES.find((x) => x.slug === slug);
@@ -211,12 +281,15 @@ export function guidePage(slug: string) {
     <div class="art">
       <article>
         <header><div class="crumbs"><a href="/guides">Guides</a> › ${esc(g.kicker)}</div><h1>${esc(g.title)}</h1><p class="dek">${esc(g.lede)}</p>
-          <div class="meta"><span>${esc(BRAND)} guide</span><span>${minutes(g)} min read</span><span>Updated ${UPDATED}</span></div></header>
+          <div class="meta"><span>${esc(BRAND)} guide</span><span>${minutes(g)} min read</span><span>Updated ${UPDATED}</span></div>
+          ${g.glance ? `<dl class="glance">${g.glance.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}</header>
         <div class="prose">
+          ${g.setup ? `<h2 id="setup">Set it up</h2>${g.setup.map((x) => `<h3>${esc(x.title)}</h3><p>${inline(x.body)}</p>${x.code ? `<pre><code>${esc(x.code)}</code></pre>` : ""}`).join("")}` : ""}
           <h2 id="how">How it works</h2>
           ${g.steps.map(([t, d], i) => `<h3><span class="num">0${i + 1}</span>${esc(t)}</h3><p>${esc(d)}</p>`).join("")}
+          ${g.figure ? `<figure><img src="${esc(g.figure.src)}" alt="${esc(g.figure.alt)}" loading="lazy"><figcaption>${esc(g.figure.caption)}</figcaption></figure>` : ""}
           <div class="cta-box"><div><b>Ready to send?</b><span>${priceFor(g)}, printing and postage included.</span></div>
-            <div class="ctas"><a class="btn green" href="${esc(g.send)}">Send it from the web</a><a class="btn alt" href="${esc(docsUrl("/quickstart"))}">Use your AI agent</a></div></div>
+            <div class="ctas">${(g.ctas ?? [["Send it from the web", g.send], ["Use your AI agent", docsUrl("/quickstart")]]).map(([t, h], i) => `<a class="btn ${i === 0 ? "green" : "alt"}" href="${esc(h)}">${esc(t)}</a>`).join("")}</div></div>
           <h2 id="include">What to include</h2>
           <ul class="check">${g.include.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>
           <h2 id="agent">Ask your agent</h2>
@@ -227,7 +300,7 @@ export function guidePage(slug: string) {
           <p class="guard">${esc(GUARDRAIL)}</p>
         </div>
       </article>
-      <nav class="toc" aria-label="On this page"><span>On this page</span>${SECTIONS.map(([id, t]) => `<a href="#${id}">${t}</a>`).join("")}</nav>
+      <nav class="toc" aria-label="On this page"><span>On this page</span>${sectionsFor(g).map(([id, t]) => `<a href="#${id}">${t}</a>`).join("")}</nav>
       <nav class="keep" aria-label="More guides"><span>Keep reading</span>${guideList(others)}<a href="/guides" style="color:var(--green);text-decoration:none;font-weight:500;margin-top:8px">All guides →</a></nav>
     </div>`,
     { description: g.description },
@@ -254,11 +327,14 @@ const INDEX_CSS = `
 export function guidesIndexPage() {
   return page(
     `Guides — ${BRAND}`,
-    `<style>${INDEX_CSS} .gi { display: grid; gap: 28px; max-width: 760px; padding-block: 52px 8px; } .gi h1 { font: 600 clamp(2.1rem, 4.6vw, 3rem)/1.08 var(--f-ui); letter-spacing: -0.035em; } .gi .dek { font: 400 1.15rem/1.55 var(--f-ui); color: var(--soft); margin: 0; }</style>
-    <section class="gi"><div style="display:grid;gap:12px;padding-bottom:20px;border-bottom:1px solid var(--rule)"><span class="eyebrow">Guides</span><h1>Mail that needs proof</h1>
-      <p class="dek">Plain-English guides to certified letters, tax replies, disputes and demands: what to send, what to include, and how to prove it arrived.</p></div>
-      ${guideList()}
+    `<style>${INDEX_CSS} .gi { display: grid; gap: 28px; max-width: 760px; padding-block: 52px 8px; } .gi h1 { font: 600 clamp(2.1rem, 4.6vw, 3rem)/1.08 var(--f-ui); letter-spacing: -0.035em; } .gi .dek { font: 400 1.15rem/1.55 var(--f-ui); color: var(--soft); margin: 0; } .gi .gh { font: 600 1.05rem var(--f-ui); color: var(--soft); margin: 8px 0 -16px; }</style>
+    <section class="gi"><div style="display:grid;gap:12px;padding-bottom:20px;border-bottom:1px solid var(--rule)"><h1>Guides</h1>
+      <p class="dek">Plain-English guides to mailing documents and letters that need proof, and to sending real mail from your AI agent.</p></div>
+      <h2 class="gh">Documents and mail that needs proof</h2>
+      ${guideList(GUIDES.filter((g) => g.group !== "agents"))}
+      <h2 class="gh">Send mail from your AI agent</h2>
+      ${guideList(GUIDES.filter((g) => g.group === "agents"))}
       <p class="soft" style="font-size:.88rem;margin:0">${esc(GUARDRAIL)}</p></section>`,
-    { description: `Guides to sending certified mail online: IRS notice replies, security deposit and unpaid invoice demand letters, credit report disputes and mailing a PDF, with ${BRAND}.` },
+    { description: `Guides to mailing a PDF, sending certified mail online, demand letters and disputes, and sending real mail from Claude and other AI agents.` },
   );
 }
