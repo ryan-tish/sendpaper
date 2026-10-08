@@ -327,13 +327,14 @@ const INDEX_CSS = `
 export function guidesIndexPage() {
   return page(
     `Guides — ${BRAND}`,
-    `<style>${INDEX_CSS} .gi { display: grid; gap: 28px; max-width: 760px; padding-block: 52px 8px; } .gi h1 { font: 600 clamp(2.1rem, 4.6vw, 3rem)/1.08 var(--f-ui); letter-spacing: -0.035em; } .gi .dek { font: 400 1.15rem/1.55 var(--f-ui); color: var(--soft); margin: 0; } .gi .gh { font: 600 1.05rem var(--f-ui); color: var(--soft); margin: 8px 0 -16px; }</style>
+    `<style>${INDEX_CSS} .gi { display: grid; gap: 28px; max-width: 760px; padding-block: 52px 8px; } .gi h1 { font: 600 clamp(2.1rem, 4.6vw, 3rem)/1.08 var(--f-ui); letter-spacing: -0.035em; } .gi .dek { font: 400 1.15rem/1.55 var(--f-ui); color: var(--soft); margin: 0; } .gi .gh { font: 600 1.05rem var(--f-ui); color: var(--soft); margin: 8px 0 -16px; } .more-uc { display: grid; gap: 4px; padding: 18px 20px; border: 1px solid var(--rule); border-radius: 12px; background: var(--tint); color: var(--ink); text-decoration: none; } .more-uc b { font-weight: 600; } .more-uc span { color: var(--soft); font-size: .95rem; } .more-uc:hover b { color: var(--green); }</style>
     <section class="gi"><div style="display:grid;gap:12px;padding-bottom:20px;border-bottom:1px solid var(--rule)"><h1>Guides</h1>
       <p class="dek">Plain-English guides to mailing documents and letters that need proof, and to sending real mail from your AI agent.</p></div>
       <h2 class="gh">Documents and mail that needs proof</h2>
       ${guideList(GUIDES.filter((g) => g.group !== "agents"))}
       <h2 class="gh">Send mail from your AI agent</h2>
       ${guideList(GUIDES.filter((g) => g.group === "agents"))}
+      <a class="more-uc" href="/use-cases"><b>Looking for a ready-made prompt?</b><span>Browse use cases: birthday cards, landlord notices, tax replies and more, each with a prompt to copy →</span></a>
       <p class="soft" style="font-size:.88rem;margin:0">${esc(GUARDRAIL)}</p></section>`,
     { description: `Guides to mailing a PDF, sending certified mail online, demand letters and disputes, and sending real mail from Claude and other AI agents.` },
   );
