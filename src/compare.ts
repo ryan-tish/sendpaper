@@ -6,15 +6,8 @@
 import { BASE_URL, BRAND, LIMITS } from "./config.ts";
 import { ARTICLE_CSS, INDEX_CSS, type IndexCard } from "./guides.ts";
 import { docsUrl, LOGO_FULL, page } from "./layout.ts";
-import { esc } from "./render.ts";
+import { esc, plain, rich } from "./render.ts";
 
-
-// Paragraph copy may use **bold**, [text](/path) links to our pages and [text](https://…) links to sources next to contested claims (Ryan: bold a few key phrases, link our own guides 2–3 times).
-// Escaped first, so nothing else becomes HTML. plain() strips the markup for JSON-LD and meta text.
-const rich = (t: string) =>
-  esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\[(.+?)\]\((\/[a-z0-9\/#?=&_-]*)\)/g, '<a href="$2">$1</a>')
-    .replace(/\[(.+?)\]\((https:\/\/[^\s)"<>]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
-const plain = (t: string) => t.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\[(.+?)\]\(.+?\)/g, "$1");
 
 type Compare = {
   slug: string; // served at /compare/<slug>

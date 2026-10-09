@@ -7,6 +7,7 @@ import { landing } from "./landing.ts";
 import { SEND_KINDS, type SendKind, kindFromQuery, sendChooser, sendPage } from "./send.ts";
 import { useCasesPage } from "./usecases.ts";
 import { GUIDES, guidePage, guidesIndexPage, RETIRED_PATHS } from "./guides.ts";
+import { ARTICLES, articleList, articlePage } from "./articles.ts";
 import { COMPARES, compareList, comparePage } from "./compare.ts";
 import { QUICK_EXAMPLE, QUICK_PARAMS } from "./quick.ts";
 import { page } from "./layout.ts";
@@ -68,7 +69,8 @@ web.get("/use-cases", (_req, res) => {
 });
 
 // Search pages for professional, proof-of-delivery mail (src/guides.ts).
-web.get("/guides", (_req, res) => res.send(guidesIndexPage(compareList())));
+web.get("/guides", (_req, res) => res.send(guidesIndexPage([...articleList(), ...compareList()])));
+for (const a of ARTICLES) web.get(`/${a.slug}`, (_req, res) => res.send(articlePage(a.slug)));
 for (const c of COMPARES) web.get(`/compare/${c.slug}`, (_req, res) => res.send(comparePage(c.slug)));
 for (const g of GUIDES) web.get(`/${g.slug}`, (_req, res) => res.send(guidePage(g.slug)));
 // Retired guides (2026-10-08) redirect permanently, so old links and search results land somewhere useful.
@@ -304,7 +306,9 @@ ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}, 
 - Postcard fronts: layout headline (front_headline + front_theme: ${Object.keys(THEMES).join(", ")}), photo (front_image_url), photo_caption (front_image_url + caption) or collage (front_images: 2–4 https URLs). headline_font: serif, sans or script; message_font: handwriting, serif or sans.
 - ${BRAND} prints and mails what the user or agent writes; it doesn't give legal or tax advice.
 
-${GUIDES.length ? `## Guides\n${GUIDES.map((g) => `- ${g.title}: ${BASE_URL}/${g.slug}`).join("\n")}\n` : ""}
+## Guides
+${[...ARTICLES.map((a) => `- ${a.title}: ${BASE_URL}/${a.slug}`), ...GUIDES.map((g) => `- ${g.title}: ${BASE_URL}/${g.slug}`)].join("\n")}
+
 ## Comparisons
 ${COMPARES.map((c) => `- ${c.title}: ${BASE_URL}/compare/${c.slug}`).join("\n")}
 
