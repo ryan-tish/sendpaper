@@ -12,7 +12,7 @@ import { esc } from "./render.ts";
 // Paragraph copy may use **bold**, [text](/path) links to our pages and [text](https://…) links to sources next to contested claims (Ryan: bold a few key phrases, link our own guides 2–3 times).
 // Escaped first, so nothing else becomes HTML. plain() strips the markup for JSON-LD and meta text.
 const rich = (t: string) =>
-  esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\[(.+?)\]\((\/[a-z0-9\/#-]*)\)/g, '<a href="$2">$1</a>')
+  esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\[(.+?)\]\((\/[a-z0-9\/#?=&_-]*)\)/g, '<a href="$2">$1</a>')
     .replace(/\[(.+?)\]\((https:\/\/[^\s)"<>]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
 const plain = (t: string) => t.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\[(.+?)\]\(.+?\)/g, "$1");
 
@@ -69,8 +69,8 @@ export const COMPARES: Compare[] = [
       "It also suits developers who want templates, webhooks, scheduled sends and a test environment, and who are happy to set up an account, a payment method and prepaid credits first.",
     ],
     usFits: [
-      `${BRAND} is the better choice when **an AI agent is doing the work.** Claude, Codex, Muse or any MCP client connects to our server with no key, drafts the letter or postcard with you, and you approve the payment. It's sent **without you ever opening an account.** Here's [how to send mail from Claude](/send-mail-from-claude).`,
-      "It's also the quick path for one-off mail to US addresses: one letter, a [certified letter](/certified-mail-online) or a few postcards, or a document you already have ([mail a PDF](/mail-a-pdf)). **There are no prepaid credits;** each order has its own checkout, and **a real person looks at every piece before it prints.**",
+      `${BRAND} is the better choice when **an AI agent is doing the work.** Claude, Codex, Muse or any MCP client connects to our server with no key, drafts the letter or postcard with you, and you approve the payment. It's sent **without you ever opening an account.** Here's [how to connect Claude](https://docs.sendmypaper.com/agents/claude).`,
+      "It's also the quick path for one-off mail to US addresses: one letter, a [certified letter](/send?product=letter_certified) or a few postcards, or a document you already have ([mail a PDF](/send/letter?source=pdf)). **There are no prepaid credits;** each order has its own checkout, and **a real person looks at every piece before it prints.**",
     ],
     faqs: [
       [`Is ${BRAND} built on Lob?`, `No. ${BRAND}'s printing and mailing partner is PostGrid. We don't use Lob.`],

@@ -12,6 +12,7 @@ const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 const CERT = usd(PRODUCTS.letter_certified.cents), RR = usd(PRODUCTS.letter_certified_rr.cents), LETTER = usd(PRODUCTS.letter.cents);
 
 type Guide = {
+  retired?: string; // ISO date the page was taken down; it then redirects to /guides
   slug: string;
   kicker: string; // topic label above the headline and in the index
   title: string; // <title> and h1
@@ -38,9 +39,12 @@ type Guide = {
 export type CardCat = "proof" | "documents" | "agents" | "compare";
 export type CardArt = "track" | "letter" | "pdf" | "chat" | "compare";
 
-export const GUIDES: Guide[] = [
+// Every guide ever published. Retired ones (Ryan, 2026-10-08: "remove all articles except the Lob comparison") stay here so
+// they can be restored by deleting `retired`; their URLs 301 to /guides (RETIRED_PATHS, in web.ts) and leave the sitemap.
+const ALL_GUIDES: Guide[] = [
   {
     slug: "certified-mail-online",
+    retired: "2026-10-08",
     card: { cat: "proof", date: "2026-10-08", art: "track", label: "Certified Mail" },
     kicker: "Certified mail",
     blurb: "Tracking and proof of delivery, without the post office.",
@@ -80,6 +84,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "irs-notice-response",
+    retired: "2026-10-08",
     card: { cat: "proof", date: "2026-10-05", art: "letter", label: "IRS Notice Reply" },
     kicker: "Taxes",
     blurb: "Answer a tax notice with a dated delivery record.",
@@ -103,6 +108,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "security-deposit-demand-letter",
+    retired: "2026-10-08",
     card: { cat: "proof", date: "2026-10-05", art: "letter", label: "Security Deposit" },
     kicker: "Housing",
     blurb: "Ask for your deposit back, with a signed receipt.",
@@ -125,6 +131,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "credit-report-dispute-letter",
+    retired: "2026-10-08",
     card: { cat: "proof", date: "2026-10-05", art: "track", label: "Credit Dispute" },
     kicker: "Credit",
     blurb: "Dispute a credit report error by mail, with proof.",
@@ -147,6 +154,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "demand-letter-unpaid-invoice",
+    retired: "2026-10-08",
     card: { cat: "proof", date: "2026-10-05", art: "letter", label: "Unpaid Invoice" },
     kicker: "Small business",
     blurb: "A formal payment demand when emails go unanswered.",
@@ -169,6 +177,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "mail-a-pdf",
+    retired: "2026-10-08",
     card: { cat: "documents", date: "2026-10-08", art: "pdf", label: "Mail a PDF" },
     kicker: "Documents",
     blurb: "Upload a document; we print, envelope and mail it.",
@@ -207,6 +216,7 @@ export const GUIDES: Guide[] = [
   },
   {
     slug: "send-mail-from-claude",
+    retired: "2026-10-08",
     card: { cat: "agents", date: "2026-10-08", art: "chat", label: "Mail from Claude" },
     group: "agents",
     kicker: "AI agents",
@@ -245,7 +255,9 @@ export const GUIDES: Guide[] = [
   },
 ];
 
+export const GUIDES = ALL_GUIDES.filter((g) => !g.retired);
 export const GUIDE_PATHS = GUIDES.map((g) => `/${g.slug}`);
+export const RETIRED_PATHS = ALL_GUIDES.filter((g) => g.retired).map((g) => `/${g.slug}`);
 
 // Guides read as articles (Ryan, 2026-10-05: "more article-like, more different from the use cases"): the site font
 // (Geist; a serif was tried and dropped the same day for consistency),
