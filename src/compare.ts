@@ -3,25 +3,29 @@
 // documentation we reviewed" rather than "doesn't support". Competitor prices expire: re-check on each source's
 // expiry trigger (research ledger: the private ryan-tish/sendpaper-content repo, sources/compare-<slug>.md).
 // We don't use the compared service: our printing partner is PostGrid. Say so on the page.
-import { BRAND, LIMITS } from "./config.ts";
+import { BASE_URL, BRAND, LIMITS } from "./config.ts";
 import { ARTICLE_CSS, INDEX_CSS, type IndexCard } from "./guides.ts";
 import { docsUrl, LOGO_FULL, page } from "./layout.ts";
 import { esc } from "./render.ts";
 
 
-// Paragraph copy may use **bold** and [text](/path) links (Ryan: bold a few key phrases, link our own guides 2–3 times).
+// Paragraph copy may use **bold**, [text](/path) links to our pages and [text](https://…) links to sources next to contested claims (Ryan: bold a few key phrases, link our own guides 2–3 times).
 // Escaped first, so nothing else becomes HTML. plain() strips the markup for JSON-LD and meta text.
 const rich = (t: string) =>
-  esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\[(.+?)\]\((\/[a-z0-9\/#-]*)\)/g, '<a href="$2">$1</a>');
+  esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\[(.+?)\]\((\/[a-z0-9\/#-]*)\)/g, '<a href="$2">$1</a>')
+    .replace(/\[(.+?)\]\((https:\/\/[^\s)"<>]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
 const plain = (t: string) => t.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\[(.+?)\]\(.+?\)/g, "$1");
 
 type Compare = {
   slug: string; // served at /compare/<slug>
   rival: string;
-  title: string;
+  title: string; // visible h1, kept short
+  metaTitle: string; // <title> / og:title, aim for 50–65 chars
   description: string;
   lede: string;
   checked: string; // when the competitor facts were last checked, shown on the page
+  published: string; // ISO date, for Article JSON-LD
+  modified: string; // ISO date of the last substantive change, for Article JSON-LD
   answer: string[]; // the short answer, as paragraphs
   table: [string, string, string][]; // [row label, rival, us]; our column is highlighted
   rivalFits: string[]; // paragraphs
@@ -36,9 +40,12 @@ export const COMPARES: Compare[] = [
     slug: "lob",
     rival: "Lob",
     title: "Sendpaper vs. Lob",
-    description: `Lob is built for businesses mailing at volume. ${BRAND} is quick and agentic: your AI agent sends a letter, certified letter or postcard now, with no account or prepaid credits.`,
+    metaTitle: "Sendpaper vs. Lob: Setup, AI Agents and Which Fits",
+    description: `Compare ${BRAND} and Lob on setup, payment, AI-agent support and mail formats. See which fits one-off letters and which fits business mail at scale.`,
     lede: `Lob is for mail at volume. ${BRAND} is quick and agentic: mail sent by your AI agent.`,
     checked: "October 8, 2026",
+    published: "2026-10-08",
+    modified: "2026-10-08",
     card: { date: "2026-10-08", label: "Sendpaper vs. Lob", blurb: "An honest look at when Lob fits better, and when we do." },
     answer: [
       "Sending thousands of pieces, from a CRM, or abroad? **Use Lob.**",
@@ -58,7 +65,7 @@ export const COMPARES: Compare[] = [
       ["Volume", "Built for large volumes", "Up to 25 recipients per order; no bulk marketing"],
     ],
     rivalFits: [
-      "Lob is the better choice when mail is part of how your business runs: hundreds or thousands of marketing pieces, or recurring statements and notices, often triggered from a CRM or marketing tool. **Its per-piece prices are lower, especially at volume,** and it covers more ground, with international mail, self-mailers, checks and legal-size letters.",
+      "Lob is the better choice when mail is part of how your business runs: hundreds or thousands of marketing pieces, or recurring statements and notices, often triggered from a CRM or marketing tool. **Its [per-piece prices](https://help.lob.com/print-and-mail/ready-to-get-started/pricing-details) are lower, especially at volume,** and it covers more ground, with international mail, self-mailers, checks and legal-size letters.",
       "It also suits developers who want templates, webhooks, scheduled sends and a test environment, and who are happy to set up an account, a payment method and prepaid credits first.",
     ],
     usFits: [
@@ -67,9 +74,9 @@ export const COMPARES: Compare[] = [
     ],
     faqs: [
       [`Is ${BRAND} built on Lob?`, `No. ${BRAND}'s printing and mailing partner is PostGrid. We don't use Lob.`],
-      ["Is Lob cheaper?", `Per piece, yes, especially at volume. Lob asks you to set up an account and prepay credits first; ${BRAND} charges per order with no account.`],
-      ["Can an AI agent send mail through Lob?", "Yes, through third-party MCP connectors such as Zapier's or Pipedream's, using your own Lob account and API key. We found no first-party Lob MCP server as of October 8, 2026."],
-      ["Can I switch between them?", `Nothing locks you in either way. You could use Lob for high-volume business mail and ${BRAND} for occasional letters sent from an agent.`],
+      ["Is Lob cheaper?", `Per piece, yes, especially at volume (see [Lob's pricing details](https://help.lob.com/print-and-mail/ready-to-get-started/pricing-details)). Lob asks you to set up an account and prepay credits first; ${BRAND} charges per order with no account.`],
+      ["Can an AI agent send mail through Lob?", "Yes, through third-party MCP connectors such as Zapier's or Pipedream's, using your own Lob account and API key. We found no first-party Lob MCP server on [Lob's GitHub](https://github.com/lob) or in its documentation as of October 8, 2026."],
+      ["Can I use both?", `Yes. You can use Lob for high-volume business mail and ${BRAND} for occasional letters sent from an AI agent. ${BRAND} keeps no templates or contact lists, so there's nothing to migrate either way.`],
     ],
     sources: [
       ["Lob: print and mail pricing", "https://www.lob.com/pricing/print-mail"],
@@ -124,9 +131,19 @@ const CSS = `
 export function comparePage(slug: string) {
   const c = COMPARES.find((x) => x.slug === slug);
   if (!c) return null;
-  const ld = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: c.faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: plain(a) } })) };
+  const url = `${BASE_URL}/compare/${c.slug}`;
+  const org = { "@type": "Organization", name: BRAND, url: BASE_URL };
+  const ld = [
+    { "@context": "https://schema.org", "@type": "Article", headline: c.metaTitle, description: c.description, datePublished: c.published, dateModified: c.modified, author: org, publisher: org, mainEntityOfPage: url },
+    { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Guides", item: `${BASE_URL}/guides` },
+      { "@type": "ListItem", position: 2, name: "Comparisons", item: `${BASE_URL}/guides#compare` },
+      { "@type": "ListItem", position: 3, name: c.title, item: url },
+    ] },
+    { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: c.faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: plain(a) } })) },
+  ];
   return page(
-    `${c.title} — ${BRAND}`,
+    c.metaTitle,
     `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script><style>${ARTICLE_CSS}${INDEX_CSS}${CSS}</style>
     <div class="art wide">
       <article>
