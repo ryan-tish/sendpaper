@@ -74,7 +74,7 @@ for (const a of ARTICLES) web.get(`/${a.slug}`, (_req, res) => res.send(articleP
 for (const c of COMPARES) web.get(`/compare/${c.slug}`, (_req, res) => res.send(comparePage(c.slug)));
 for (const g of GUIDES) web.get(`/${g.slug}`, (_req, res) => res.send(guidePage(g.slug)));
 // Retired guides (2026-10-08) redirect permanently, so old links and search results land somewhere useful.
-for (const p of RETIRED_PATHS) web.get(p, (_req, res) => res.redirect(301, "/guides"));
+for (const [p, to] of RETIRED_PATHS) web.get(p, (_req, res) => res.redirect(301, to));
 
 web.get("/send", async (req, res) => {
   // Links that already name a product go straight to that kind's form, keeping their prefill parameters.

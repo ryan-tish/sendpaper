@@ -13,6 +13,7 @@ const CERT = usd(PRODUCTS.letter_certified.cents), RR = usd(PRODUCTS.letter_cert
 
 type Guide = {
   retired?: string; // ISO date the page was taken down; it then redirects to /guides
+  replacedBy?: string; // where a retired page redirects instead of /guides, when a newer page covers the same task
   slug: string;
   kicker: string; // topic label above the headline and in the index
   title: string; // <title> and h1
@@ -45,6 +46,7 @@ const ALL_GUIDES: Guide[] = [
   {
     slug: "certified-mail-online",
     retired: "2026-10-08",
+    replacedBy: "/what-is-certified-mail",
     card: { cat: "proof", date: "2026-10-08", art: "track", label: "Certified Mail" },
     kicker: "Certified mail",
     blurb: "Tracking and proof of delivery, without the post office.",
@@ -257,7 +259,7 @@ const ALL_GUIDES: Guide[] = [
 
 export const GUIDES = ALL_GUIDES.filter((g) => !g.retired);
 export const GUIDE_PATHS = GUIDES.map((g) => `/${g.slug}`);
-export const RETIRED_PATHS = ALL_GUIDES.filter((g) => g.retired).map((g) => `/${g.slug}`);
+export const RETIRED_PATHS: [string, string][] = ALL_GUIDES.filter((g) => g.retired).map((g) => [`/${g.slug}`, g.replacedBy ?? "/guides"]);
 
 // Guides read as articles (Ryan, 2026-10-05: "more article-like, more different from the use cases"): the site font
 // (Geist; a serif was tried and dropped the same day for consistency),
