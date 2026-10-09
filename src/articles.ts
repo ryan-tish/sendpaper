@@ -100,7 +100,7 @@ export const ARTICLES: Article[] = [
         ps: [
           "A [return receipt](https://www.usps.com/ship/insurance-extra-services.htm) gives you a delivery record with the recipient's signature, either as a green card mailed back to you or electronically. (Which kind comes with a Sendpaper order? Email support@sendmypaper.com and we'll tell you.)",
           "**Get one when the signature itself matters:** the contract, notice or rule says \"return receipt requested\", or you want proof of who received it, not just that it arrived. **Skip it when** a delivery date from tracking is enough, such as when you just want to know a reply is on its way.",
-          "If you're not sure what a rule requires, check the notice, contract or rule itself, or ask a professional. We print and mail letters; we don't give legal advice.",
+          "More on choosing: [certified mail vs. return receipt](/certified-mail-vs-return-receipt). If you're not sure what a rule requires, check the notice, contract or rule itself, or ask a professional. We print and mail letters; we don't give legal advice.",
         ],
       },
     ],
@@ -121,6 +121,89 @@ export const ARTICLES: Article[] = [
       ["USPS: insurance and extra services (Certified Mail, Return Receipt, Registered Mail)", "https://www.usps.com/ship/insurance-extra-services.htm"],
       ["USPS Domestic Mail Manual 508: recipient signatures and unclaimed mail", "https://pe.usps.com/text/dmm300/508.htm"],
       ["USPS: adding extra services", "https://pe.usps.com/text/dmm100/extra-services.htm"],
+    ],
+  },
+  {
+    slug: "certified-mail-vs-return-receipt",
+    kicker: "Certified mail",
+    title: "Certified mail vs. return receipt: what's the difference?",
+    metaTitle: "Certified Mail vs. Return Receipt: What's the Difference?",
+    description: "Certified Mail tracks delivery; a return receipt sends you the signature. See what each one gives you, green card vs. electronic, and when to add one.",
+    lede: "Certified Mail tracks delivery. A return receipt sends you the signature.",
+    checked: "October 8, 2026",
+    published: "2026-10-08",
+    modified: "2026-10-08",
+    card: { cat: "proof", date: "2026-10-08", art: "track", label: "Return Receipt", blurb: "What each one gives you, and when the signature is worth adding." },
+    answer: [
+      "Certified Mail and a return receipt aren't alternatives: **a return receipt is an add-on** to a service like Certified Mail, not a separate way to send. Certified Mail gives you a tracking number and a USPS record of delivery.",
+      "Adding a return receipt sends you **a record of who signed for it:** their signature, the delivery date and the address where it was actually delivered.",
+    ],
+    sections: [
+      {
+        id: "side",
+        h: "What each one gives you",
+        ps: [
+          "[Certified Mail](/what-is-certified-mail) is the service; the return receipt is added to it. You can't buy a return receipt for a regular First-Class letter on its own.",
+        ],
+        table: {
+          head: ["", "Certified Mail", "Certified + return receipt"],
+          rows: [
+            ["Tracking number", "Yes", "Yes"],
+            ["Delivery or attempt date and time", "Yes", "Yes"],
+            ["Signature taken at delivery", "Yes, kept by USPS", "Yes"],
+            ["Who signed, sent to you automatically", "No", "Yes"],
+            ["Address where it was actually delivered", "No", "Yes"],
+            [`Price with ${BRAND}`, CERT, RR],
+          ],
+        },
+        after: [
+          "In short: Certified Mail tells you when it arrived. A return receipt tells you **who** took it.",
+        ],
+      },
+      {
+        id: "kinds",
+        h: "Green card or electronic",
+        ps: [
+          "USPS offers [two kinds of return receipt](https://pe.usps.com/text/dmm300/503.htm). The **green card** (PS Form 3811) is attached to the envelope, signed at delivery and mailed back to the address on the card. The **electronic** version arrives by email. Both give you the signature, the delivery date and the delivery address.",
+          "The electronic version isn't available for mail to APO/FPO/DPO addresses or US territories.",
+          `Which kind comes with a ${BRAND} order, or a receipt that hasn't arrived? Email support@sendmypaper.com and we'll sort it out.`,
+        ],
+      },
+      {
+        id: "when",
+        h: "When to add a return receipt",
+        ps: ["**Add one when the signature itself matters:**"],
+        after: [
+          "The contract, lease, notice or rule you're following says **\"return receipt requested\".**",
+          "You may need to show **who** received it, not just that it arrived.",
+          "You want a delivery record you hold yourself, without looking it up later.",
+        ],
+      },
+      {
+        id: "skip",
+        h: "When Certified Mail alone is enough",
+        ps: [
+          "Skip the return receipt when a delivery date is all you need: confirming a reply is on its way, or a rule that asks only for certified mail. Tracking shows when it was delivered or attempted, and USPS keeps the signature on file; it can email a [proof of delivery letter](https://pe.usps.com/text/dmm300/503.htm) that includes the signature when one is available.",
+          "That letter isn't the same thing as a return receipt, so if a rule specifically asks for one, buy the return receipt. If you're not sure what a rule requires, check it or ask a professional; we print and mail letters and don't give legal advice.",
+        ],
+      },
+    ],
+    cta: {
+      title: "Send a certified letter with a return receipt",
+      body: `Type it or upload a PDF. ${RR} with a return receipt, or ${CERT} for Certified Mail alone. Printing, envelope and postage included.`,
+      primary: ["Send with a return receipt", "/send?product=letter_certified_rr"],
+      secondary: ["Ask your AI agent to send it", docsUrl("/quickstart")],
+    },
+    faqs: [
+      ["Can I add a return receipt after mailing?", "No. USPS sells a return receipt only at the time of mailing, so decide before you send. With Certified Mail alone, you can still look up the delivery record with the tracking number."],
+      ["Is a return receipt the same as restricted delivery?", "No. [Restricted delivery](https://www.usps.com/ship/insurance-extra-services.htm) limits who can sign for the letter. A return receipt tells you who did sign."],
+      ["Does a return receipt prove what was in the envelope?", "No. It records delivery and who signed, not the contents. Keep a copy of exactly what you sent."],
+      ["What if no one signs for it?", `USPS leaves a notice, and the recipient can pick it up or request redelivery. If it isn't claimed within 15 days, it goes back to the sender, and there's no signature to report. See [what certified mail is](/what-is-certified-mail) for more.`],
+    ],
+    sources: [
+      ["USPS Domestic Mail Manual 503: Return Receipt (6.0), delivery records (1.8), Certified Mail (3.0)", "https://pe.usps.com/text/dmm300/503.htm"],
+      ["USPS Domestic Mail Manual 508: recipient signatures and unclaimed mail", "https://pe.usps.com/text/dmm300/508.htm"],
+      ["USPS: insurance and extra services (Return Receipt, Restricted Delivery)", "https://www.usps.com/ship/insurance-extra-services.htm"],
     ],
   },
 ];
