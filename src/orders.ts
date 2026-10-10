@@ -3,6 +3,7 @@ import { z } from "zod";
 import { BASE_URL, COLOR_LETTER_CENTS, EXPRESS_CENTS, EXTRA_SERVICE, firstOrderDiscount, LIMITS, POSTCARD_SIZE_NAMES, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
 import { pool } from "./db.ts";
 import { postcardLayout, THEME_NAMES } from "./render.ts";
+import { PREVIEW_IMAGES } from "./preview-image.ts";
 import { track } from "./analytics.ts";
 
 export const STATUSES = ["awaiting_payment", "paid", "printing", "mailed", "cancelled", "refunded"] as const;
@@ -401,7 +402,7 @@ export function publicOrder(o: OrderRow, checkoutUrl?: string | null) {
     batch_id: o.batch_id ?? null,
     order_url: orderUrl(o.id),
     preview_url: `${BASE_URL}/o/${o.id}/preview`,
-    preview_image_url: `${BASE_URL}/o/${o.id}/preview.png`,
+    ...(PREVIEW_IMAGES ? { preview_image_url: `${BASE_URL}/o/${o.id}/preview.png` } : {}),
     created_at: o.created_at,
     paid_at: o.paid_at,
     mailed_at: o.mailed_at,

@@ -6,7 +6,7 @@ import { BASE_URL, BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, FIRST_ORDER
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import { isOwnerRequest, recordApiCall } from "./stats.ts";
 import { PdfError, prepareLetterContent } from "./pdf.ts";
-import { previewPng } from "./preview-image.ts";
+import { PREVIEW_IMAGES, previewPng } from "./preview-image.ts";
 import {
   AddressSchema,
   CreateLetterSchema,
@@ -40,6 +40,7 @@ const result = (data: unknown, lead?: string, image?: string) => ({
 });
 // The preview as an MCP image block, so the person sees the piece in the chat (2026-10-10). Never fails the call.
 async function previewBlock(o: OrderRow) {
+  if (!PREVIEW_IMAGES) return undefined;
   try { return (await previewPng(o, 800)).toString("base64"); } catch (e) { console.error("preview image failed", o.id, e); return undefined; }
 }
 
@@ -113,7 +114,7 @@ const needsAddress = { isError: true as const, content: [{ type: "text" as const
 function nextStep(o: ReturnType<typeof publicOrder>) {
   const off = o.discount ? ` That includes ${o.discount.display} as their first order.` : "";
   return o.checkout_url
-    ? `Order created (${o.id}, ${o.price.display}).${off} Preview: ${o.preview_url} (picture: ${o.preview_image_url}). To pay: call pay_order with a Stripe shared payment token for ${o.price.amount_cents} cents USD, or have the user pay at ${o.checkout_url}. It will not be mailed until paid. Track it at ${o.order_url}.`
+    ? `Order created (${o.id}, ${o.price.display}).${off} Preview: ${o.preview_url}${o.preview_image_url ? ` (picture: ${o.preview_image_url})` : ""}. To pay: call pay_order with a Stripe shared payment token for ${o.price.amount_cents} cents USD, or have the user pay at ${o.checkout_url}. It will not be mailed until paid. Track it at ${o.order_url}.`
     : `Order status: ${o.status_detail} Track it at ${o.order_url}.`;
 }
 

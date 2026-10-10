@@ -12,6 +12,10 @@ import { pool } from "./db.ts";
 import type { OrderRow } from "./orders.ts";
 import { postcardLayout, THEMES } from "./render.ts";
 
+// OFF since 2026-10-10: Ryan didn't like how the pictures look ("skip this for now"). Flip to true to bring back
+// preview_image_url, /o/:id/preview.png and the MCP image block; nothing else needs to change.
+export const PREVIEW_IMAGES = false;
+
 const font = (f: string) => readFileSync(new URL(`../assets/fonts/${f}`, import.meta.url));
 const FONTS = [
   { name: "Caveat", data: font("caveat-600.ttf"), weight: 600 as const, style: "normal" as const },

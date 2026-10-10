@@ -12,7 +12,7 @@ import { COMPARES, compareList, comparePage } from "./compare.ts";
 import { QUICK_EXAMPLE, QUICK_PARAMS } from "./quick.ts";
 import { page } from "./layout.ts";
 import { WEBMCP_JS } from "./webmcp.ts";
-import { previewPng } from "./preview-image.ts";
+import { PREVIEW_IMAGES, previewPng } from "./preview-image.ts";
 import { getBatch, getOrder, groupLines, MAX_RECIPIENTS, priceLines, publicOrder, type OrderRow } from "./orders.ts";
 import { checkoutFor, checkoutUrlFor, confirmBatchFromRedirect, confirmFromRedirect } from "./payments.ts";
 import { addReview, listReviews, reviewFor } from "./offer.ts";
@@ -240,7 +240,7 @@ web.get("/reviews", async (_req, res) => {
 
 // A PNG of the piece (preview-image.ts) for agents to show the person; ?w= sets the width (400–2000 px).
 web.get("/o/:id/preview.png", async (req, res) => {
-  const o = await getOrder(String(req.params.id));
+  const o = PREVIEW_IMAGES ? await getOrder(String(req.params.id)) : null;
   if (!o) return res.status(404).send("No such order");
   const w = Math.min(2000, Math.max(400, Number(req.query.w) || 1200));
   res.set({ "Cache-Control": "private, max-age=300", "X-Robots-Tag": "noindex" }).type("image/png").send(await previewPng(o, w));
@@ -309,7 +309,7 @@ ${BRAND} prints and mails real postcards and letters to US addresses through USP
 ## The flow
 1. **Confirm with your user** the recipient's address, their return address and the exact wording. If you wrote the words, show them first.
 2. **Create the order** (create_postcard or create_letter, or POST /v1/postcards or /v1/letters). Send an idempotency key so a retry doesn't make a second order.
-3. **Show the price and the preview** before anything is paid: preview_image_url is a PNG of the piece you can show inline (MCP create results also include it as an image), and preview_url is the exact print preview page.
+3. **Show the price and the preview** before anything is paid: preview_url is the exact print preview page.
 4. **Pay, only after your user approves this purchase and its price:** either call pay_order with a Stripe shared payment token for the order's exact amount (e.g. via Stripe Link), or give your user the checkout_url to pay themselves.
 5. **Track it** with get_order or the order_url. A person reviews every order before printing; certified letters get a USPS tracking number once it's assigned.
 
