@@ -13,9 +13,12 @@
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
+    "@resvg/resvg-js": "^2.6.2",
     "express": "^5.2.1",
     "pdf-lib": "^1.17.1",
     "pg": "^8.23.0",
+    "satori": "^0.38.2",
+    "satori-html": "^0.3.2",
     "stripe": "^22.6.2",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",

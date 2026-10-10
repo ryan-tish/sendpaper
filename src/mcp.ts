@@ -6,6 +6,7 @@ import { BASE_URL, BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, FIRST_ORDER
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import { isOwnerRequest, recordApiCall } from "./stats.ts";
 import { PdfError, prepareLetterContent } from "./pdf.ts";
+import { previewPng } from "./preview-image.ts";
 import {
   AddressSchema,
   CreateLetterSchema,
@@ -33,10 +34,14 @@ Every order is reviewed by a person before printing; threatening, harassing, fra
 
 const json = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
 // Same data as structuredContent too, so clients can read it against the tool's outputSchema (JSON round trip turns Dates into strings).
-const result = (data: unknown, lead?: string) => ({
-  content: [...(lead ? [{ type: "text" as const, text: lead }] : []), ...json(data).content],
+const result = (data: unknown, lead?: string, image?: string) => ({
+  content: [...(lead ? [{ type: "text" as const, text: lead }] : []), ...(image ? [{ type: "image" as const, data: image, mimeType: "image/png" }] : []), ...json(data).content],
   structuredContent: JSON.parse(JSON.stringify(data)) as Record<string, unknown>,
 });
+// The preview as an MCP image block, so the person sees the piece in the chat (2026-10-10). Never fails the call.
+async function previewBlock(o: OrderRow) {
+  try { return (await previewPng(o, 800)).toString("base64"); } catch (e) { console.error("preview image failed", o.id, e); return undefined; }
+}
 
 // Output schemas list the fields agents rely on; .loose() keeps the rest of the order (addresses, content, events) valid too.
 const OrderOutput = z
@@ -52,6 +57,7 @@ const OrderOutput = z
     checkout_url: z.string().nullable().describe("Where the user pays; null once paid or cancelled"),
     order_url: z.string().describe("Order status page"),
     preview_url: z.string().describe("Exact print preview"),
+    preview_image_url: z.string().optional().describe("PNG picture of the piece (postcard front and back, or the letter's first page) to show the user"),
     tracking: z.object({ number: z.string(), url: z.string() }).nullable().describe("USPS tracking, for Certified Mail once printed"),
     discount: z
       .object({ amount_cents: z.number(), display: z.string(), reason: z.string() })
@@ -95,19 +101,19 @@ const Recipients = z.array(AddressSchema).min(2).max(MAX_RECIPIENTS)
 const toOrRecipients = { to: AddressSchema.optional().describe("Recipient's US mailing address (or use recipients for several people)"), recipients: Recipients.optional() };
 
 // Group result: the first order's fields (so the published output schema still holds) plus the whole group.
-function groupResult(batchId: string, orders: OrderRow[]) {
+async function groupResult(batchId: string, orders: OrderRow[]) {
   const b = batchSummary(batchId, orders);
   const first = publicOrder(orders[0]);
   const off = b.discount ? ` That includes ${b.discount.display} as their first order.` : "";
   const lead = `Created ${b.count} orders (group ${b.id}), ${b.price.display} in total.${off} Preview each one from ${b.url}. To pay for all of them: call pay_order with any of these order ids and a Stripe shared payment token for ${b.price.amount_cents} cents USD, or have the user pay at ${b.checkout_url}. Nothing is mailed until paid.`;
-  return result({ ...first, batch: b, orders: orders.map((o) => ({ id: o.id, to: o.to_address.name, order_url: publicOrder(o).order_url, preview_url: publicOrder(o).preview_url })) }, lead);
+  return result({ ...first, batch: b, orders: orders.map((o) => ({ id: o.id, to: o.to_address.name, order_url: publicOrder(o).order_url, preview_url: publicOrder(o).preview_url })) }, lead, await previewBlock(orders[0]));
 }
 const needsAddress = { isError: true as const, content: [{ type: "text" as const, text: "Give either to (one recipient) or recipients (2 or more)." }] };
 
 function nextStep(o: ReturnType<typeof publicOrder>) {
   const off = o.discount ? ` That includes ${o.discount.display} as their first order.` : "";
   return o.checkout_url
-    ? `Order created (${o.id}, ${o.price.display}).${off} Preview: ${o.preview_url}. To pay: call pay_order with a Stripe shared payment token for ${o.price.amount_cents} cents USD, or have the user pay at ${o.checkout_url}. It will not be mailed until paid. Track it at ${o.order_url}.`
+    ? `Order created (${o.id}, ${o.price.display}).${off} Preview: ${o.preview_url} (picture: ${o.preview_image_url}). To pay: call pay_order with a Stripe shared payment token for ${o.price.amount_cents} cents USD, or have the user pay at ${o.checkout_url}. It will not be mailed until paid. Track it at ${o.order_url}.`
     : `Order status: ${o.status_detail} Track it at ${o.order_url}.`;
 }
 
@@ -188,7 +194,7 @@ function build(client: string | undefined) {
       const { size, content, ...rest } = CreatePostcardSchema.parse(args);
       const { order } = await createOrder({ ...rest, content, product: postcardProduct(size), source: "mcp", client });
       const o = publicOrder(order);
-      return result(o, nextStep(o));
+      return result(o, nextStep(o), await previewBlock(order));
     },
   );
 
@@ -219,7 +225,7 @@ function build(client: string | undefined) {
       }
       const { order } = await createOrder({ ...input, content, product: letterProduct(certified), source: "mcp", client });
       const o = publicOrder(order);
-      return result(o, nextStep(o));
+      return result(o, nextStep(o), await previewBlock(order));
     },
   );
 

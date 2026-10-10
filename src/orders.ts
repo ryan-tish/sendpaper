@@ -401,6 +401,7 @@ export function publicOrder(o: OrderRow, checkoutUrl?: string | null) {
     batch_id: o.batch_id ?? null,
     order_url: orderUrl(o.id),
     preview_url: `${BASE_URL}/o/${o.id}/preview`,
+    preview_image_url: `${BASE_URL}/o/${o.id}/preview.png`,
     created_at: o.created_at,
     paid_at: o.paid_at,
     mailed_at: o.mailed_at,

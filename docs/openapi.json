@@ -877,6 +877,10 @@
             "type": "string",
             "description": "Exact print preview"
           },
+          "preview_image_url": {
+            "type": "string",
+            "description": "PNG picture of the piece (postcard front over back, or the letter's first page) to show the person before they pay. Add ?w=400\u20132000 for a width in pixels."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
