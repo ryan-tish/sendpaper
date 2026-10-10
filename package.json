@@ -17,12 +17,15 @@
     "pdf-lib": "^1.17.1",
     "pg": "^8.23.0",
     "stripe": "^22.6.2",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
     "@types/pg": "^8.23.1",
+    "@types/turndown": "^5.0.6",
     "typescript": "^7.0.2"
   },
   "private": true,

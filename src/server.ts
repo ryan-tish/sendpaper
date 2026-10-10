@@ -10,7 +10,8 @@ import { startPrintSync } from "./fulfill.ts";
 import { web } from "./web.ts";
 import { quick } from "./quick.ts";
 import { trackApi, trackViews } from "./stats.ts";
-import { pingIndexNow, seo } from "./seo.ts";
+import { pingIndexNow, PUBLIC_PATHS, seo } from "./seo.ts";
+import { markdownPages } from "./markdown.ts";
 import { posthogProxy } from "./analytics.ts";
 
 const app = express();
@@ -78,6 +79,7 @@ app.get("/.well-known/openai-apps-challenge", (_req, res) => {
 });
 
 // Count page views for /admin/stats (pages only: no API, MCP, assets, admin or bots).
+app.use(markdownPages(PUBLIC_PATHS)); // <path>.md or Accept: text/markdown (markdown.ts); rewrites the URL before seo/web see it
 app.use(seo);
 app.use(trackViews);
 app.use(docs);

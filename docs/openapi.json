@@ -38,10 +38,37 @@
         }
       }
     },
+    "/pricing": {
+      "get": {
+        "summary": "Get pricing",
+        "description": "Same response as GET /products (an alias, named like the MCP tool get_pricing). Prices include printing, envelope and USPS First-Class postage.",
+        "operationId": "getPricing",
+        "responses": {
+          "200": {
+            "description": "Products",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Product"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/postcards": {
       "post": {
         "summary": "Create a postcard",
-        "description": "Creates a 4×6, 6×9 or 6×11 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.\n\nTo send the same postcard to several people, pass `recipients` (2–25 addresses) instead of `to`. You get back a Batch: one order per recipient and a single `batch.checkout_url`. `POST /orders/{id}/pay` with any order in the batch pays for every unpaid order in it (scope the token to `batch.price`).",
+        "description": "Creates a 4\u00d76, 6\u00d79 or 6\u00d711 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.\n\nTo send the same postcard to several people, pass `recipients` (2\u201325 addresses) instead of `to`. You get back a Batch: one order per recipient and a single `batch.checkout_url`. `POST /orders/{id}/pay` with any order in the batch pays for every unpaid order in it (scope the token to `batch.price`).",
         "operationId": "createPostcard",
         "parameters": [
           {
@@ -165,7 +192,7 @@
     "/letters": {
       "post": {
         "summary": "Create a letter",
-        "description": "Creates a printed letter (up to ~3 pages, 8.5×11, #10 envelope) in `awaiting_payment` and returns a `checkout_url`. Set `certified` to send it by USPS Certified Mail.\n\nTo send the same letter to several people, pass `recipients` (2–25 addresses) instead of `to`. You get back a Batch: one order per recipient and a single `batch.checkout_url`. `POST /orders/{id}/pay` with any order in the batch pays for every unpaid order in it (scope the token to `batch.price`).",
+        "description": "Creates a printed letter (up to ~3 pages, 8.5\u00d711, #10 envelope) in `awaiting_payment` and returns a `checkout_url`. Set `certified` to send it by USPS Certified Mail.\n\nTo send the same letter to several people, pass `recipients` (2\u201325 addresses) instead of `to`. You get back a Batch: one order per recipient and a single `batch.checkout_url`. `POST /orders/{id}/pay` with any order in the batch pays for every unpaid order in it (scope the token to `batch.price`).",
         "operationId": "createLetter",
         "parameters": [
           {
@@ -358,7 +385,7 @@
     "/orders/{id}/pay": {
       "post": {
         "summary": "Pay with an agent token",
-        "description": "Pay an unpaid order with a Stripe shared payment token (`spt_…`) the user approved, scoped to at least the order amount in USD. Safe to retry with the same token.\n\nFor an order that belongs to a batch, this charges one token for every unpaid order in the batch; scope the token to the batch total.",
+        "description": "Pay an unpaid order with a Stripe shared payment token (`spt_\u2026`) the user approved, scoped to at least the order amount in USD. Safe to retry with the same token.\n\nFor an order that belongs to a batch, this charges one token for every unpaid order in the batch; scope the token to the batch total.",
         "operationId": "payOrder",
         "parameters": [
           {
@@ -632,7 +659,7 @@
             "items": {
               "$ref": "#/components/schemas/Address"
             },
-            "description": "Send the same postcard or letter to several people: 2–25 addresses, used instead of `to`. Each recipient becomes its own order (own review, tracking and refund), grouped into a batch that is paid with one checkout link. The response is a Batch, not an Order."
+            "description": "Send the same postcard or letter to several people: 2\u201325 addresses, used instead of `to`. Each recipient becomes its own order (own review, tracking and refund), grouped into a batch that is paid with one checkout link. The response is a Batch, not an Order."
           }
         },
         "oneOf": [
@@ -725,7 +752,7 @@
             "items": {
               "$ref": "#/components/schemas/Address"
             },
-            "description": "Send the same postcard or letter to several people: 2–25 addresses, used instead of `to`. Each recipient becomes its own order (own review, tracking and refund), grouped into a batch that is paid with one checkout link. The response is a Batch, not an Order."
+            "description": "Send the same postcard or letter to several people: 2\u201325 addresses, used instead of `to`. Each recipient becomes its own order (own review, tracking and refund), grouped into a batch that is paid with one checkout link. The response is a Batch, not an Order."
           }
         },
         "oneOf": [
@@ -968,7 +995,7 @@
             "properties": {
               "id": {
                 "type": "string",
-                "description": "Batch id, batch_…"
+                "description": "Batch id, batch_\u2026"
               },
               "count": {
                 "type": "integer",

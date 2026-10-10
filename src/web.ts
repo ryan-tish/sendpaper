@@ -11,7 +11,7 @@ import { ARTICLES, articleList, articlePage } from "./articles.ts";
 import { COMPARES, compareList, comparePage } from "./compare.ts";
 import { QUICK_EXAMPLE, QUICK_PARAMS } from "./quick.ts";
 import { page } from "./layout.ts";
-import { getBatch, getOrder, groupLines, priceLines, publicOrder, type OrderRow } from "./orders.ts";
+import { getBatch, getOrder, groupLines, MAX_RECIPIENTS, priceLines, publicOrder, type OrderRow } from "./orders.ts";
 import { checkoutFor, checkoutUrlFor, confirmBatchFromRedirect, confirmFromRedirect } from "./payments.ts";
 import { addReview, listReviews, reviewFor } from "./offer.ts";
 import { addressBlock, esc, printSheet, THEMES } from "./render.ts";
@@ -279,6 +279,46 @@ web.get("/favicon.svg", (_req, res) => {
   res.type("image/svg+xml").set("Cache-Control", "public, max-age=86400").send(readFileSync(new URL("../docs/logo/favicon.svg", import.meta.url)));
 });
 
+// Instructions written for an agent doing the work (2026-10-09; llms.txt is the overview, this is the how-to).
+// Generated from the same config as the site so prices and limits can't drift.
+web.get(["/agents.md", "/AGENTS.md"], (_req, res) => {
+  const docs = DOCS_URL || `${BASE_URL}/docs`;
+  res.type("text/markdown; charset=utf-8").set("Cache-Control", "public, max-age=3600").send(`# ${BRAND}: instructions for AI agents
+
+${BRAND} prints and mails real postcards and letters to US addresses through USPS. Use it when your user asks you to mail something physical: a card, a letter, a document, a certified letter.
+
+## Connect (pick one)
+- **MCP** (best): ${MCP_URL} (Streamable HTTP, no auth, no API key). Tools: get_pricing, create_postcard, create_letter, pay_order, get_order, cancel_order. Setup per client: ${DOCS_URL ? `${DOCS_URL}/quickstart` : docs}
+- **REST**: ${BASE_URL}/v1, described by ${BASE_URL}/openapi.json. Start with GET /v1/pricing.
+- **Browser only?** Open one order link with every field in the query string: ${BASE_URL}/quick?type=postcard&size=4x6&headline=…&message=…&to_name=…&to_line1=…&to_city=…&to_state=…&to_zip=…&from_name=…&from_line1=…&from_city=…&from_state=…&from_zip=…
+
+## The flow
+1. **Confirm with your user** the recipient's address, their return address and the exact wording. If you wrote the words, show them first.
+2. **Create the order** (create_postcard or create_letter, or POST /v1/postcards or /v1/letters). Send an idempotency key so a retry doesn't make a second order.
+3. **Show the price and the preview_url** (the exact print preview) before anything is paid.
+4. **Pay, only after your user approves this purchase and its price:** either call pay_order with a Stripe shared payment token for the order's exact amount (e.g. via Stripe Link), or give your user the checkout_url to pay themselves.
+5. **Track it** with get_order or the order_url. A person reviews every order before printing; certified letters get a USPS tracking number once it's assigned.
+
+Nothing is printed until it's paid. Unpaid orders can be cancelled with cancel_order; for a paid order, email ${SUPPORT_EMAIL} before it prints.
+
+## Products (prices include printing, envelope and postage)
+${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}`).join("\n")}
+- Express (USPS Priority, usually 2–3 days): +${usd(EXPRESS_CENTS)}, not with Certified Mail
+- Letters can be typed, or a PDF of up to ${LIMITS.pdfPages} pages (pass a public https link as content.pdf_url)
+- Several recipients: pass recipients (2–${MAX_RECIPIENTS} addresses) instead of to; each gets their own order, paid in one checkout
+
+## Rules
+- US addresses only (including territories and APO/FPO/DPO).
+- We print what the user or agent writes and don't give legal or tax advice.
+- Threatening, harassing, fraudulent or obscene mail is refused and refunded; bulk marketing isn't allowed. Policy: ${BASE_URL}/content-policy
+
+## More for agents
+- Overview: ${BASE_URL}/llms.txt
+- Every public page is also available as markdown: add .md to the path (${BASE_URL}/index.md for the homepage) or send Accept: text/markdown.
+- Docs: ${docs}
+`);
+});
+
 web.get("/llms.txt", (_req, res) => {
   const docs = DOCS_URL || `${BASE_URL}/docs`;
   res.type("text/plain").send(`# ${BRAND}
@@ -294,6 +334,8 @@ web.get("/llms.txt", (_req, res) => {
 - Documentation: ${docs}${DOCS_URL ? `\n- Full docs for LLMs: ${DOCS_URL}/llms-full.txt` : ""}
 - OpenAPI spec: ${BASE_URL}/openapi.json
 - REST base URL: ${BASE_URL}/v1
+- Step-by-step instructions for agents: ${BASE_URL}/agents.md
+- Markdown of any page: add .md to the path (${BASE_URL}/index.md for the homepage) or send Accept: text/markdown
 
 ## Products
 ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}, ${p.blurb}`).join("\n")}

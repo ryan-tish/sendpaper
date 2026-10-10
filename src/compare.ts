@@ -147,7 +147,7 @@ export function comparePage(slug: string) {
           <div class="short">${c.answer.map((p) => `<p>${rich(p)}</p>`).join("")}</div>
           <h2 id="side">Side by side</h2>
           <div class="cmp-wrap"><table class="cmp"><colgroup><col class="k"><col class="v"><col class="v"></colgroup>
-            <thead><tr><th scope="col"><span class="sr-only">Feature</span></th><th scope="col" class="lob">${esc(c.rival)}</th><th scope="col" class="us">${LOGO_FULL}</th></tr></thead>
+            <thead><tr><th scope="col"><span class="sr-only">Feature</span></th><th scope="col" class="lob">${esc(c.rival)}</th><th scope="col" class="us">${LOGO_FULL}<span class="sr-only">${esc(BRAND)}</span></th></tr></thead>
             <tbody>${c.table.map(([k, a, b]) => `<tr><th scope="row">${esc(k)}</th><td>${esc(a)}</td><td class="us">${esc(b)}</td></tr>`).join("")}</tbody></table></div>
           <h2 id="fit">Which fits</h2>
           <h3>When to choose ${esc(c.rival)}</h3>${c.rivalFits.map((p) => `<p>${rich(p)}</p>`).join("")}

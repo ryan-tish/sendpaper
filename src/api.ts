@@ -52,7 +52,8 @@ async function createGroup(res: Response, recipients: Address[], make: (to: Addr
 export const api = Router();
 api.use(express.json({ limit: "200kb" }));
 
-api.get("/products", (_req, res) => {
+// /pricing is an alias (2026-10-09): agents guessed it twice, matching the MCP tool name get_pricing.
+api.get(["/products", "/pricing"], (_req, res) => {
   res.json({
     data: Object.entries(PRODUCTS).map(([id, p]) => ({ id, ...p, currency: "usd", amount_cents: p.cents })),
   });

@@ -51,7 +51,8 @@ seo.get(`/${INDEXNOW_KEY}.txt`, (_req, res) => {
 // A canonical URL per public page, sent as a Link header so every page gets one without touching its HTML
 // (and query-string variants like /send?product=… consolidate onto /send).
 seo.use((req, res, next) => {
-  if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_PATHS.includes(req.path)) res.set("Link", `<${BASE_URL}${req.path}>; rel="canonical"`);
+  if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_PATHS.includes(req.path))
+    res.set("Link", `<${BASE_URL}${req.path}>; rel="canonical", <${BASE_URL}${req.path === "/" ? "/index" : req.path}.md>; rel="alternate"; type="text/markdown"`);
   next();
 });
 
