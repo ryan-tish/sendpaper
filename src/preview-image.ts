@@ -117,5 +117,7 @@ export async function previewPng(o: OrderRow, widthPx = 1200): Promise<Buffer> {
     tree = div({ flexDirection: "column", width: w, height: h, background: "#e9e7e2", padding: gap, gap }, [await front(o.content as Record<string, any>, wi, hi), back(o, wi, hi)]);
   }
   const svg = await satori(tree as never, { width: w, height: h, fonts: FONTS });
-  return Buffer.from(new Resvg(svg, { fitTo: { mode: "width", value: widthPx } }).render().asPng());
+  // loadSystemFonts: false matters: Satori already turns text into paths, and resvg's default scan of every system font
+  // cost ~210 MB of RSS on the first render (measured 2026-10-10), which would OOM the 512 MB instance.
+  return Buffer.from(new Resvg(svg, { fitTo: { mode: "width", value: widthPx }, font: { loadSystemFonts: false } }).render().asPng());
 }
