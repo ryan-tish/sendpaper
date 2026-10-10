@@ -124,6 +124,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 <link rel="alternate" type="text/plain" title="For AI agents" href="/llms.txt">
 <link rel="alternate" type="text/markdown" title="Agent instructions" href="/agents.md">
 <link rel="service-desc" type="application/json" href="/openapi.json">
+<script src="/webmcp.js" defer></script>
 <meta name="ai-agent-instructions" content="Agents: skip the forms. Call the MCP server at /mcp, the REST API at /v1, or open an order link (/quick?...). Details: /llms.txt">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">

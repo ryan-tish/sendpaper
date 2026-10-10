@@ -11,6 +11,7 @@ import { ARTICLES, articleList, articlePage } from "./articles.ts";
 import { COMPARES, compareList, comparePage } from "./compare.ts";
 import { QUICK_EXAMPLE, QUICK_PARAMS } from "./quick.ts";
 import { page } from "./layout.ts";
+import { WEBMCP_JS } from "./webmcp.ts";
 import { getBatch, getOrder, groupLines, MAX_RECIPIENTS, priceLines, publicOrder, type OrderRow } from "./orders.ts";
 import { checkoutFor, checkoutUrlFor, confirmBatchFromRedirect, confirmFromRedirect } from "./payments.ts";
 import { addReview, listReviews, reviewFor } from "./offer.ts";
@@ -273,6 +274,10 @@ web.get("/guides/img/:name", (req, res) => {
   res.set("Cache-Control", "public, max-age=86400").sendFile(fileURLToPath(new URL(`../assets/guides/${req.params.name}`, import.meta.url)), (err) => {
     if (err && !res.headersSent) res.status(404).send("Not found");
   });
+});
+
+web.get("/webmcp.js", (_req, res) => {
+  res.type("text/javascript").set("Cache-Control", "public, max-age=3600").send(WEBMCP_JS);
 });
 
 web.get("/favicon.svg", (_req, res) => {
