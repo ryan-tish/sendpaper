@@ -97,9 +97,9 @@ export const COMPARES: Compare[] = [
     metaTitle: "Sendpaper vs. Mailform: AI Agents, Setup and Which Fits",
     description: `Compare ${BRAND} and Mailform on AI-agent support, setup, certified mail and range. See which fits a letter from your agent and which fits office mail.`,
     lede: `Mailform is a full mailroom on the web. ${BRAND} is quick and agentic: mail sent by your AI agent.`,
-    checked: "October 11, 2026",
+    checked: "October 12, 2026",
     published: "2026-10-11",
-    modified: "2026-10-11",
+    modified: "2026-10-12",
     card: { date: "2026-10-11", label: "Sendpaper vs. Mailform", blurb: "When Mailform's wider range fits better, and when an agent-first service does." },
     answer: [
       "Mailing long documents, overnight by FedEx, abroad, or in bulk from your office? **Use Mailform.**",
@@ -116,6 +116,8 @@ export const COMPARES: Compare[] = [
       ["Speed", "First-Class, Priority, Priority Express, FedEx and UPS overnight", "First-Class, or Express by USPS Priority"],
       ["Review before printing", "Mostly automated; we found no content review before printing", "A real person checks every piece before it prints"],
       ["Where it mails", "US and international", "US only, including territories and military addresses"],
+      ["Printing partner", "Lob, through the Lob API", "PostGrid"],
+      ["Trustpilot rating", "1.6 out of 5 from 22 reviews (October 2026)", "No reviews yet"],
     ],
     rivalFits: [
       "Mailform is the better choice when mail is office work: a 40-page contract, an invoice run, a document that has to arrive the next business day by FedEx, or a letter abroad. **For short letters, certified letters and 4×6 postcards, its [prices](https://www.mailform.io/pricing/) are lower than ours,** and it covers more ground, with Word uploads, green-card return receipts, checks, return envelopes and bulk mail from a spreadsheet.",
@@ -133,7 +135,7 @@ export const COMPARES: Compare[] = [
     ],
     sources: [
       ["Mailform: pricing", "https://www.mailform.io/pricing/"],
-      ["Mailform: FAQ (services, turnaround, payment)", "https://www.mailform.io/faq"],
+      ["Mailform: FAQ (services, turnaround, payment, mails through Lob)", "https://www.mailform.io/faq"],
       ["Mailform: homepage (no sign-up for single letters and postcards)", "https://www.mailform.io/"],
       ["Mailform: API documentation", "https://www.mailform.io/docs/api/"],
       ["Mailform help: tracking, return receipts and Priority signatures", "https://help.mailform.io/en/articles/528128"],
@@ -142,6 +144,7 @@ export const COMPARES: Compare[] = [
       ["Mailform help: long documents", "https://help.mailform.io/en/articles/528640"],
       ["Mailform help: how orders are fulfilled (mostly automated)", "https://help.mailform.io/en/articles/529856"],
       ["Microsoft: Mailform connector (Power Automate, Copilot Studio)", "https://learn.microsoft.com/en-us/connectors/mailform/"],
+      ["Trustpilot: Mailform reviews (1.6 from 22, checked October 12, 2026)", "https://www.trustpilot.com/review/mailform.io"],
       ["Mailform: terms of service (content rules)", "https://www.mailform.io/terms"],
       ["Mailform: privacy policy", "https://www.mailform.io/privacy"],
       ["Official MCP registry (no Mailform server found)", "https://registry.modelcontextprotocol.io/"],
