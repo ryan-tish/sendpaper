@@ -7,7 +7,7 @@ import { stripe } from "./payments.ts";
 import { postgridMode, printProofUrl, sendToPrint, syncPrint } from "./fulfill.ts";
 import { addressBlock, esc, printSheet } from "./render.ts";
 import { listReviews, setReviewApproved } from "./offer.ts";
-import { statsPage } from "./stats.ts";
+import { resetStats, statsPage } from "./stats.ts";
 
 // The operator's queue: paid orders get reviewed, printed (or sent to a print partner), then marked mailed.
 export const admin = Router();
@@ -105,6 +105,11 @@ admin.get("/stats", async (_req, res) => {
 });
 
 // Reviews come in from customers' order pages after mailing; only approved ones are shown on /reviews.
+admin.post("/stats/reset", async (req, res) => {
+  await resetStats(req.body.action === "clear");
+  res.redirect(303, "/admin/stats");
+});
+
 admin.get("/reviews", async (_req, res) => {
   const reviews = await listReviews(false);
   const rows = reviews

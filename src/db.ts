@@ -106,5 +106,10 @@ export async function migrate() {
       bytes       bytea NOT NULL,
       created_at  timestamptz NOT NULL DEFAULT now()
     );
+
+    -- "Reset stats" on /admin/stats (2026-10-14): the dashboard counts from "since" instead of deleting any rows.
+    CREATE TABLE IF NOT EXISTS stats_reset (id int PRIMARY KEY DEFAULT 1 CHECK (id = 1), since timestamptz NOT NULL);
+    -- The /send page creates orders through /v1 with X-Client: web; before 2026-10-14 they were saved as source 'api'.
+    UPDATE orders SET source = 'web' WHERE source = 'api' AND client = 'web';
   `);
 }

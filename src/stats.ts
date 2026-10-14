@@ -115,6 +115,19 @@ async function q<T>(sql: string, params: unknown[] = []) {
   return (await pool.query(sql, params)).rows as T[];
 }
 
+// "Reset stats" (2026-10-14): every number on the page counts from the later of 30 days ago and the reset time.
+// Nothing is deleted; clearing the reset brings the full 30 days back.
+const RESET = "(SELECT coalesce(max(since), '-infinity'::timestamptz) FROM stats_reset)";
+const SINCE = `greatest(now() - interval '30 days', ${RESET})`;
+
+export async function statsResetAt(): Promise<Date | null> {
+  return (await q<{ since: Date }>("SELECT since FROM stats_reset"))[0]?.since ?? null;
+}
+export async function resetStats(clear = false) {
+  if (clear) await pool.query("DELETE FROM stats_reset");
+  else await pool.query("INSERT INTO stats_reset (id, since) VALUES (1, now()) ON CONFLICT (id) DO UPDATE SET since = now()");
+}
+
 const n = (v: unknown) => Number(v ?? 0);
 const fmt = (v: number) => v.toLocaleString("en-US");
 const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : "–");
@@ -163,25 +176,25 @@ export async function statsPage() {
       SELECT to_char(d, 'YYYY-MM-DD') AS day,
              count(DISTINCT pv.visitor) AS visitors, count(pv.id) AS views
       FROM generate_series((now() AT TIME ZONE 'UTC')::date - 29, (now() AT TIME ZONE 'UTC')::date, '1 day') d
-      LEFT JOIN page_views pv ON (pv.at AT TIME ZONE 'UTC')::date = d
+      LEFT JOIN page_views pv ON (pv.at AT TIME ZONE 'UTC')::date = d AND pv.at >= ${RESET}
       GROUP BY d ORDER BY d`),
     q<{ span: string; visitors: string; views: string }>(`
       SELECT s.span, count(DISTINCT pv.visitor) AS visitors, count(pv.id) AS views
       FROM (VALUES ('today', interval '0 day'), ('7d', interval '6 days'), ('30d', interval '29 days')) s(span, back)
-      LEFT JOIN page_views pv ON (pv.at AT TIME ZONE 'UTC')::date >= (now() AT TIME ZONE 'UTC')::date - s.back
+      LEFT JOIN page_views pv ON (pv.at AT TIME ZONE 'UTC')::date >= (now() AT TIME ZONE 'UTC')::date - s.back AND pv.at >= ${RESET}
       GROUP BY s.span`),
-    q<{ path: string; views: string }>(`SELECT path, count(*) AS views FROM page_views WHERE at > now() - interval '30 days' GROUP BY path ORDER BY views DESC LIMIT 10`),
-    q<{ host: string; visitors: string }>(`SELECT referrer_host AS host, count(DISTINCT visitor) AS visitors FROM page_views WHERE at > now() - interval '30 days' AND referrer_host IS NOT NULL GROUP BY host ORDER BY visitors DESC LIMIT 10`),
+    q<{ path: string; views: string }>(`SELECT path, count(*) AS views FROM page_views WHERE at > ${SINCE} GROUP BY path ORDER BY views DESC LIMIT 10`),
+    q<{ host: string; visitors: string }>(`SELECT referrer_host AS host, count(DISTINCT visitor) AS visitors FROM page_views WHERE at > ${SINCE} AND referrer_host IS NOT NULL GROUP BY host ORDER BY visitors DESC LIMIT 10`),
     q<{ source: string; created: string; checkout: string; paid: string; free: string; mailed: string }>(`
       SELECT source, count(*) AS created,
              count(*) FILTER (WHERE stripe_session IS NOT NULL OR status IN ('paid','printing','mailed')) AS checkout,
              count(*) FILTER (WHERE status IN ('paid','printing','mailed')) AS paid,
              count(*) FILTER (WHERE free_offer AND status IN ('paid','printing','mailed')) AS free,
              count(*) FILTER (WHERE status = 'mailed') AS mailed
-      FROM orders WHERE created_at > now() - interval '30 days' AND NOT is_test GROUP BY source`),
-    q<{ used: string; cents: string; pending: string }>(`SELECT count(*) FILTER (WHERE status IN ('paid','printing','mailed')) AS used, coalesce(sum(discount_cents) FILTER (WHERE status IN ('paid','printing','mailed')), 0) AS cents, count(*) FILTER (WHERE status = 'awaiting_payment') AS pending FROM orders WHERE discount_cents > 0 AND NOT is_test`),
-    q<{ client: string; calls: string; days: string }>(`SELECT split_part(client, '/', 1) AS client, count(*) AS calls, count(DISTINCT (at AT TIME ZONE 'UTC')::date) AS days FROM (SELECT at, tool, client FROM mcp_calls UNION ALL SELECT at, endpoint AS tool, client FROM api_calls WHERE channel = 'mcp' AND NOT owner) c WHERE at > now() - interval '30 days' GROUP BY 1 ORDER BY calls DESC LIMIT 10`),
-    q<{ tool: string; calls: string }>(`SELECT tool, count(*) AS calls FROM (SELECT at, tool, client FROM mcp_calls UNION ALL SELECT at, endpoint AS tool, client FROM api_calls WHERE channel = 'mcp' AND NOT owner) c WHERE at > now() - interval '30 days' GROUP BY tool ORDER BY calls DESC`),
+      FROM orders WHERE created_at > ${SINCE} AND NOT is_test GROUP BY source`),
+    q<{ used: string; cents: string; pending: string }>(`SELECT count(*) FILTER (WHERE status IN ('paid','printing','mailed')) AS used, coalesce(sum(discount_cents) FILTER (WHERE status IN ('paid','printing','mailed')), 0) AS cents, count(*) FILTER (WHERE status = 'awaiting_payment') AS pending FROM orders WHERE discount_cents > 0 AND NOT is_test AND created_at >= ${RESET}`),
+    q<{ client: string; calls: string; days: string }>(`SELECT split_part(client, '/', 1) AS client, count(*) AS calls, count(DISTINCT (at AT TIME ZONE 'UTC')::date) AS days FROM (SELECT at, tool, client FROM mcp_calls UNION ALL SELECT at, endpoint AS tool, client FROM api_calls WHERE channel = 'mcp' AND NOT owner) c WHERE at > ${SINCE} GROUP BY 1 ORDER BY calls DESC LIMIT 10`),
+    q<{ tool: string; calls: string }>(`SELECT tool, count(*) AS calls FROM (SELECT at, tool, client FROM mcp_calls UNION ALL SELECT at, endpoint AS tool, client FROM api_calls WHERE channel = 'mcp' AND NOT owner) c WHERE at > ${SINCE} GROUP BY tool ORDER BY calls DESC`),
     q<{ total: string; pending: string; avg: string }>(`SELECT count(*) AS total, count(*) FILTER (WHERE NOT approved) AS pending, round(avg(rating), 1) AS avg FROM reviews`),
   ]);
 
@@ -191,17 +204,17 @@ export async function statsPage() {
       SELECT channel, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS errors, count(DISTINCT split_part(client, '/', 1)) AS clients,
              percentile_disc(0.5) WITHIN GROUP (ORDER BY ms) AS p50, percentile_disc(0.95) WITHIN GROUP (ORDER BY ms) AS p95,
              count(*) FILTER (WHERE (at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date) AS today
-      FROM api_calls WHERE NOT owner AND at > now() - interval '30 days' GROUP BY channel`),
+      FROM api_calls WHERE NOT owner AND at > ${SINCE} GROUP BY channel`),
     q<{ endpoint: string; channel: string; calls: string; errors: string; p50: string }>(`
       SELECT endpoint, channel, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS errors, percentile_disc(0.5) WITHIN GROUP (ORDER BY ms) AS p50
-      FROM api_calls WHERE NOT owner AND at > now() - interval '30 days' GROUP BY endpoint, channel ORDER BY calls DESC LIMIT 15`),
+      FROM api_calls WHERE NOT owner AND at > ${SINCE} GROUP BY endpoint, channel ORDER BY calls DESC LIMIT 15`),
     q<{ client: string; channel: string; calls: string; errors: string; orders: string; last: string }>(`
       SELECT split_part(client, '/', 1) AS client, channel, count(*) AS calls, count(*) FILTER (WHERE NOT ok) AS errors,
              count(DISTINCT order_id) AS orders, to_char(max(at) AT TIME ZONE 'UTC', 'Mon DD HH24:MI') AS last
-      FROM api_calls WHERE NOT owner AND at > now() - interval '30 days' GROUP BY 1, 2 ORDER BY calls DESC LIMIT 15`),
+      FROM api_calls WHERE NOT owner AND at > ${SINCE} GROUP BY 1, 2 ORDER BY calls DESC LIMIT 15`),
     q<{ at: string; channel: string; endpoint: string; status: string; client: string; error: string }>(`
       SELECT to_char(at AT TIME ZONE 'UTC', 'Mon DD HH24:MI') AS at, channel, endpoint, status, split_part(client, '/', 1) AS client, coalesce(error, '') AS error
-      FROM api_calls WHERE NOT ok AND NOT owner ORDER BY api_calls.at DESC LIMIT 20`),
+      FROM api_calls WHERE NOT ok AND NOT owner AND at >= ${RESET} ORDER BY api_calls.at DESC LIMIT 20`),
   ]);
   const ch = (c: string) => callTotals.find((t) => t.channel === c);
   const callsAll = callTotals.reduce((a, t) => a + n(t.calls), 0), errAll = callTotals.reduce((a, t) => a + n(t.errors), 0);
@@ -209,14 +222,15 @@ export async function statsPage() {
 
   const days: Day[] = daysRaw.map((d) => ({ day: d.day, visitors: n(d.visitors), views: n(d.views) }));
   const span = (s: string) => totals.find((t) => t.span === s) ?? { visitors: 0, views: 0 };
-  const sendVisitors = n((await q<{ v: string }>(`SELECT count(DISTINCT visitor) AS v FROM page_views WHERE path = '/send' AND at > now() - interval '30 days'`))[0]?.v);
+  const sendVisitors = n((await q<{ v: string }>(`SELECT count(DISTINCT visitor) AS v FROM page_views WHERE path = '/send' AND at > ${SINCE}`))[0]?.v);
   const sum = (k: "created" | "paid" | "free" | "mailed") => orders.reduce((a, o) => a + n(o[k]), 0);
   const web = orders.find((o) => o.source === "web");
   const d = discounts[0];
   const r = reviews[0];
 
   // Website traffic: PostHog when its API is configured and answering, else our own page_views counter.
-  const ph = await webTraffic();
+  const resetAt = await statsResetAt();
+  const ph = await webTraffic(resetAt);
   const own = { today: [n(span("today").visitors), n(span("today").views)], d7: [n(span("7d").visitors), n(span("7d").views)], d30: [n(span("30d").visitors), n(span("30d").views)] };
   const W = ph
     ? { days: ph.days, ...ph.totals, pages: ph.pages, refs: ph.refs, send: ph.sendVisitors }
@@ -255,8 +269,13 @@ export async function statsPage() {
     .meter i { display: block; height: 100%; width: var(--w); background: var(--green); border-radius: 6px; }
   </style>
   <section class="stats">
-    <div><span class="eyebrow">Admin · last 30 days (UTC)</span><h1 style="font-size:clamp(1.9rem,3.6vw,2.6rem)">Stats</h1>
-      <p class="soft">${source} Agent orders never visit the website, so they're under Agents and Orders. <a href="/admin">Orders</a> · <a href="/admin/reviews">Reviews</a></p></div>
+    <div><span class="eyebrow">Admin · ${resetAt && resetAt.getTime() > Date.now() - 30 * 86_400_000 ? `since reset ${esc(resetAt.toISOString().slice(0, 16).replace("T", " "))} UTC` : "last 30 days (UTC)"}</span><h1 style="font-size:clamp(1.9rem,3.6vw,2.6rem)">Stats</h1>
+      <p class="soft">${source} Agent orders never visit the website, so they're under Agents and Orders. <a href="/admin">Orders</a> · <a href="/admin/reviews">Reviews</a></p>
+      <form method="post" action="/admin/stats/reset" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn alt" name="action" value="reset">Reset stats to now</button>
+        ${resetAt ? `<button class="btn alt" name="action" value="clear">Undo reset (show full 30 days)</button>` : ""}
+      </form>
+      <p class="soft" style="font-size:.82rem;margin:6px 0 0">Reset only changes where counting starts. No data is deleted; reviews and the orders list are unaffected.</p></div>
     <div class="tiles">
       ${tile("Visitors today", fmt(W.today[0]), `${fmt(W.today[1])} page views`)}
       ${tile("Visitors, 7 days", fmt(W.d7[0]), `${fmt(W.d7[1])} page views`)}

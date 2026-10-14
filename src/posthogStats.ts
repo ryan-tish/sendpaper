@@ -18,7 +18,7 @@ export type WebTraffic = {
 };
 
 const projectId = env.posthogProjectId;
-let cache: { at: number; data: WebTraffic | null } = { at: 0, data: null };
+let cache: { at: number; since: number; data: WebTraffic | null } = { at: 0, since: 0, data: null };
 
 async function hogql(query: string): Promise<unknown[][]> {
   const headers = { Authorization: `Bearer ${env.posthogPersonalKey}`, "Content-Type": "application/json" };
@@ -33,13 +33,16 @@ async function hogql(query: string): Promise<unknown[][]> {
 const PV = "event = '$pageview' AND properties.$host = 'sendmypaper.com'";
 const UTC_DAY = "toDate(toTimeZone(timestamp, 'UTC'))";
 const TODAY = "toDate(toTimeZone(now(), 'UTC'))";
-const LAST30 = `${PV} AND timestamp > now() - INTERVAL 31 DAY AND ${UTC_DAY} >= ${TODAY} - 29`;
+const WINDOW30 = `${PV} AND timestamp > now() - INTERVAL 31 DAY AND ${UTC_DAY} >= ${TODAY} - 29`;
 const num = (v: unknown) => Number(v ?? 0);
 const rows = (r: unknown[][]) => r.map(([label, value]) => ({ label: String(label ?? "(none)"), value: num(value) }));
 
-export async function webTraffic(): Promise<WebTraffic | null> {
+// `since` is the "Reset stats" time from /admin/stats: events before it aren't counted.
+export async function webTraffic(since: Date | null = null): Promise<WebTraffic | null> {
   if (!env.posthogPersonalKey) return null;
-  if (Date.now() - cache.at < 5 * 60_000) return cache.data;
+  const sinceMs = since?.getTime() ?? 0;
+  if (Date.now() - cache.at < 5 * 60_000 && cache.since === sinceMs) return cache.data;
+  const LAST30 = since ? `${WINDOW30} AND timestamp >= fromUnixTimestamp(${Math.floor(sinceMs / 1000)})` : WINDOW30;
   try {
     const [daily, totals, pages, refs, devices, countries, send] = await Promise.all([
       hogql(`SELECT toString(${UTC_DAY}) AS day, count(DISTINCT distinct_id), count() FROM events WHERE ${LAST30} GROUP BY day ORDER BY day`),
@@ -65,6 +68,7 @@ export async function webTraffic(): Promise<WebTraffic | null> {
     const t = totals[0] ?? [];
     cache = {
       at: Date.now(),
+      since: sinceMs,
       data: {
         days,
         totals: { today: [num(t[0]), num(t[1])], d7: [num(t[2]), num(t[3])], d30: [num(t[4]), num(t[5])] },
@@ -77,7 +81,7 @@ export async function webTraffic(): Promise<WebTraffic | null> {
     };
   } catch (e) {
     console.error("posthog stats", e);
-    cache = { at: Date.now(), data: null };
+    cache = { at: Date.now(), since: sinceMs, data: null };
   }
   return cache.data;
 }
