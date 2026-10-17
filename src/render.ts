@@ -155,6 +155,8 @@ export function printSheet(o: OrderRow, opts: { operator?: boolean } = {}) {
 // Paragraph copy may use **bold**, [text](/path) links to our pages and [text](https://…) links to sources next to contested claims (Ryan: bold a few key phrases, link our own guides 2–3 times).
 // Escaped first, so nothing else becomes HTML. plain() strips the markup for JSON-LD and meta text.
 export const rich = (t: string) =>
-  esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\[(.+?)\]\((\/[a-z0-9\/#?=&_-]*)\)/g, '<a href="$2">$1</a>')
-    .replace(/\[(.+?)\]\((https:\/\/[^\s)"<>]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
-export const plain = (t: string) => t.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\[(.+?)\]\(.+?\)/g, "$1");
+  esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\[([^\]]+?)\]\((\/[a-z0-9\/#?=&_-]*)\)/g, '<a href="$2">$1</a>')
+    .replace(/\[([^\]]+?)\]\((https:\/\/[^\s)"<>]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
+// Link text can't contain "]": otherwise an external link followed by an internal one in the same paragraph was
+// swallowed by the internal-link pass (2026-10-17).
+export const plain = (t: string) => t.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\[([^\]]+?)\]\(.+?\)/g, "$1");

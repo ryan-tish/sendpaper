@@ -27,6 +27,7 @@ type Article = {
   cta: { title: string; body: string; primary: [string, string]; secondary?: [string, string] };
   faqs: [string, string][];
   sources: [string, string][];
+  sourceNote?: string; // replaces the default USPS line under the sources
   card: { cat: CardCat; date: string; art: CardArt; label: string; blurb: string };
 };
 
@@ -206,6 +207,107 @@ export const ARTICLES: Article[] = [
       ["USPS: insurance and extra services (Return Receipt, Restricted Delivery)", "https://www.usps.com/ship/insurance-extra-services.htm"],
     ],
   },
+  {
+    slug: "small-claims-evidence-packet",
+    kicker: "Small claims",
+    title: "What is an evidence packet for small claims court?",
+    metaTitle: "Small Claims Evidence Packet: What to Include and Bring",
+    description: "An evidence packet is the organized set of documents you bring to a small claims hearing. See what to include, how to copy it and how to record your demand.",
+    lede: "Your case on paper, in order, with a copy for the judge and the other side.",
+    checked: "October 17, 2026",
+    published: "2026-10-17",
+    modified: "2026-10-17",
+    card: { cat: "proof", date: "2026-10-17", art: "letter", label: "Small Claims", blurb: "What to put in your evidence packet, and how to keep a record of your demand letter." },
+    answer: [
+      "An evidence packet is **the organized set of documents you bring to a small claims hearing** to back up what you tell the judge: the agreement, receipts, photos, messages, estimates and any letters you sent. It isn't an official form; it's how you make sure you can hand over the right page when the judge asks.",
+      "California's courts, for example, tell you to bring **the original for yourself, a copy for the judge and a copy for the other side.** Rules vary by state and by court, so check your court's small claims self-help page before your hearing.",
+    ],
+    sections: [
+      {
+        id: "include",
+        h: "What to put in it",
+        ps: ["Include anything that shows what was agreed, what went wrong and what it cost you. One California court's self-help center lists [evidence like this](https://www.santacruz.courts.ca.gov/system/files/general/preparing-small-claims-trial.pdf):"],
+        after: [
+          "**The agreement:** a contract, lease, invoice, quote or the messages where you agreed on the deal.",
+          "**Proof of what you paid or lost:** receipts, bank or card statements, canceled checks.",
+          "**Estimates:** written repair or replacement estimates if you're claiming those costs.",
+          "**Photos:** of the damage or the problem, printed, with when you took them.",
+          "**Messages:** printed emails and texts, showing the dates.",
+          "**Your demand letter** and your mailing records (more on that below).",
+          "**Witness statements:** a witness who can't come may be able to give a signed written statement. In California it must be signed under penalty of perjury; check your court's rules.",
+        ],
+      },
+      {
+        id: "organize",
+        h: "How to put it together",
+        ps: [
+          "California's court self-help guide puts it plainly: [organize the papers](https://selfhelp.courts.ca.gov/small-claims/trial?rdeLocaleAttr=en) so you can find something quickly, because you won't have time to dig through a stack at your hearing.",
+        ],
+        after: [
+          "**Start with a one-page timeline:** dates, what happened and the amount you're asking for.",
+          "**Number every document** (Exhibit 1, 2, 3…) in the order your timeline mentions them.",
+          "**Make two copies of everything, including photos,** one for the judge and one for the other side, and bring your originals. Check your court's instructions in case it asks for more.",
+          "**Keep originals clean.** Write notes on your own copy, not on the evidence.",
+          "**Remote hearing?** In California you need to get your evidence to the court and send it to the other side before the court date; ask your court's clerk how.",
+        ],
+      },
+      {
+        id: "demand",
+        h: "Your demand letter",
+        ps: [
+          "In California, asking the other side to pay is [a step you must take before filing](https://selfhelp.courts.ca.gov/small-claims/ask-for-money), unless there's a restraining order between you or you think asking would be dangerous. You can ask in person, by letter or by email. Other states set their own rules, so check your court's self-help page.",
+          "**A letter or email leaves a dated record you can bring to court.** California's guide says to tell them how much they owe and why; many people also give a date to pay by and say they plan to file in small claims court. Keep it factual and calm; the judge may read it.",
+        ],
+      },
+      {
+        id: "proof",
+        h: "Keeping a record of the letter",
+        ps: [
+          "If you mail the demand, the packet should show what you sent and what USPS recorded about its delivery. [Certified Mail](/what-is-certified-mail) gives the letter a USPS tracking number that records [when it was delivered or delivery was attempted](https://pe.usps.com/text/dmm300/503.htm). A [return receipt](/certified-mail-vs-return-receipt) adds who signed for it. When you send with Sendpaper, our print partner hands the letter to USPS, so you don't get a USPS mailing receipt; the tracking number is your USPS record.",
+          "Certified Mail doesn't prove what was inside the envelope, so keep an exact copy of the letter with the mailing record. Here's what each record shows and where it comes from when you send with Sendpaper:",
+        ],
+        table: {
+          head: ["Record for your packet", "What it shows", `Where you get it with ${BRAND}`],
+          rows: [
+            ["Copy of the letter", "What you wrote, as you approved it", "The print preview on your order page; save or print it when you order"],
+            ["USPS tracking number", "When it was delivered, or when delivery was attempted", `Your order page, once it's assigned (Certified, ${CERT})`],
+            ["Return receipt", "Who signed, and where it was delivered", `Certified with return receipt, ${RR}; email support@sendmypaper.com if you need help getting it`],
+          ],
+        },
+        after: [
+          "Print the tracking history once it shows a final status (delivered, or attempted and unclaimed), and put the letter copy, tracking and any return receipt together as one exhibit.",
+        ],
+      },
+      {
+        id: "limits",
+        h: "A demand letter isn't serving your case",
+        ps: [
+          "Mailing a demand letter is different from **serving the court papers** after you file. Service follows your court's rules. In California, [you can't serve the forms yourself](https://selfhelp.courts.ca.gov/small-claims/start-case/serve): someone 18 or older who isn't part of the case does it, and only the court can serve by certified mail, in courts that offer it. Don't use a letter you mail yourself, through us or anyone else, as service.",
+          "We print and mail what you write; we don't give legal advice. If you're unsure what your court requires, ask its small claims advisor or self-help center.",
+        ],
+      },
+    ],
+    cta: {
+      title: "Send your demand letter by certified mail",
+      body: `Type it or upload a PDF. ${CERT} with tracking, or ${RR} with a return receipt. Printing, envelope and postage included.`,
+      primary: ["Send a certified letter", "/send?product=letter_certified"],
+      secondary: ["Ask your AI agent to send it", docsUrl("/quickstart")],
+    },
+    faqs: [
+      ["Does a demand letter have to go by certified mail?", "Not always. California, for example, lets you ask in person, by letter or by email. Certified Mail is useful because its tracking gives your packet a USPS record of delivery or attempted delivery. Check your court's rules."],
+      ["How many copies should I bring?", "California's self-help guide says the original for yourself, a copy for the judge and a copy for the other side. Some county courts, like Santa Cruz, say three copies of everything, including photos. Check your court's instructions."],
+      [`Can I use ${BRAND} to serve my small claims papers?`, "No. Serving court papers follows your court's rules; in California you can't serve them yourself, and certified-mail service is done by the court clerk, in courts that offer it. Use your court's service options."],
+      [`Does ${BRAND} put the evidence packet together for me?`, "No. We print and mail your letter, and your order page shows the print preview and, for certified letters, the USPS tracking number. You add those to the packet you put together."],
+    ],
+    sources: [
+      ["California Courts self-help: ask for the money before you file", "https://selfhelp.courts.ca.gov/small-claims/ask-for-money"],
+      ["California Courts self-help: get ready for your court date", "https://selfhelp.courts.ca.gov/small-claims/trial?rdeLocaleAttr=en"],
+      ["California Courts self-help: serve your small claims forms", "https://selfhelp.courts.ca.gov/small-claims/start-case/serve"],
+      ["Santa Cruz Superior Court Self Help Center: preparing for a small claims trial (PDF)", "https://www.santacruz.courts.ca.gov/system/files/general/preparing-small-claims-trial.pdf"],
+      ["USPS Domestic Mail Manual 503: Certified Mail and Return Receipt", "https://pe.usps.com/text/dmm300/503.htm"],
+    ],
+    sourceNote: "Court rules differ by state and county, and USPS rules change; check your court and USPS before relying on a detail.",
+  },
 ];
 
 export const ARTICLE_PATHS = ARTICLES.map((a) => `/${a.slug}`);
@@ -263,7 +365,7 @@ export function articlePage(slug: string) {
           ${a.faqs.map(([q, ans]) => `<h3>${esc(q)}</h3><p>${rich(ans)}</p>`).join("")}
           <details class="srcbox" id="sources"><summary><h2>Sources</h2><span class="note">${a.sources.length} links</span></summary>
           <ul class="srcs">${a.sources.map(([t, u]) => `<li><a href="${esc(u)}" rel="noopener">${esc(t)}</a></li>`).join("")}</ul>
-          <p class="note">Accessed ${esc(a.checked)}. USPS rules and fees change; check USPS before relying on a detail.</p></details>
+          <p class="note">Accessed ${esc(a.checked)}. ${esc(a.sourceNote ?? "USPS rules and fees change; check USPS before relying on a detail.")}</p></details>
         </div>
       </article>
       <nav class="toc" aria-label="On this page"><span>On this page</span>${toc.map(([id, t]) => `<a href="#${id}">${esc(t)}</a>`).join("")}</nav>
