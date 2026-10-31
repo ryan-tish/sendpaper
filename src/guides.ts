@@ -444,7 +444,7 @@ export function guidesIndexPage(comparisons: IndexCard[] = []) {
   return page(
     `Guides — ${BRAND}`,
     `<style>${CARDS_CSS}</style>
-    <section class="gidx"><div style="display:grid;gap:12px"><h1>Guides</h1>
+    <section class="gidx"><div style="display:grid;gap:12px"><span class="eyebrow">Guides</span><h1>How to mail what matters</h1>
       <p class="dek">Plain-English guides to mailing documents and letters that need proof, sending real mail from your AI agent, and choosing a mail service.</p></div>
       <nav class="gtabs" aria-label="Guide topics">${cats.map(([id, t], i) => `<a href="#${id}" data-tab="${id}" aria-current="${i === 0}">${t}</a>`).join("")}</nav>
       <div class="ggrid" id="ggrid">${cards.map(indexCard).join("")}</div>
