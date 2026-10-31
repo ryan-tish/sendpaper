@@ -93,7 +93,15 @@ async function send(to: string, subject: string, html: string) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.resendKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: env.customerEmailFrom, to: [to], reply_to: SUPPORT_EMAIL, subject, html, text: toText(html) }),
+    body: JSON.stringify({
+      from: env.customerEmailFrom,
+      to: [to],
+      ...(env.customerEmailBcc && env.customerEmailBcc !== to ? { bcc: [env.customerEmailBcc] } : {}),
+      reply_to: SUPPORT_EMAIL,
+      subject,
+      html,
+      text: toText(html),
+    }),
   });
   const body = (await res.json().catch(() => ({}))) as { id?: string; message?: string };
   if (!res.ok) throw new Error(`Resend ${res.status}: ${body.message ?? "unknown error"}`);

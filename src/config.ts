@@ -22,6 +22,8 @@ export const env = {
   // Status emails to customers (paid, mailed, refunded) go out through Resend from this address once
   // RESEND_API_KEY is set; the domain must be verified in Resend first. Replies go to SUPPORT_EMAIL.
   customerEmailFrom: process.env.CUSTOMER_EMAIL_FROM ?? "Sendpaper <orders@sendmypaper.com>",
+  // Optional blind copy of every customer email, so the operator can see they're going out (Ryan, 2026-10-31).
+  customerEmailBcc: process.env.CUSTOMER_EMAIL_BCC ?? "",
   // Our Stripe business profile network id (profile_…). Agents scope shared payment tokens to it.
   stripeNetworkId: process.env.STRIPE_NETWORK_ID ?? "",
   // PostGrid print & mail. test_sk_… renders proofs but never mails; live_sk_… PRINTS AND MAILS FOR REAL.
