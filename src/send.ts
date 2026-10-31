@@ -1,4 +1,4 @@
-import { BRAND, OFFER_ACTIVE, OFFER_LINE, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, POSTCARD_SIZES, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
+import { BRAND, COUNTRIES, OFFER_ACTIVE, OFFER_LINE, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, POSTCARD_SIZES, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
 import { MAX_RECIPIENTS } from "./orders.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc, THEMES } from "./render.ts";
@@ -80,7 +80,8 @@ dialog.cropper::backdrop { background: rgba(10, 16, 14, .55); }
 .field .count { font: .75rem var(--f-mono); color: var(--faint); font-weight: 400; }
 .addr { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
 .addr .w6 { grid-column: span 6; } .addr .w4 { grid-column: span 4; } .addr .w3 { grid-column: span 3; } .addr .w2 { grid-column: span 2; } .addr .w1 { grid-column: span 1; }
-.addr input { padding: 10px 12px; }
+.addr input, .addr select { padding: 10px 12px; }
+.addr.abroad .ct, .addr.abroad .st, .addr.abroad .zp { grid-column: span 2; }
 .consent { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: .88rem; color: var(--soft); }
 .consent input { width: auto; margin-top: 4px; accent-color: var(--green); }
 .aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); display: grid; gap: 16px; min-width: 0; }
@@ -107,17 +108,23 @@ dialog.cropper::backdrop { background: rgba(10, 16, 14, .55); }
 .summary .note { font-size: .8rem; color: var(--faint); text-align: center; }
 @media (max-width: 920px) { .send { grid-template-columns: minmax(0, 1fr); gap: 28px; } .aside { position: static; } }
 @media (max-width: 380px) { .choices { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 520px) { .choice { padding: 12px 10px; } .addr .w4, .addr .w3, .addr .w2 { grid-column: span 6; } .addr .w1 { grid-column: span 3; } }
+@media (max-width: 520px) { .choice { padding: 12px 10px; } .addr .w4, .addr .w3, .addr .w2 { grid-column: span 6; } .addr .w1, .addr.abroad .st, .addr.abroad .zp { grid-column: span 3; } .addr.abroad .ct { grid-column: span 6; } }
 `;
 
 const addressFields = (p: string, label: string) => `<fieldset class="addr" style="border:0;padding:0;background:none" aria-label="${label}">
   <label class="w6"><span class="sr">Full name</span><input id="${p}_name" placeholder="Full name" required maxlength="60" autocomplete="${p === "from" ? "name" : "off"}"></label>
   <label class="w4"><span class="sr">Street address</span><input id="${p}_line1" placeholder="Street address" required maxlength="64" ${p === "from" ? 'autocomplete="address-line1"' : ""}></label>
   <label class="w2"><span class="sr">Apt or suite</span><input id="${p}_line2" placeholder="Apt, suite" maxlength="64"></label>
-  <label class="w3"><span class="sr">City</span><input id="${p}_city" placeholder="City" required maxlength="40"></label>
-  <label class="w1"><span class="sr">State</span><input id="${p}_state" placeholder="ST" required maxlength="2" style="text-transform:uppercase"></label>
-  <label class="w2"><span class="sr">ZIP</span><input id="${p}_zip" placeholder="ZIP" required maxlength="10" inputmode="numeric"></label>
+  <label class="w3 ct"><span class="sr">City</span><input id="${p}_city" placeholder="City" required maxlength="40"></label>
+  <label class="w1 st"><span class="sr">State</span><input id="${p}_state" placeholder="ST" required maxlength="2" style="text-transform:uppercase"></label>
+  <label class="w2 zp"><span class="sr">ZIP</span><input id="${p}_zip" placeholder="ZIP" required maxlength="10" inputmode="numeric"></label>
+  ${p === "from" ? COUNTRY_SELECT : ""}
 </fieldset>`;
+
+// Only the return address may be abroad (2026-10-31); picking a country turns State/ZIP into optional Region/Postcode.
+const COUNTRY_SELECT = `<label class="w6"><span class="sr">Country</span><select id="from_country" autocomplete="country">
+  <option value="US" selected>United States</option>${COUNTRIES.map((c) => `<option value="${c.code}">${esc(c.name)}</option>`).join("")}
+</select></label>`;
 
 export type SendKind = "postcard" | "letter" | "certified";
 export const SEND_KINDS: SendKind[] = ["postcard", "letter", "certified"];
@@ -369,11 +376,26 @@ export function sendPage(initial: string, fixed: SendKind) {
     let side = "front", photoUrl = null, photoFile = null, letterPhoto = null, letterPhotoUrl = null;
 
     function addr(p) {
-      return Object.fromEntries(["name","line1","line2","city","state","zip"].map(k => [k, $(p + "_" + k).value.trim()]).filter(([, v]) => v));
+      const a = Object.fromEntries(["name","line1","line2","city","state","zip"].map(k => [k, $(p + "_" + k).value.trim()]).filter(([, v]) => v));
+      const c = p === "from" && $("from_country") ? $("from_country").value : "US";
+      if (c !== "US") a.country = c;
+      return a;
     }
     function addrText(a) {
+      if (a.country) return [a.name, a.line1, a.line2, [a.city, a.state, a.zip].filter(Boolean).join(" "), $("from_country").selectedOptions[0].text].filter(Boolean).join("\\n");
       return [a.name, a.line1, a.line2, [a.city, a.state].filter(Boolean).join(", ") + (a.zip ? " " + a.zip : "")].filter(Boolean).join("\\n");
     }
+    // A return address outside the US: State and ZIP become optional Region and Postcode.
+    function applyCountry() {
+      const abroad = $("from_country").value !== "US", st = $("from_state"), zp = $("from_zip");
+      st.closest(".addr").classList.toggle("abroad", abroad);
+      st.required = zp.required = !abroad;
+      st.maxLength = abroad ? 40 : 2; st.style.textTransform = abroad ? "none" : "uppercase"; st.placeholder = abroad ? "Region (optional)" : "ST";
+      st.previousElementSibling.textContent = abroad ? "Region" : "State";
+      zp.inputMode = abroad ? "text" : "numeric"; zp.maxLength = abroad ? 12 : 10; zp.placeholder = abroad ? "Postcode" : "ZIP";
+      zp.previousElementSibling.textContent = abroad ? "Postcode" : "ZIP";
+    }
+    $("from_country").addEventListener("change", () => { applyCountry(); render(); });
     function render() {
       const product = effectiveProduct(), letter = val("product") === "letter", front = val("front"), photo = front === "photo" || front === "caption";
       $("pc").hidden = letter || shown < 2; $("lt").hidden = !letter || shown < 2;
@@ -727,6 +749,8 @@ export function sendPage(initial: string, fixed: SendKind) {
       if (q.get("font")) pick("font", q.get("font"));
       set("message", q.get("message")); set("body", q.get("body")); set("email", q.get("email"));
       for (const p of ["to", "from"]) for (const k of ["name", "line1", "line2", "city", "state", "zip"]) set(p + "_" + k, q.get(p + "_" + k));
+      const fc = (q.get("from_country") || "").toUpperCase();
+      if (fc && [...$("from_country").options].some((o) => o.value === fc)) { $("from_country").value = fc; applyCountry(); }
       applyKind(); reveal(4, false);
     })();
     render();

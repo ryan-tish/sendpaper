@@ -1,8 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import express, { Router, type NextFunction, type Request, type Response } from "express";
-import { EXTRA_SERVICE, PRODUCTS, env } from "./config.ts";
+import { COUNTRIES, EXTRA_SERVICE, PRODUCTS, env } from "./config.ts";
 import { page } from "./layout.ts";
-import { getOrder, listOrders, setStatus, setTest, STATUSES, type Status } from "./orders.ts";
+import { AddressSchema, getOrder, listOrders, SenderAddressSchema, setAddresses, setStatus, setTest, STATUSES, type OrderRow, type SenderAddress, type Status } from "./orders.ts";
 import { stripe } from "./payments.ts";
 import { postgridMode, printProofUrl, sendToPrint, syncPrint } from "./fulfill.ts";
 import { addressBlock, esc, printSheet } from "./render.ts";
@@ -56,6 +56,43 @@ admin.get("/", async (req, res) => {
   );
 });
 
+// Fix an address before printing, e.g. one PostGrid's live check refused. Validated by the same schemas as new orders.
+const editable = (o: OrderRow) => !o.print_id && (o.status === "paid" || o.status === "awaiting_payment");
+const FIELDS = ["name", "company", "line1", "line2", "city", "state", "zip"] as const;
+function addressForm(o: OrderRow) {
+  const inputs = (p: "to" | "from", a: SenderAddress) =>
+    FIELDS.map((k) => `<label>${k}<input name="${p}_${k}" value="${esc((a as Record<string, string | undefined>)[k] ?? "")}"></label>`).join("") +
+    (p === "from"
+      ? `<label>country<select name="from_country">${[{ code: "US", name: "United States" }, ...COUNTRIES]
+          .map((c) => `<option value="${c.code}"${c.code === ("country" in a && a.country ? a.country : "US") ? " selected" : ""}>${esc(c.name)}</option>`)
+          .join("")}</select></label>`
+      : "");
+  return `<details class="card"><summary><b>Edit addresses</b> <span class="soft">(before printing only; the old ones are kept in History)</span></summary>
+    <form method="post" action="/admin/orders/${o.id}/address" style="display:grid;gap:12px;margin-top:10px">
+      <div class="grid"><fieldset style="display:grid;gap:6px"><legend>To (US only)</legend>${inputs("to", o.to_address)}</fieldset>
+      <fieldset style="display:grid;gap:6px"><legend>From (any country; outside the US, state = region and zip = postcode, both optional)</legend>${inputs("from", o.from_address)}</fieldset></div>
+      <button class="btn">Save addresses</button></form></details>`;
+}
+
+admin.post("/orders/:id/address", async (req, res) => {
+  const o = await getOrder(String(req.params.id));
+  if (!o) return res.status(404).send("No such order");
+  const read = (p: string, keys: readonly string[]) =>
+    Object.fromEntries(keys.flatMap((k) => (typeof req.body[`${p}_${k}`] === "string" && req.body[`${p}_${k}`].trim() ? [[k, req.body[`${p}_${k}`].trim()]] : [])));
+  const to = AddressSchema.safeParse(read("to", FIELDS));
+  const from = SenderAddressSchema.safeParse(read("from", [...FIELDS, "country"]));
+  const problems = [
+    ...(to.success ? [] : to.error.issues.map((i) => `To ${i.path.join(".")}: ${i.message}`)),
+    ...(from.success ? [] : from.error.issues.map((i) => `From ${i.path.join(".")}: ${i.message}`)),
+    ...(editable(o) ? [] : [`This order is ${o.status}${o.print_id ? " and already with PostGrid" : ""}; addresses can only change before printing.`]),
+  ];
+  const saved = !problems.length && to.success && from.success ? await setAddresses(o.id, to.data, from.data) : null;
+  if (!saved) {
+    return res.status(422).send(page("Not saved", `<section><h1>Addresses not saved</h1>${(problems.length ? problems : ["The order changed meanwhile; reload it."]).map((p) => `<p class="err">${esc(p)}</p>`).join("")}<p><a href="/admin/orders/${o.id}">Back to order</a></p></section>`, { noindex: true }));
+  }
+  res.redirect(303, `/admin/orders/${o.id}`);
+});
+
 admin.get("/orders/:id", async (req, res) => {
   let o = await getOrder(String(req.params.id));
   if (!o) return res.status(404).send("No such order");
@@ -83,6 +120,7 @@ admin.get("/orders/:id", async (req, res) => {
       <p><b>${esc(PRODUCTS[o.product].name)}</b> · ${esc(o.status)} · ${o.free_offer ? `<span class="pill ok">FREE · first postcard</span> (reject with "Cancel without refund")` : `$${(o.price_cents / 100).toFixed(2)}${o.discount_cents ? ` (after $${(o.discount_cents / 100).toFixed(2)} first-order discount)` : ""}`} · ${esc(o.customer_email ?? "no email")} · via ${esc(o.source)} ${esc(o.client ?? "")}</p>
       ${EXTRA_SERVICE[o.product] ? `<p><span class="pill ok">USPS ${EXTRA_SERVICE[o.product] === "certified_return_receipt" ? "Certified + return receipt" : "Certified"}</span> ${o.tracking_number ? `Tracking <a href="https://tools.usps.com/go/TrackConfirmAction?tLabels=${esc(o.tracking_number)}" target="_blank" rel="noopener">${esc(o.tracking_number)}</a>` : "Tracking number appears after PostGrid hands it to USPS."}</p>` : ""}
       <div class="grid"><div class="card"><b>To</b>${addressBlock(o.to_address)}</div><div class="card"><b>From</b>${addressBlock(o.from_address)}</div></div>
+      ${editable(o) ? addressForm(o) : ""}
       <p><a class="btn alt" href="/admin/orders/${o.id}/print" target="_blank">Open print sheet</a></p>
       ${printPanel}
       <div style="display:grid;gap:12px">

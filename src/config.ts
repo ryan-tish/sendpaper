@@ -100,3 +100,23 @@ export const US_STATES = [
   "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "PR", "VI", "GU", "AS", "MP",
   "AA", "AE", "AP",
 ];
+
+// Return addresses may be outside the US; recipients stay US-only (Ryan, 2026-10-31). A London sender had to fake
+// "London, CA 93654" to get past the form and PostGrid's live address check refused it; real UK senders verified
+// live, and test mode accepted them on letters, certified letters and postcards. Names come from ICU; the excluded
+// codes are retired, non-country or pseudo regions, plus US territories (those are US addresses with a state code).
+const NOT_COUNTRIES = new Set(
+  "AC AN BU CP CQ CS DD DG EA EU EZ FX IC QO SU TA TP UN XA XB YD YU ZR ZZ US PR VI GU AS MP UM".split(" "),
+);
+const REGION_NAMES = new Intl.DisplayNames(["en"], { type: "region" });
+export const COUNTRIES: { code: string; name: string }[] = Array.from({ length: 26 * 26 }, (_, i) =>
+  String.fromCharCode(65 + Math.floor(i / 26), 65 + (i % 26)),
+)
+  .flatMap((code) => {
+    const name = NOT_COUNTRIES.has(code) ? undefined : REGION_NAMES.of(code);
+    return name && name !== code && name !== "Unknown Region" ? [{ code, name }] : [];
+  })
+  .sort((a, b) => a.name.localeCompare(b.name));
+const COUNTRY_CODES = new Set(COUNTRIES.map((c) => c.code));
+export const isSenderCountry = (code: string) => code === "US" || COUNTRY_CODES.has(code);
+export const countryName = (code: string | undefined) => (!code || code === "US" ? "United States" : (REGION_NAMES.of(code) ?? code));

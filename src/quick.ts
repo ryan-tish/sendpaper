@@ -29,7 +29,7 @@ export const QUICK_PARAMS = {
   font: "letters: serif or sans",
   certified: "letters: certified ($14.99, USPS tracking and proof of delivery) or certified_return_receipt ($19.99, adds the recipient's signature)",
   "to_name, to_line1, to_line2, to_city, to_state, to_zip": "recipient (US)",
-  "from_name, from_line1, from_line2, from_city, from_state, from_zip": "return address (required)",
+  "from_name, from_line1, from_line2, from_city, from_state, from_zip, from_country": "return address (required; from_country is a two-letter code like GB for a sender outside the US, where state and zip become region and postcode)",
   express: "1 for express delivery (USPS Priority Mail, 2–3 days, tracked; not with certified)",
   email: "optional, for the receipt",
 };
@@ -47,7 +47,7 @@ function flatten(query: Record<string, unknown>): Q {
 
 const addr = (q: Q, p: "to" | "from") =>
   Object.fromEntries(
-    ["name", "company", "line1", "line2", "city", "state", "zip"].flatMap((k) => (q[`${p}_${k}`] ? [[k, q[`${p}_${k}`]]] : [])),
+    ["name", "company", "line1", "line2", "city", "state", "zip", ...(p === "from" ? ["country"] : [])].flatMap((k) => (q[`${p}_${k}`] ? [[k, q[`${p}_${k}`]]] : [])),
   );
 
 // Map validation paths back to the URL parameter names, so an agent can fix its own link.

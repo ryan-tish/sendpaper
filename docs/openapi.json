@@ -68,7 +68,7 @@
     "/postcards": {
       "post": {
         "summary": "Create a postcard",
-        "description": "Creates a 4\u00d76, 6\u00d79 or 6\u00d711 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.\n\nTo send the same postcard to several people, pass `recipients` (2\u201325 addresses) instead of `to`. You get back a Batch: one order per recipient and a single `batch.checkout_url`. `POST /orders/{id}/pay` with any order in the batch pays for every unpaid order in it (scope the token to `batch.price`).",
+        "description": "Creates a 4×6, 6×9 or 6×11 postcard order in `awaiting_payment` and returns a `checkout_url`. Send the person to it; the postcard is reviewed, printed and mailed after payment.\n\nTo send the same postcard to several people, pass `recipients` (2–25 addresses) instead of `to`. You get back a Batch: one order per recipient and a single `batch.checkout_url`. `POST /orders/{id}/pay` with any order in the batch pays for every unpaid order in it (scope the token to `batch.price`).",
         "operationId": "createPostcard",
         "parameters": [
           {
@@ -192,7 +192,7 @@
     "/letters": {
       "post": {
         "summary": "Create a letter",
-        "description": "Creates a printed letter (up to ~3 pages, 8.5\u00d711, #10 envelope) in `awaiting_payment` and returns a `checkout_url`. Set `certified` to send it by USPS Certified Mail.\n\nTo send the same letter to several people, pass `recipients` (2\u201325 addresses) instead of `to`. You get back a Batch: one order per recipient and a single `batch.checkout_url`. `POST /orders/{id}/pay` with any order in the batch pays for every unpaid order in it (scope the token to `batch.price`).",
+        "description": "Creates a printed letter (up to ~3 pages, 8.5×11, #10 envelope) in `awaiting_payment` and returns a `checkout_url`. Set `certified` to send it by USPS Certified Mail.\n\nTo send the same letter to several people, pass `recipients` (2–25 addresses) instead of `to`. You get back a Batch: one order per recipient and a single `batch.checkout_url`. `POST /orders/{id}/pay` with any order in the batch pays for every unpaid order in it (scope the token to `batch.price`).",
         "operationId": "createLetter",
         "parameters": [
           {
@@ -385,7 +385,7 @@
     "/orders/{id}/pay": {
       "post": {
         "summary": "Pay with an agent token",
-        "description": "Pay an unpaid order with a Stripe shared payment token (`spt_\u2026`) the user approved, scoped to at least the order amount in USD. Safe to retry with the same token.\n\nFor an order that belongs to a batch, this charges one token for every unpaid order in the batch; scope the token to the batch total.",
+        "description": "Pay an unpaid order with a Stripe shared payment token (`spt_…`) the user approved, scoped to at least the order amount in USD. Safe to retry with the same token.\n\nFor an order that belongs to a batch, this charges one token for every unpaid order in the batch; scope the token to the batch total.",
         "operationId": "payOrder",
         "parameters": [
           {
@@ -532,7 +532,8 @@
             "pattern": "^\\d{5}(-\\d{4})?$",
             "example": "94105"
           }
-        }
+        },
+        "description": "A US address (recipients are always in the US, including territories and APO/FPO/DPO)."
       },
       "CreatePostcard": {
         "type": "object",
@@ -555,7 +556,7 @@
             "description": "Recipient address Use `recipients` instead to send to several people."
           },
           "from": {
-            "$ref": "#/components/schemas/Address",
+            "$ref": "#/components/schemas/SenderAddress",
             "description": "Return address, printed on the card. Required."
           },
           "content": {
@@ -659,7 +660,7 @@
             "items": {
               "$ref": "#/components/schemas/Address"
             },
-            "description": "Send the same postcard or letter to several people: 2\u201325 addresses, used instead of `to`. Each recipient becomes its own order (own review, tracking and refund), grouped into a batch that is paid with one checkout link. The response is a Batch, not an Order."
+            "description": "Send the same postcard or letter to several people: 2–25 addresses, used instead of `to`. Each recipient becomes its own order (own review, tracking and refund), grouped into a batch that is paid with one checkout link. The response is a Batch, not an Order."
           }
         },
         "oneOf": [
@@ -687,7 +688,7 @@
             "description": "Recipient address Use `recipients` instead to send to several people."
           },
           "from": {
-            "$ref": "#/components/schemas/Address"
+            "$ref": "#/components/schemas/SenderAddress"
           },
           "content": {
             "type": "object",
@@ -752,7 +753,7 @@
             "items": {
               "$ref": "#/components/schemas/Address"
             },
-            "description": "Send the same postcard or letter to several people: 2\u201325 addresses, used instead of `to`. Each recipient becomes its own order (own review, tracking and refund), grouped into a batch that is paid with one checkout link. The response is a Batch, not an Order."
+            "description": "Send the same postcard or letter to several people: 2–25 addresses, used instead of `to`. Each recipient becomes its own order (own review, tracking and refund), grouped into a batch that is paid with one checkout link. The response is a Batch, not an Order."
           }
         },
         "oneOf": [
@@ -857,7 +858,7 @@
             "$ref": "#/components/schemas/Address"
           },
           "from": {
-            "$ref": "#/components/schemas/Address"
+            "$ref": "#/components/schemas/SenderAddress"
           },
           "content": {
             "type": "object"
@@ -995,7 +996,7 @@
             "properties": {
               "id": {
                 "type": "string",
-                "description": "Batch id, batch_\u2026"
+                "description": "Batch id, batch_…"
               },
               "count": {
                 "type": "integer",
@@ -1055,6 +1056,59 @@
               "$ref": "#/components/schemas/Order"
             },
             "description": "One order per recipient, in the order given"
+          }
+        }
+      },
+      "SenderAddress": {
+        "type": "object",
+        "required": [
+          "name",
+          "line1",
+          "city"
+        ],
+        "description": "Return address. It may be outside the US: set `country`. For a US address (no `country`, or `US`), `state` and `zip` are required and follow the US rules; elsewhere `state` is the region and `zip` the postcode, both optional.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "company": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "line1": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Street address"
+          },
+          "line2": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Apartment, suite, unit"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 40,
+            "description": "City or town"
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 40,
+            "description": "US: two-letter state or territory code (required). Elsewhere: region, county or province, if any",
+            "example": "CA"
+          },
+          "zip": {
+            "type": "string",
+            "maxLength": 12,
+            "description": "US: 5-digit ZIP or ZIP+4 (required). Elsewhere: postcode",
+            "example": "94105"
+          },
+          "country": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{2}$",
+            "default": "US",
+            "description": "Two-letter ISO 3166-1 country code of the return address, e.g. GB. Defaults to US. US territories use US with their state code.",
+            "example": "GB"
           }
         }
       }

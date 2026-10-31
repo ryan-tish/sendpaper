@@ -1,7 +1,7 @@
 // Print layouts. The same HTML is the customer preview and the operator's print sheet,
 // so what the customer approved is exactly what gets printed.
-import { BRAND, isLetter, postcardSpec } from "./config.ts";
-import type { Address, OrderRow } from "./orders.ts";
+import { BRAND, countryName, isLetter, postcardSpec } from "./config.ts";
+import type { OrderRow, SenderAddress } from "./orders.ts";
 
 export const esc = (s: unknown) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -70,11 +70,15 @@ export function frontMarkup(c: Record<string, any>, w: number, h: number, src: (
   return `<div style="width:${w}in;height:${h}in;background:${bg};color:${fg};display:flex;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;padding:0.6in;font:600 ${size}px/1.1 ${HEADLINE_FONTS[c.headline_font ?? "serif"]}">${esc(c.front_headline)}</div>`;
 }
 
-export function addressBlock(a: Address) {
-  return [a.name, a.company, a.line1, a.line2, `${a.city}, ${a.state} ${a.zip}`]
-    .filter(Boolean)
-    .map(esc)
-    .join("<br>");
+// A US address ends "City, ST ZIP"; one from abroad ends "City Region POSTCODE" and then the country's name.
+export function addressLines(a: SenderAddress): string[] {
+  const abroad = "country" in a && a.country && a.country !== "US" ? a.country : null;
+  if (!abroad) return [a.name, a.company, a.line1, a.line2, `${a.city}, ${a.state} ${a.zip}`].filter(Boolean) as string[];
+  return [a.name, a.company, a.line1, a.line2, [a.city, a.state, a.zip].filter(Boolean).join(" "), countryName(abroad)].filter(Boolean) as string[];
+}
+
+export function addressBlock(a: SenderAddress) {
+  return addressLines(a).map(esc).join("<br>");
 }
 
 const paragraphs = (text: string) =>

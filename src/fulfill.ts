@@ -10,7 +10,7 @@
 //   cancellation.reason = "invalid_content".
 import { BASE_URL, BRAND, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
 import { pool } from "./db.ts";
-import { getOrder, printsInColor, setStatus, type Address, type OrderRow } from "./orders.ts";
+import { getOrder, printsInColor, setStatus, type OrderRow, type SenderAddress } from "./orders.ts";
 import { esc, frontMarkup, MESSAGE_FONTS } from "./render.ts";
 
 const API = "https://api.postgrid.com/print-mail/v1";
@@ -18,16 +18,17 @@ export const postgridMode = () => (env.postgridKey.startsWith("live_") ? "live" 
 
 const FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Inter:wght@400;600&display=swap" rel="stylesheet">`;
 
-function contact(a: Address) {
+// Recipients are always US; a return address may carry `country` (absent = US, as on every order before 2026-10-31).
+function contact(a: SenderAddress) {
   return {
     firstName: a.name,
     ...(a.company ? { companyName: a.company } : {}),
     addressLine1: a.line1,
     ...(a.line2 ? { addressLine2: a.line2 } : {}),
     city: a.city,
-    provinceOrState: a.state,
-    postalOrZip: a.zip,
-    countryCode: "US",
+    ...(a.state ? { provinceOrState: a.state } : {}),
+    ...(a.zip ? { postalOrZip: a.zip } : {}),
+    countryCode: "country" in a && a.country ? a.country : "US",
   };
 }
 

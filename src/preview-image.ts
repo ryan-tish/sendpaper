@@ -10,7 +10,7 @@ import satori from "satori";
 import { isLetter, postcardSpec } from "./config.ts";
 import { pool } from "./db.ts";
 import type { OrderRow } from "./orders.ts";
-import { postcardLayout, THEMES } from "./render.ts";
+import { addressLines, postcardLayout, THEMES } from "./render.ts";
 
 // OFF since 2026-10-10: Ryan didn't like how the pictures look ("skip this for now"). Flip to true to bring back
 // preview_image_url, /o/:id/preview.png and the MCP image block; nothing else needs to change.
@@ -77,7 +77,7 @@ async function front(c: Record<string, any>, wIn: number, hIn: number): Promise<
   return div({ width: w, height: h, background: bg, color: fg, alignItems: "center", justifyContent: "center", textAlign: "center", padding: 0.6 * PX, fontFamily: HEAD[c.headline_font ?? "serif"], fontWeight: 600, fontSize: size, lineHeight: 1.1 }, String(c.front_headline ?? ""));
 }
 
-const addrLines = (a: Record<string, any>) => [a.name, a.company, a.line1, a.line2, `${a.city}, ${a.state} ${a.zip}`].filter(Boolean).map(String);
+const addrLines = addressLines;
 const lines = (xs: string[], style: Record<string, unknown>) => div({ flexDirection: "column", ...style }, xs.map((t) => div({}, t)));
 const paras = (text: string, style: Record<string, unknown>, gap: number) =>
   div({ flexDirection: "column", ...style }, text.split(/\n{2,}/).filter(Boolean).map((p) => div({ marginBottom: gap, whiteSpace: "pre-wrap" }, p)));

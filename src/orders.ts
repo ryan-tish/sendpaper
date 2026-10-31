@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
-import { BASE_URL, COLOR_LETTER_CENTS, EXPRESS_CENTS, EXTRA_SERVICE, firstOrderDiscount, LIMITS, POSTCARD_SIZE_NAMES, PRODUCTS, US_STATES, isLetter, type ProductId } from "./config.ts";
+import { BASE_URL, COLOR_LETTER_CENTS, EXPRESS_CENTS, EXTRA_SERVICE, firstOrderDiscount, LIMITS, POSTCARD_SIZE_NAMES, PRODUCTS, US_STATES, isLetter, isSenderCountry, type ProductId } from "./config.ts";
 import { pool } from "./db.ts";
 import { postcardLayout, THEME_NAMES } from "./render.ts";
 import { PREVIEW_IMAGES } from "./preview-image.ts";
@@ -43,6 +43,46 @@ export const AddressSchema = z.object({
     .describe("5-digit US ZIP code, or ZIP+4"),
 });
 export type Address = z.infer<typeof AddressSchema>;
+
+// The return address may be outside the US (Ryan, 2026-10-31); recipients stay US-only (AddressSchema). A US sender,
+// with or without `country`, keeps every US rule and is stored without `country`, so existing orders, senderKey and
+// API responses are unchanged. Abroad, state and postcode are optional (PostGrid filled in a missing UK postcode).
+const POSTCODE = /^[A-Za-z0-9][A-Za-z0-9 -]{1,10}$/;
+export const SenderAddressSchema = z
+  .object({
+    name: z.string().trim().min(1).max(60).describe("Sender full name"),
+    company: z.string().trim().max(60).optional().describe("Company name, printed under the person's name"),
+    line1: z.string().trim().min(3).max(64).describe("Street address"),
+    line2: z.string().trim().max(64).optional().describe("Apartment, suite, unit"),
+    city: z.string().trim().min(2).max(40).describe("City or town"),
+    state: z.string().trim().max(40).optional().describe("US: two-letter state code, e.g. NY (required). Elsewhere: region, county or province, if the address uses one"),
+    zip: z.string().trim().max(12).optional().describe("US: 5-digit ZIP code or ZIP+4 (required). Elsewhere: postcode"),
+    country: z
+      .string()
+      .trim()
+      .transform((s) => s.toUpperCase())
+      .optional()
+      .describe("Two-letter country code (ISO 3166-1), e.g. GB. Defaults to US. The return address can be outside the US; the recipient must be in the US."),
+  })
+  .superRefine((a, ctx) => {
+    const country = a.country || "US";
+    if (!isSenderCountry(country)) {
+      ctx.addIssue({ code: "custom", path: ["country"], message: "Use a two-letter country code, e.g. GB (US territories use country US with their state code, e.g. PR)" });
+    } else if (country === "US") {
+      if (!US_STATES.includes((a.state ?? "").toUpperCase())) ctx.addIssue({ code: "custom", path: ["state"], message: "Use a two-letter US state code, e.g. CA" });
+      if (!/^\d{5}(-\d{4})?$/.test(a.zip ?? "")) ctx.addIssue({ code: "custom", path: ["zip"], message: "Use a 5-digit US ZIP code (or ZIP+4)" });
+    } else if (a.zip && !POSTCODE.test(a.zip)) {
+      ctx.addIssue({ code: "custom", path: ["zip"], message: "Use the postcode as written locally, letters, digits and spaces" });
+    }
+  })
+  .transform(({ country, state, zip, ...rest }) => {
+    const c = country || "US";
+    if (c === "US") return { ...rest, state: state!.toUpperCase(), zip: zip! };
+    return { ...rest, ...(state ? { state } : {}), ...(zip ? { zip: zip.toUpperCase() } : {}), country: c };
+  });
+// Older code paths and every stored order before 2026-10-31 have no `country`: that means US.
+export type SenderAddress = Address | { name: string; company?: string; line1: string; line2?: string; city: string; state?: string; zip?: string; country: string };
+export const isAbroad = (a: SenderAddress) => "country" in a && Boolean(a.country) && a.country !== "US";
 
 const imageUrl = z
   .string()
@@ -112,7 +152,7 @@ export const LetterContentSchema = z
 
 const common = {
   to: AddressSchema.describe("Recipient's US mailing address"),
-  from: AddressSchema.describe("Return address; printed on the mail piece"),
+  from: SenderAddressSchema.describe("Return address; printed on the mail piece. May be outside the US (set country)"),
   customer_email: z.string().trim().email().optional().describe("Where to send the receipt and status updates"),
   idempotency_key: z
     .string()
@@ -148,7 +188,7 @@ export type OrderRow = {
   product: ProductId;
   status: Status;
   to_address: Address;
-  from_address: Address;
+  from_address: SenderAddress;
   content: Record<string, string>;
   price_cents: number;
   customer_email: string | null;
@@ -178,7 +218,7 @@ export type OrderRow = {
 type CreateInput = {
   product: ProductId;
   to: Address;
-  from: Address;
+  from: SenderAddress;
   content: object;
   customer_email?: string;
   idempotency_key?: string;
@@ -211,14 +251,16 @@ export function priceLines(o: Pick<OrderRow, "product" | "content" | "express" |
 
 // One first-order discount per return address (normalized street + unit + ZIP5), so a new name on the same
 // address doesn't qualify again.
-export function senderKey(a: Address) {
+export function senderKey(a: SenderAddress) {
   const norm = (s: string | undefined) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  // US keys are unchanged from before international senders; abroad, the whole postcode and the country count.
+  if (isAbroad(a)) return `${norm(a.line1)}|${norm(a.line2)}|${norm(a.zip)}|${(a as { country: string }).country}`;
   return `${norm(a.line1)}|${norm(a.line2)}|${(a.zip ?? "").slice(0, 5)}`;
 }
 
 // Has this return address ever paid for an order (including the old free first postcards)? Test orders don't count.
-async function senderHasPaid(from: Address, excludeId?: string) {
-  const { rows } = await pool.query<{ from_address: Address }>(
+async function senderHasPaid(from: SenderAddress, excludeId?: string) {
+  const { rows } = await pool.query<{ from_address: SenderAddress }>(
     `SELECT from_address FROM orders WHERE status IN ('paid','printing','mailed') AND NOT is_test AND id <> $1`,
     [excludeId ?? ""],
   );
@@ -368,6 +410,30 @@ export async function setStatus(id: string, status: Status, note?: string, extra
   const o = rows[0];
   if (o) track(`order_${status}`, analyticsId(o), { order_id: o.id, product: o.product, source: o.source, client: o.client, free: o.free_offer, price_cents: o.free_offer ? 0 : o.price_cents });
   return o ?? null;
+}
+
+// The operator corrects an address before printing (2026-10-31: PostGrid refused a London return address that the
+// old US-only form had forced into "London, CA 93654"). Refused once the order is with PostGrid or closed. The old
+// addresses go into the event log, which get_order shows; they're the customer's own details.
+export async function setAddresses(id: string, to: Address, from: SenderAddress) {
+  const old = await getOrder(id);
+  if (!old) return null;
+  // Fixed field order: addresses read back from jsonb don't keep the order they were written in.
+  const flat = (a: SenderAddress) =>
+    (["name", "company", "line1", "line2", "city", "state", "zip", "country"] as const).map((k) => (a as Record<string, string | undefined>)[k]).filter(Boolean).join(", ");
+  const changed = [
+    flat(old.to_address) !== flat(to) ? `to was: ${flat(old.to_address)}` : "",
+    flat(old.from_address) !== flat(from) ? `from was: ${flat(old.from_address)}` : "",
+  ].filter(Boolean);
+  if (!changed.length) return old;
+  const { rows } = await pool.query<OrderRow>(
+    `UPDATE orders SET
+       events = events || jsonb_build_array(jsonb_build_object('at', $4::text, 'status', status, 'note', $5::text)),
+       to_address = $2, from_address = $3
+     WHERE id = $1 AND print_id IS NULL AND status IN ('awaiting_payment', 'paid') RETURNING *`,
+    [id, JSON.stringify(to), JSON.stringify(from), new Date().toISOString(), `address corrected before printing; ${changed.join("; ")}`],
+  );
+  return rows[0] ?? null;
 }
 
 export const analyticsId = (o: OrderRow) => o.analytics_id ?? (o.client ? `agent:${o.client}` : `order:${o.id}`);

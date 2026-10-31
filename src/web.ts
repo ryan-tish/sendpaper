@@ -322,7 +322,7 @@ ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}`)
 - Several recipients: pass recipients (2–${MAX_RECIPIENTS} addresses) instead of to; each gets their own order, paid in one checkout
 
 ## Rules
-- US addresses only (including territories and APO/FPO/DPO).
+- Recipients: US addresses only (including territories and APO/FPO/DPO). The return address may be in any country: give \`from.country\` as a two-letter code (e.g. GB); \`state\` and \`zip\` then mean region and postcode and are optional.
 - We print what the user or agent writes and don't give legal or tax advice.
 - Threatening, harassing, fraudulent or obscene mail is refused and refunded; bulk marketing isn't allowed. Policy: ${BASE_URL}/content-policy
 
@@ -383,7 +383,7 @@ ${COMPARES.map((c) => `- ${c.title}: ${BASE_URL}/compare/${c.slug}`).join("\n")}
 - Guide: ${DOCS_URL || BASE_URL + "/docs"}/guides/agent-payments
 
 ## Rules
-- US addresses only; a return address is required.
+- Recipients in the US only; a return address is required and may be in any country (\`from.country\`, e.g. GB).
 - Confirm addresses and wording with the user before creating an order; show them the preview and checkout links.
 - Content policy (no threats, harassment, fraud, obscenity or bulk marketing): ${BASE_URL}/content-policy
 `);

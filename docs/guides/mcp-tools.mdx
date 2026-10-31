@@ -17,7 +17,7 @@ description: "The tools Sendpaper exposes to your agent."
 <ParamField path="size" type="string" default="4x6">`4x6`, `6x9` or `6x11`.</ParamField>
 <ParamField path="to" type="Address">Recipient: `name`, `line1`, optional `line2`, `city`, two-letter `state`, `zip`. US only. Send this **or** `recipients`.</ParamField>
 <ParamField path="recipients" type="Address[]">Send the same card to several people: 2 to 25 addresses, instead of `to`. Each gets its own order; one payment covers all. See [Send to several people](/guides/send-to-many).</ParamField>
-<ParamField path="from" type="Address" required>Return address, printed on the card.</ParamField>
+<ParamField path="from" type="SenderAddress" required>Return address, printed on the card. It can be outside the US: add a two-letter `country` (e.g. `GB`); then `state` is the region and `zip` the postcode, both optional. Without `country` it's a US address.</ParamField>
 <ParamField path="content.layout" type="string">`headline`, `photo`, `photo_caption` or `collage`. Inferred from the fields you send when omitted.</ParamField>
 <ParamField path="content.front_headline" type="string">`headline` layout: up to 60 characters of big text, with `front_theme`: `ink`, `sky`, `sunset`, `forest`, `rose`, `sand`, `night` or `mint`.</ParamField>
 <ParamField path="content.front_image_url" type="string">`photo` and `photo_caption` layouts: https URL of a JPG or PNG.</ParamField>
