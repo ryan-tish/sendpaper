@@ -307,6 +307,90 @@ export const ARTICLES: Article[] = [
       ["USPS Domestic Mail Manual 503: Certified Mail and Return Receipt", "https://pe.usps.com/text/dmm300/503.htm"],
     ],
     sourceNote: "Court rules differ by state and county, and USPS rules change; check your court and USPS before relying on a detail.",
+  },  {
+    slug: "send-a-letter-to-the-us-from-abroad",
+    kicker: "Mail from abroad",
+    title: "How to send a letter to the US from another country",
+    metaTitle: "How to Send a Letter to the US From Another Country",
+    description: "You don't need to be in the US to mail a US address. Compare posting it from home with having it printed and mailed inside the US, with costs and caveats.",
+    lede: "Post it from where you are, or have it printed and mailed inside the US. Here's how to choose.",
+    checked: "October 31, 2026",
+    published: "2026-10-31",
+    modified: "2026-10-31",
+    card: { cat: "documents", date: "2026-10-31", art: "letter", label: "From Abroad", blurb: "Two ways to get a letter to a US address when you live somewhere else, and when each one fits." },
+    answer: [
+      "You can send a letter to a US address from anywhere. **Either post it from your country with international postage, or have it printed and mailed inside the US** by an online service, so it travels as ordinary US mail.",
+      `Posting it yourself means your local postal service's international times: Canada Post, for example, estimates [4 to 6 business days to the US](https://www.canadapost-postescanada.ca/cpc/en/support/articles/letter-post/delivery-standards.page). Printed in the US, it goes by USPS First-Class Mail, which USPS says takes [1 to 5 days](https://www.usps.com/ship/mail-shipping-services.htm). With ${BRAND}, **the recipient has to be in the US, but your return address can be in any country.**`,
+    ],
+    sections: [
+      {
+        id: "choose",
+        h: "Post it yourself or print it in the US?",
+        ps: ["Both get a letter to a US address. They differ in what arrives and how long it takes:"],
+        table: {
+          head: ["", "Post it from your country", "Print and mail inside the US"],
+          rows: [
+            ["What arrives", "Your own paper, signed in ink if you signed it", "A printed copy of what you typed or uploaded"],
+            ["Postage", "International postage from your postal service", "US postage, included in the price"],
+            ["Delivery time", "Your postal service's international estimate", "USPS First-Class Mail, 1 to 5 days once mailed"],
+            ["Tracking and proof", "Whatever your postal service offers abroad", "USPS Certified Mail, with an optional return receipt"],
+            ["Return address", "Yours", "Yours, in any country"],
+          ],
+        },
+        after: [
+          "**Post it yourself** when the recipient needs your original document or an ink signature. A printing service can only send a printed copy, so check whether the recipient accepts one.",
+          "**Print it in the US** when you'd rather it travel as US mail, when you want USPS tracking, or when you don't have a printer or stamps handy.",
+        ],
+      },
+      {
+        id: "how",
+        h: `How to send it with ${BRAND}`,
+        ps: [`You don't need a US address, a US phone number or an account. On the [letter form](/send/letter):`],
+        after: [
+          "**Write the letter or upload a PDF** of up to 6 pages.",
+          "**Enter the recipient's US address.** Puerto Rico, US territories and APO/FPO/DPO military addresses count.",
+          "**Enter your return address and pick your country.** Outside the US, the state and ZIP boxes become an optional region and postcode, so you type your address the way it's written at home.",
+          `**Pay by card** in US dollars: ${LETTER} for a letter or ${CERT} for [Certified Mail](/what-is-certified-mail). Printing, envelope and US postage are included.`,
+          "**A person reviews it, then our print partner prints it and hands it to USPS** inside the US. Your order page shows its status and, for certified letters, the USPS tracking number.",
+        ],
+      },
+      {
+        id: "paying",
+        h: "Paying from outside the US",
+        ps: [
+          "Checkout charges in **US dollars**. Stripe, which runs our checkout, takes major cards including Visa, Mastercard and American Express. If your card is in another currency, Stripe notes that [your bank or card issuer might charge you a foreign exchange fee](https://docs.stripe.com/currencies), and some banks charge for any payment to a business in another country. Your bank decides whether to approve the payment and what it costs you.",
+        ],
+      },
+      {
+        id: "returns",
+        h: "If the letter can't be delivered",
+        ps: [
+          "USPS sends undeliverable First-Class Mail [back to the return address](https://pe.usps.com/text/dmm300/507.htm). **We can't promise that a returned letter will make it to an address outside the US.** If getting it back matters, for example for a legal or time-sensitive letter, use the US address of someone you trust as the return address, with their permission.",
+          "Double-check the recipient's address before you pay, including the apartment or unit number and the ZIP code.",
+        ],
+      },
+    ],
+    cta: {
+      title: "Send a letter to the US from anywhere",
+      body: `${LETTER} for a letter, ${CERT} with Certified Mail tracking. Type it or upload a PDF; printing, envelope and US postage included.`,
+      primary: ["Send a letter", "/send/letter"],
+      secondary: ["Send it by Certified Mail", "/send/certified"],
+    },
+    faqs: [
+      ["Do I need a US address to send a letter to the US?", `No. The recipient must have a US address, but your return address can be in any country. On the ${BRAND} form, pick your country and the address fields change to match.`],
+      ["How long does it take?", "Posted from abroad, it depends on your postal service; Canada Post, for example, estimates 4 to 6 business days to the US. Printed and mailed in the US, USPS says First-Class Mail takes 1 to 5 days once it's mailed, after the order is reviewed and printed."],
+      [`Can I send mail from the US to another country with ${BRAND}?`, "No. We only deliver to US addresses, including Puerto Rico, US territories and APO/FPO/DPO military addresses."],
+      ["Can I pay with a card from outside the US?", "Checkout takes major cards in US dollars. Your bank decides whether to approve a payment to a US business and may add a foreign exchange or cross-border fee."],
+      ["Will the recipient get my original document?", "No. We print and mail what you type or upload, so they get a printed copy. If they need the original or an ink signature, post it yourself from your country."],
+    ],
+    sources: [
+      ["USPS: Mail & Shipping Services (First-Class Mail)", "https://www.usps.com/ship/mail-shipping-services.htm"],
+      ["Canada Post: Letter-post delivery standards", "https://www.canadapost-postescanada.ca/cpc/en/support/articles/letter-post/delivery-standards.page"],
+      ["USPS Domestic Mail Manual 507: undeliverable mail", "https://pe.usps.com/text/dmm300/507.htm"],
+      ["Stripe: supported currencies and card brands", "https://docs.stripe.com/currencies"],
+      ["USPS Domestic Mail Manual 503: Certified Mail and Return Receipt", "https://pe.usps.com/text/dmm300/503.htm"],
+    ],
+    sourceNote: "Postal times and fees change and vary by country; check your postal service and USPS before relying on a detail.",
   },
 ];
 
