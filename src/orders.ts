@@ -5,6 +5,7 @@ import { pool } from "./db.ts";
 import { postcardLayout, THEME_NAMES } from "./render.ts";
 import { PREVIEW_IMAGES } from "./preview-image.ts";
 import { track } from "./analytics.ts";
+import { emailCustomer } from "./email.ts";
 
 export const STATUSES = ["awaiting_payment", "paid", "printing", "mailed", "cancelled", "refunded"] as const;
 export type Status = (typeof STATUSES)[number];
@@ -409,6 +410,8 @@ export async function setStatus(id: string, status: Status, note?: string, extra
   );
   const o = rows[0];
   if (o) track(`order_${status}`, analyticsId(o), { order_id: o.id, product: o.product, source: o.source, client: o.client, free: o.free_offer, price_cents: o.free_offer ? 0 : o.price_cents });
+  // Tell the customer (never blocks or fails the status change; see email.ts).
+  if (o && (status === "paid" || status === "mailed" || status === "refunded")) void emailCustomer(status, o);
   return o ?? null;
 }
 

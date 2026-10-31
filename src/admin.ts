@@ -8,6 +8,7 @@ import { postgridMode, printProofUrl, sendToPrint, syncPrint } from "./fulfill.t
 import { addressBlock, esc, printSheet } from "./render.ts";
 import { listReviews, setReviewApproved } from "./offer.ts";
 import { resetStats, statsPage } from "./stats.ts";
+import { emailsFor } from "./email.ts";
 
 // The operator's queue: paid orders get reviewed, printed (or sent to a print partner), then marked mailed.
 export const admin = Router();
@@ -99,6 +100,7 @@ admin.get("/orders/:id", async (req, res) => {
   if (o.print_id) o = (await syncPrint(o.id).catch(() => o)) ?? o;
   const mode = postgridMode();
   const proof = o.print_id ? await printProofUrl(o) : null;
+  const emails = await emailsFor(o);
   const printPanel = `<div class="card" style="gap:10px">
     <b>Print with PostGrid <span class="pill${mode === "live" ? "" : " ok"}">${mode === "live" ? "LIVE · mails for real" : mode === "test" ? "test mode · never mailed" : "not configured"}</span></b>
     ${o.print_id
@@ -126,11 +128,14 @@ admin.get("/orders/:id", async (req, res) => {
       <div style="display:grid;gap:12px">
         ${btn("printing", "Mark printing")}
         ${btn("mailed", "Mark mailed", `<label style="flex:1">Note (e.g. partner job id)<input name="note"></label>`)}
-        ${btn("refunded", "Reject & refund via Stripe", `<label style="flex:1">Reason<input name="note" required></label>`)}
+        ${btn("refunded", "Reject & refund via Stripe", `<label style="flex:1">Reason (emailed to the customer; keep it neutral)<input name="note" required></label>`)}
         ${btn("cancelled", "Cancel without refund")}
       </div>
       <form method="post" action="/admin/orders/${o.id}/test"><input type="hidden" name="is_test" value="${o.is_test ? "0" : "1"}">
         <button class="btn alt">${o.is_test ? "Unmark as test (show in lists and stats)" : "Mark as test (hide from lists and stats)"}</button></form>
+      <h2>Emails to the customer</h2>${emails.length
+        ? `<ul>${emails.map((m) => `<li>${esc(m.kind)} → ${esc(m.to_email)} · ${esc(new Date(m.sent_at).toISOString().slice(0, 16).replace("T", " "))} UTC · ${m.error ? `<span class="err">${esc(m.error)}</span>` : `sent (${esc(m.resend_id ?? "?")})`}</li>`).join("")}</ul>`
+        : `<p class="soft">${o.customer_email ? "None yet. Paid, mailed and refunded each send one." : "No email address on this order, so none are sent."}</p>`}
       <h2>History</h2><pre><code>${esc(JSON.stringify(o.events, null, 2))}</code></pre>
       <h2>Content</h2><pre><code>${esc(JSON.stringify(o.content, null, 2))}</code></pre></section>`,
       { noindex: true },

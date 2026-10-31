@@ -107,6 +107,17 @@ export async function migrate() {
       created_at  timestamptz NOT NULL DEFAULT now()
     );
 
+    -- Status emails to customers (2026-10-31): one row per email, keyed so a webhook retry never sends twice.
+    CREATE TABLE IF NOT EXISTS customer_emails (
+      key         text PRIMARY KEY,
+      order_id    text NOT NULL,
+      kind        text NOT NULL,
+      to_email    text NOT NULL,
+      resend_id   text,
+      error       text,
+      sent_at     timestamptz NOT NULL DEFAULT now()
+    );
+
     -- "Reset stats" on /admin/stats (2026-10-14): the dashboard counts from "since" instead of deleting any rows.
     CREATE TABLE IF NOT EXISTS stats_reset (id int PRIMARY KEY DEFAULT 1 CHECK (id = 1), since timestamptz NOT NULL);
     -- The /send page creates orders through /v1 with X-Client: web; before 2026-10-14 they were saved as source 'api'.
