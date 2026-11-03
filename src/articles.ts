@@ -11,7 +11,8 @@ import { esc, plain, rich } from "./render.ts";
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 const LETTER = usd(PRODUCTS.letter.cents), CERT = usd(PRODUCTS.letter_certified.cents), RR = usd(PRODUCTS.letter_certified_rr.cents);
 
-type Section = { id: string; h: string; ps: string[]; table?: { head: string[]; rows: string[][] }; after?: string[] };
+// template: a plain-text letter shown as a preformatted block under the paragraphs (escaped, no markup).
+type Section = { id: string; h: string; ps: string[]; template?: string; table?: { head: string[]; rows: string[][] }; after?: string[] };
 type Article = {
   slug: string; // served at /<slug>, like the guides
   kicker: string;
@@ -392,6 +393,145 @@ export const ARTICLES: Article[] = [
     ],
     sourceNote: "Postal times and fees change and vary by country; check your postal service and USPS before relying on a detail.",
   },
+  {
+    slug: "cancellation-letter-by-mail",
+    kicker: "Cancellation letters",
+    title: "How to cancel a membership or contract by mail",
+    metaTitle: "Cancel a Gym Membership or Contract by Mail: Letter Template",
+    description: "Some gyms and contracts only accept cancellation in writing. What to include in the letter, a copyable template, and which kind of mail to send it by.",
+    lede: "When a business wants it in writing, send a letter that leaves a USPS tracking record.",
+    checked: "November 3, 2026",
+    published: "2026-11-03",
+    modified: "2026-11-03",
+    card: { cat: "proof", date: "2026-11-03", art: "letter", label: "Cancel by Mail", blurb: "Which services want cancellation in writing, what the letter should say, and how to mail it." },
+    answer: [
+      "When a contract says you must cancel **in writing**, a mailed letter is the safest way to do it. Gyms and health clubs are the most common case, along with cooling-off cancellations for door-to-door sales and timeshares, and any contract that names a mailing address for notices.",
+      "Include your name, your account or member number, a plain statement that you're cancelling, the date it should take effect, a request for written confirmation, and your signature. **Send it by Certified Mail, adding a return receipt if you want the signature record,** and keep a copy of exactly what you sent.",
+    ],
+    sections: [
+      {
+        id: "who",
+        h: "Which services want a letter",
+        ps: ["Most online subscriptions can be cancelled in your account settings. A letter matters when the contract, or a state law, says notice must be in writing or names a mailing address. The usual cases:"],
+        after: [
+          "**Gyms and health clubs.** Many membership agreements ask for written notice, and several states set the method for the short cancellation window right after you sign. Massachusetts requires notice [delivered in person or postmarked by certified or registered mail](https://malegislature.gov/Laws/GeneralLaws/PartI/TitleXV/Chapter93/Section81) within three business days. Maryland requires notice [in person or by certified mail, return receipt requested](https://codes.findlaw.com/md/commercial-law/md-code-coml-sect-14-12b-06/), postmarked by midnight of the third business day. California's health studio law, as amended in 2016, lets members send a signed, dated notice [by first-class mail, by email from an address on file, or in person](https://www.leginfo.ca.gov/pub/15-16/bill/asm/ab_2801-2850/ab_2810_bill_20160816_enrolled.html) within five business days. **These windows are only a few days long:** if yours is about to close, see the deadline note under [which kind of mail to send](/cancellation-letter-by-mail#mail).",
+          "**Door-to-door and pop-up sales.** The FTC's [Cooling-Off Rule](https://consumer.ftc.gov/articles/buyers-remorse-ftcs-cooling-rule-may-help) gives you until midnight of the third business day to cancel many sales made at your home or at a seller's temporary location. You mail the cancellation form, or your own letter, postmarked in time, and the FTC suggests certified mail.",
+          "**Timeshares.** The FTC says the cancellation period comes from [state law or your contract](https://consumer.ftc.gov/articles/timeshares-vacation-clubs-and-related-scams), and suggests a letter to the seller by certified mail with a return receipt.",
+          "**Any contract with a notices clause.** Look in your agreement for a section called Notices, Cancellation or Termination. If it says notice must be in writing, sent to a mailing address or given by a date before renewal, that's the method to follow.",
+        ],
+      },
+      {
+        id: "online",
+        h: "Doesn't a law let me cancel online?",
+        ps: [
+          "Not exactly. A federal law, [ROSCA](https://www.law.cornell.edu/uscode/text/15/8403), requires businesses that sell subscriptions online to provide \"simple mechanisms\" to stop recurring charges. But the FTC's 2024 \"click-to-cancel\" rule, which spelled out what that means, was vacated, and in March 2026 the FTC [asked for public comment](https://www.ftc.gov/news-events/news/press-releases/2026/03/ftc-seeks-public-comment-response-advance-notice-proposed-rulemaking-regarding-negative-option) on whether to write a new one. Some states have their own automatic-renewal laws, and some businesses offer online cancellation anyway.",
+          "So use the easiest method your contract allows. When it names mail, or you want a record the business can't easily dispute, send a letter.",
+        ],
+      },
+      {
+        id: "before",
+        h: "Before you write",
+        ps: ["Gather four things first:"],
+        after: [
+          "**The cancellation clause.** Note the required method, the notice period (for example, 30 days before the next billing date) and whether the notice has to be signed.",
+          "**Your account details:** member or account number, the name on the account and the address the business has on file.",
+          "**The effective date** you're asking for, allowing for any notice period.",
+          "**The right address.** Use the one your contract names for notices, which may be a head office rather than your local club. If it doesn't name one, ask the business or check its website.",
+        ],
+      },
+      {
+        id: "template",
+        h: "Cancellation letter template",
+        ps: ["Replace everything in brackets and delete what doesn't apply. Keep it short, and only give a reason if your contract asks for one."],
+        template: `[Your full name]
+[Your street address]
+[City, State ZIP]
+[Email or phone]
+
+[Date]
+
+[Business name]
+Attn: [Membership services / Cancellations]
+[Address from your contract's notice clause]
+
+Re: Cancellation of [membership / agreement], account [number]
+
+To whom it may concern:
+
+I am cancelling my [membership / agreement / subscription] with [business name], account [number], under the name [name on the account].
+
+Please end it effective [date] and stop all recurring charges to my [card / bank account] ending in [last four digits] after that date.
+
+[Optional: I am cancelling within the [number]-day cancellation period in my contract dated [date], and ask for the refund the contract provides.]
+
+Please confirm the cancellation in writing to [email or mailing address], including the date it takes effect and any final balance.
+
+Sincerely,
+
+[Signature]
+[Printed name]`,
+        after: [
+          "**A specific effective date** avoids back-and-forth about which billing cycle counts.",
+          "**Only the last four digits** of a card or bank account. Never put a full card number in a letter.",
+          "**If the notice must be signed:** print the letter, sign it, scan it and [upload it as a PDF](/send/certified). If the business insists on an original ink signature, mail it yourself, since a printing service sends a printed copy.",
+        ],
+      },
+      {
+        id: "mail",
+        h: "Which kind of mail to send",
+        ps: ["A letter by regular mail still counts as written notice, but it leaves you with no record. Pick by how much you may need to prove later:"],
+        table: {
+          head: ["", "First-Class Mail", "Certified Mail", "Certified + return receipt"],
+          rows: [
+            ["What you get", "Mailing by USPS, with no tracking", "A USPS tracking number and a record of delivery or attempted delivery", "All of that, plus a record of the recipient's signature"],
+            ["Use it when", "The contract only says \"in writing\" and you're also cancelling another way", "A law or contract says certified mail, or you may need to show you sent it", "You want a signature record, or a law or contract asks for a return receipt (check what form it accepts)"],
+            [`${BRAND} price`, LETTER, CERT, RR],
+          ],
+        },
+        after: [
+          "**Certified Mail gives you a USPS record of the letter's mailing and its delivery or attempted delivery, but not of what was inside** ([USPS rules](https://pe.usps.com/text/dmm300/503.htm)). Keep a copy of the exact letter. With us, your order page keeps the print preview. More on that in [what certified mail is](/what-is-certified-mail) and [certified mail vs. return receipt](/certified-mail-vs-return-receipt).",
+          "**Watch the deadline.** Cooling-off cancellations are usually judged by the postmark. A letter ordered online is reviewed and printed before it's mailed, and you don't get a USPS mailing receipt, so the day you pay isn't the postmark date. If the deadline is a day or two away, take the letter to a post office yourself.",
+          "**Registered mail** also satisfies some state laws. It's a separate USPS service that we don't offer.",
+        ],
+      },
+      {
+        id: "after",
+        h: "After you send it",
+        ps: ["Cancelling isn't finished until the charges stop:"],
+        after: [
+          "**Track it.** A certified letter's USPS tracking number appears on your order page once it's assigned.",
+          "**Check your next statement.** If the business keeps charging you after you cancelled, the FTC says to [dispute the charges with your card company](https://consumer.ftc.gov/consumer-alerts/2025/08/la-fitness-made-it-difficult-people-cancel-gym-memberships-ftc-says), and that just changing your card number often isn't enough.",
+          "**Keep everything together:** your copy of the letter, the tracking record, any return receipt, the business's confirmation and your statements.",
+          "**Report it** if they won't stop: the FTC takes reports at ReportFraud.ftc.gov.",
+        ],
+      },
+    ],
+    cta: {
+      title: "Send your cancellation letter by Certified Mail",
+      body: `${CERT} with USPS tracking, ${RR} with a return receipt. Type it or upload a signed PDF; printing, envelope and postage included.`,
+      primary: ["Send a certified letter", "/send/certified"],
+      secondary: ["Send a regular letter", "/send/letter"],
+    },
+    faqs: [
+      ["Can I cancel a gym membership by email instead?", "Sometimes. California's health studio law, for example, allows email from an address on file as well as mail or delivery in person. Other states, and many contracts, name only mail or in-person delivery. Use a method your contract and your state allow, and keep proof."],
+      ["Do I need to give a reason?", "Usually not. The FTC says you don't need a reason to cancel under its Cooling-Off Rule. If your contract asks for one, give it briefly."],
+      ["Does certified mail prove I cancelled?", "Its tracking record shows a letter was mailed to that address and when it was delivered or delivery was attempted. It doesn't prove what was inside, so keep a copy. Whether the letter ends the contract depends on your contract and your state's law."],
+      ["What if the business says it never got my letter?", "Send them the tracking record and, if you bought one, the return receipt, with a copy of your letter. If charges continue, dispute them with your card company."],
+      ["Can my AI assistant write and send it?", `Yes, if it's connected to ${BRAND}, as Claude and Codex can be. Ask it to write the cancellation letter and send it by Certified Mail; you check the preview and pay before anything is printed. There's a [ready-made prompt](/use-cases#cancel-notice) to start from.`],
+    ],
+    sources: [
+      ["FTC: Buyer's remorse: the FTC's Cooling-Off Rule may help", "https://consumer.ftc.gov/articles/buyers-remorse-ftcs-cooling-rule-may-help"],
+      ["FTC: Timeshares, vacation clubs and related scams", "https://consumer.ftc.gov/articles/timeshares-vacation-clubs-and-related-scams"],
+      ["FTC consumer alert: LA Fitness made it difficult for people to cancel gym memberships (August 2025)", "https://consumer.ftc.gov/consumer-alerts/2025/08/la-fitness-made-it-difficult-people-cancel-gym-memberships-ftc-says"],
+      ["15 U.S.C. §8403 (ROSCA): requirements for online negative option sales", "https://www.law.cornell.edu/uscode/text/15/8403"],
+      ["FTC: Advance notice of proposed rulemaking on negative option marketing (March 2026)", "https://www.ftc.gov/news-events/news/press-releases/2026/03/ftc-seeks-public-comment-response-advance-notice-proposed-rulemaking-regarding-negative-option"],
+      ["Massachusetts General Laws ch. 93, §81: health club contracts", "https://malegislature.gov/Laws/GeneralLaws/PartI/TitleXV/Chapter93/Section81"],
+      ["Maryland Commercial Law §14-12B-06 (via FindLaw)", "https://codes.findlaw.com/md/commercial-law/md-code-coml-sect-14-12b-06/"],
+      ["California AB 2810 (2016), amending Civil Code §1812.85", "https://www.leginfo.ca.gov/pub/15-16/bill/asm/ab_2801-2850/ab_2810_bill_20160816_enrolled.html"],
+      ["USPS Domestic Mail Manual 503: Certified Mail and Return Receipt", "https://pe.usps.com/text/dmm300/503.htm"],
+    ],
+    sourceNote: "State laws and contracts differ, and laws change; check your contract and your state's current law before relying on a detail. This is general information, not legal advice.",
+  },
 ];
 
 export const ARTICLE_PATHS = ARTICLES.map((a) => `/${a.slug}`);
@@ -412,6 +552,7 @@ const CSS = `
 .srcbox summary::after { content: ""; width: 9px; height: 9px; border-right: 2px solid var(--soft); border-bottom: 2px solid var(--soft); transform: rotate(45deg); margin: -4px 0 0 auto; transition: transform .2s; }
 .srcbox[open] summary::after { transform: rotate(-135deg); margin-top: 4px; }
 .prose .note { font-size: .88rem; color: var(--faint); }
+.prose pre.tpl { white-space: pre-wrap; overflow-wrap: anywhere; font: .88rem/1.6 var(--f-mono); background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 18px 20px; margin: 8px 0 18px; }
 `;
 
 export function articlePage(slug: string) {
@@ -442,7 +583,7 @@ export function articlePage(slug: string) {
         <div class="prose">
           <h2 id="answer">Short answer</h2>
           <div class="short">${ps(a.answer)}</div>
-          ${a.sections.map((s) => `<h2 id="${s.id}">${esc(s.h)}</h2>${ps(s.ps)}${s.table ? table(s.table) : ""}${s.after ? (s.table ? ps(s.after) : `<ul class="pts">${s.after.map((x) => `<li>${rich(x)}</li>`).join("")}</ul>`) : ""}`).join("")}
+          ${a.sections.map((s) => `<h2 id="${s.id}">${esc(s.h)}</h2>${ps(s.ps)}${s.template ? `<pre class="tpl">${esc(s.template)}</pre>` : ""}${s.table ? table(s.table) : ""}${s.after ? (s.table ? ps(s.after) : `<ul class="pts">${s.after.map((x) => `<li>${rich(x)}</li>`).join("")}</ul>`) : ""}`).join("")}
           <div class="cta-box"><div><b>${esc(a.cta.title)}</b><span>${esc(a.cta.body)}</span></div>
             <div class="ctas"><a class="btn green" href="${esc(a.cta.primary[1])}">${esc(a.cta.primary[0])}</a>${a.cta.secondary ? `<a class="btn alt" href="${esc(a.cta.secondary[1])}">${esc(a.cta.secondary[0])}</a>` : ""}</div></div>
           <h2 id="questions">Common questions</h2>
