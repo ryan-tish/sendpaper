@@ -7,6 +7,7 @@ import { BASE_URL, BRAND, PRODUCTS } from "./config.ts";
 import { ARTICLE_CSS, INDEX_CSS, type CardArt, type CardCat, type IndexCard } from "./guides.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc, plain, rich } from "./render.ts";
+import { GYM_SOURCES, GYM_STATE_ROWS } from "./gym-laws.ts";
 
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 const LETTER = usd(PRODUCTS.letter.cents), CERT = usd(PRODUCTS.letter_certified.cents), RR = usd(PRODUCTS.letter_certified_rr.cents);
@@ -531,6 +532,108 @@ Sincerely,
       ["USPS Domestic Mail Manual 503: Certified Mail and Return Receipt", "https://pe.usps.com/text/dmm300/503.htm"],
     ],
     sourceNote: "State laws and contracts differ, and laws change; check your contract and your state's current law before relying on a detail. This is general information, not legal advice.",
+  },
+  {
+    slug: "gym-cancellation-laws-by-state",
+    kicker: "Research",
+    title: "How you're allowed to cancel a gym membership, state by state",
+    metaTitle: "Gym Cancellation Laws by State: How You Can Cancel (2026)",
+    description: "We read the gym contract law in all 50 states and DC, plus the cancellation terms of 15 big chains. Here's how each lets you cancel, and where it takes certified mail.",
+    lede: "We read the law in all 50 states and DC, and the terms of 15 big chains, so you don't have to.",
+    checked: "November 3, 2026",
+    published: "2026-11-03",
+    modified: "2026-11-03",
+    card: { cat: "proof", date: "2026-11-03", art: "letter", label: "Gym Laws", blurb: "Original research: how each state and 15 big chains let you cancel a gym membership." },
+    answer: [
+      "**38 states and DC have a law covering gym contracts,** and almost all of them give you a short cooling-off window after you sign, usually 3 business days, to cancel for a refund. **In 13 of those states and DC, the law only guarantees certified or registered mail, or delivering it in person.** In Texas, South Carolina, Tennessee and DC, it has to go by mail.",
+      "Outside that window, your contract decides. **None of the 9 big chains with published terms requires certified mail,** and all 9 offer some online route; we couldn't fully verify the other 6.",
+    ],
+    sections: [
+      {
+        id: "findings",
+        h: "What we found",
+        ps: ["We read each state's statute, mostly on the legislature's own site, and each chain's own help pages and terms, all checked on November 3, 2026. The counts below use only rows we verified:"],
+        after: [
+          "**Certified or registered mail, or in person (13 states and DC):** Delaware, DC, Indiana, Iowa, Louisiana, Maryland, Massachusetts, Missouri, Oklahoma, Pennsylvania, South Carolina, Tennessee, Texas and Virginia. In these, the law guarantees no other way to cancel in the cooling-off window. **Louisiana and Tennessee name registered mail, not certified;** Texas, South Carolina, Tennessee and DC allow mail only, with no in-person option. West Virginia's rule counts mailed notice, and the contract wording it requires says certified mail.",
+          "**Only certified or registered mail (3 states and DC):** Texas and South Carolina (certified mail), Tennessee (registered mail) and DC (certified or registered mail).",
+          "**A return receipt is required in 7 states:** Maryland, Missouri, Ohio, Oklahoma, Pennsylvania and Virginia for the mailed option, and New Jersey when you use certified or registered mail.",
+          "**Email or online cancellation is allowed in 9 states:** Arizona, California, Illinois, Minnesota, New Jersey (online only if you joined online), New York, Ohio, Rhode Island and Utah. Connecticut's required notice lists an email address, but the law itself asks for delivery with tracking, so we didn't count it.",
+          "**The rules are loosening:** 8 states changed how you can cancel between 2021 and 2026 (Arizona, Connecticut, Illinois, Maine, Minnesota, New Jersey, New York and Utah), mostly adding email or online options. Connecticut replaced its certified-mail requirement with delivery tracking in 2024.",
+          "**Windows are short:** 3 business days in most states (3 days in Arizona and Wisconsin, 3 operating days in New Jersey); 5 in California, Hawaii and Mississippi; 7 in Georgia; 10 in Rhode Island; 15 days in DC. Maine has no cooling-off window but, since 2026, requires auto-renewing memberships to let you cancel the same way you signed up.",
+          "**11 states have no gym-specific law,** based on searches of each state's official code: Alaska, Idaho, Kansas, Michigan, Montana, Nebraska, New Mexico, North Dakota, South Dakota, Vermont and Wyoming. There, your contract (and general consumer or auto-renewal laws) applies. Alaska, Nebraska and Wyoming do let servicemembers on long military orders end a gym membership.",
+        ],
+      },
+      {
+        id: "states",
+        h: "State by state",
+        ps: [
+          "This table covers the **cooling-off window right after you sign.** After it closes, your contract's terms apply, along with any other rights your state gives (many of these laws also let you cancel if you move far away, often 25 miles, become disabled or die, or if the club closes; the details differ). \"Not stated\" means the law doesn't mention a return receipt.",
+        ],
+        table: { head: ["State", "Law", "Cooling-off window", "How you can cancel in the window", "Return receipt"], rows: GYM_STATE_ROWS },
+      },
+      {
+        id: "chains",
+        h: "The 15 biggest chains",
+        ps: ["We picked the largest US chains by number of locations and read what their own help pages and terms say. Most are franchises, so **your location's agreement can differ;** check yours."],
+        table: {
+          head: ["Chain", "How to cancel", "Notice", "Fee"],
+          rows: [
+            ["Planet Fitness", "Online (member portal), in person or by mail to your home club", "At least 7 days before the next billing date", "$58 buyout fee if you end a minimum-term membership early"],
+            ["LA Fitness (incl. Esporta, Club Studio)", "Mail to its Irvine, CA P.O. box (certified or registered recommended, not required), in person, online; email in some states", "Mailed notice postmarked 5+ business days before the next billing date", "Termination fee within an initial term of 3+ months"],
+            ["Orangetheory Fitness", "Online cancellation form", "30 days, unless your agreement says otherwise", "None stated; term memberships pay out the initial term"],
+            ["24 Hour Fitness", "Online for monthly memberships; in club or contact form for term or prepaid", "30 days (except New York)", "\"Cancellation fee may apply\""],
+            ["EoS Fitness", "Online member portal; phone if no online option shows", "30 days", "No cancellation fee"],
+            ["Snap Fitness", "Your gym by phone, email or in person; online in some states", "Usually 30 days", "Not stated"],
+            ["Crunch Fitness", "Online at some clubs, phone or in person", "Not stated", "Not stated"],
+            ["Gold's Gym", "Online request form, then your gym finishes it", "Set by each gym", "Set by each gym"],
+            ["9Round", "Online cancellation form", "30 days, unless your agreement says otherwise", "None stated"],
+            ["Anytime Fitness", "Set by each location's agreement", "Not published centrally", "Not published centrally"],
+            ["Club Pilates", "Online account page, studio or email (per its terms; not verified)", "Not published centrally", "No refunds; no fee stated"],
+            ["Pure Barre", "Per state agreement or studio (not verified)", "Not published centrally", "No refunds; no fee stated"],
+            ["F45 Training", "Contact your studio (not verified)", "Not published", "Not published"],
+            ["Workout Anytime", "In the app (not verified)", "Not published", "Not published"],
+            ["Life Time", "Online, app, email or in club (not verified)", "\"A notice period is required\"", "Not published"],
+          ],
+        },
+        after: [
+          "**None of the 9 chains with published terms requires certified mail.** All 9 offer an online route, 7 of them everywhere and Crunch and Snap Fitness at some locations. LA Fitness still accepts mailed notice and recommends certified or registered mail for it. In August 2025 the FTC sued LA Fitness, alleging it made cancelling exceedingly difficult; as of November 3, 2026 there had been no ruling or settlement.",
+        ],
+      },
+      {
+        id: "cancel",
+        h: "What this means if you're cancelling",
+        ps: [
+          "**In the cooling-off window,** use the exact method your state's row names. In Louisiana and Tennessee that's registered mail, which we don't offer, so use the post office. Check whether your state counts the postmark or the day it arrives (New Jersey counts arrival). If the deadline is a day or two away, go in person where that's allowed, or mail it at a post office: a letter ordered online is reviewed and printed first, so the day you pay isn't the day it's mailed.",
+          "**After the window,** follow your contract's cancellation clause. If it says in writing or by mail, send a short letter and keep proof. Our guide to [cancelling a membership or contract by mail](/cancellation-letter-by-mail) has a template and explains which kind of mail to use.",
+        ],
+      },
+      {
+        id: "method",
+        h: "How we built this",
+        ps: [
+          "For each state we searched the legislature's own code for health club, health spa, health studio and physical fitness laws, and read the cancellation sections. Where the official site blocked us, we read the statute on FindLaw, Justia or Cornell's LII and say so in the sources. For chains we used only each company's own help pages, terms and forms.",
+          "Every state row rests on the statute text or an official code search we ran ourselves. Six chains we couldn't fully verify are marked \"not verified\". Found a mistake or a newer rule? Email support@sendmypaper.com and we'll correct it.",
+        ],
+      },
+    ],
+    cta: {
+      title: "Cancel by Certified Mail without a post office trip",
+      body: `${CERT} with USPS tracking, ${RR} with a return receipt. Reviewed and printed before it's mailed, so not for a deadline that's a day or two away.`,
+      primary: ["Send a certified letter", "/send/certified"],
+      secondary: ["Get the letter template", "/cancellation-letter-by-mail"],
+    },
+    faqs: [
+      ["Can I cancel a gym membership within 3 days in any state?", "No. 38 states and DC have a gym contract law, and most of those give a cooling-off window of about 3 days or more. 11 states have no gym-specific law, and Maine uses a different rule. Check your state's row above and your contract."],
+      ["Which states require certified mail to cancel a gym membership?", "In the cooling-off window, the law in Delaware, DC, Indiana, Iowa, Maryland, Massachusetts, Missouri, Oklahoma, Pennsylvania, South Carolina, Texas and Virginia guarantees certified (or in some, registered) mail or in-person delivery. Louisiana and Tennessee name registered mail instead. In Texas, South Carolina, Tennessee and DC, it has to go by mail."],
+      ["Do these rules apply after the first few days?", "Mostly no. The method rules in this table are for the cooling-off window. After it, your contract's terms apply, plus any rights your state gives for moving, disability, death or a club closing."],
+      ["Can I cancel a gym membership by email?", "In the cooling-off window, 9 states clearly allow email or online cancellation (New Jersey only online, and only if you joined online). After it, it depends on your contract; all 9 chains with published terms offer an online route."],
+      ["Is this legal advice?", "No. It's a summary of what the laws and chains' terms say as of November 3, 2026. Laws change, and your contract and situation matter, so check the source for your state."],
+    ],
+    sources: [
+      ...GYM_SOURCES,
+      ["FTC: LA Fitness made it difficult for people to cancel gym memberships (August 2025)", "https://consumer.ftc.gov/consumer-alerts/2025/08/la-fitness-made-it-difficult-people-cancel-gym-memberships-ftc-says"],
+    ],
+    sourceNote: "Laws and gym terms change; check your state's current law and your own contract before relying on a detail. This is general information, not legal advice.",
   },
 ];
 
