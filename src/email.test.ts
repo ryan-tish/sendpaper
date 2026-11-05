@@ -39,3 +39,16 @@ test("refunded: amount and the operator's reason, escaped", () => {
   assert.match(r.html, /\$14\.99/);
   assert.match(r.html, /Address &#60;unclear&#62;/);
 });
+
+test("unpaid: one reminder, links the order page, never quotes the mail", () => {
+  const u = composeEmail("unpaid", { ...base, status: "awaiting_payment", price_cents: 399 } as OrderRow);
+  assert.equal(u.subject, "Your letter to Pat <Lee> hasn't been sent yet");
+  assert.match(u.html, /\$3\.99/);
+  assert.match(u.html, /only reminder/);
+  assert.match(u.html, /\/o\/ord_test1/);
+  assert.ok(!u.html.includes("PRIVATE LETTER TEXT"));
+  const group = [base, { ...base, id: "ord_test2" }].map((o) => ({ ...o, batch_id: "bat_9", status: "awaiting_payment" })) as OrderRow[];
+  const g = composeEmail("unpaid", group[0], group);
+  assert.equal(g.subject, "Your 2 letters haven't been sent yet");
+  assert.match(g.html, /\/b\/bat_9/);
+});

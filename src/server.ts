@@ -7,6 +7,7 @@ import { docs } from "./docs.ts";
 import { handleMcp } from "./mcp.ts";
 import { handleWebhook } from "./payments.ts";
 import { startPrintSync } from "./fulfill.ts";
+import { startUnpaidReminders } from "./email.ts";
 import { web } from "./web.ts";
 import { quick } from "./quick.ts";
 import { trackApi, trackViews } from "./stats.ts";
@@ -96,6 +97,7 @@ app.use((err: unknown, req: express.Request, res: express.Response, _next: expre
 
 await migrate();
 startPrintSync();
+startUnpaidReminders();
 app.listen(env.port, () => {
   console.log(`listening on ${env.port} (${BASE_URL})`);
   pingIndexNow();

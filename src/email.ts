@@ -1,6 +1,6 @@
 import { BASE_URL, BRAND, EXTRA_SERVICE, PRODUCTS, SUPPORT_EMAIL, env, isLetter } from "./config.ts";
 import { pool } from "./db.ts";
-import type { OrderRow } from "./orders.ts";
+import { senderKey, type OrderRow } from "./orders.ts";
 
 // Status emails to the person who ordered (Ryan, 2026-10-31: the first real customers paid and then heard nothing).
 // Three moments: paid (one email per checkout, so a group of 25 gets one), mailed (per piece, with USPS tracking for
@@ -8,7 +8,9 @@ import type { OrderRow } from "./orders.ts";
 // they're only logged. Never put the letter or card text in an email: it's the customer's mail, and we don't quote it.
 // `customer_emails` makes each one send at most once, because Stripe's webhook and the success redirect race.
 
-type Kind = "paid" | "mailed" | "refunded";
+// "unpaid" (Ryan, 2026-11-05, after a Cursor order sat unpaid): ONE reminder per order (or per group) an hour after it was
+// created and still not paid, sent by startUnpaidReminders below. Never repeated.
+type Kind = "paid" | "mailed" | "refunded" | "unpaid";
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 const orderUrl = (id: string) => `${BASE_URL}/o/${id}`;
@@ -48,6 +50,20 @@ const toText = (html: string) =>
 export function composeEmail(kind: Kind, o: OrderRow, group: OrderRow[] = [o]) {
   const to = esc(o.to_address.name);
   const certified = Boolean(EXTRA_SERVICE[o.product]);
+  if (kind === "unpaid") {
+    const many = group.length > 1;
+    const total = group.reduce((t, x) => t + x.price_cents, 0);
+    const what = many ? `${group.length} ${noun(o)}s` : `${pieceName(o)} to <b>${to}</b>`;
+    const href = many && o.batch_id ? `${BASE_URL}/b/${o.batch_id}` : orderUrl(o.id);
+    return {
+      subject: many ? `Your ${group.length} ${noun(o)}s haven't been sent yet` : `Your ${noun(o)} to ${o.to_address.name} hasn't been sent yet`,
+      html: layout(`Your ${many ? `${noun(o)}s are` : `${noun(o)} is`} ready, but not paid for yet.`, [
+        `You started ${many ? "" : "a "}${what} on ${esc(BRAND)}, but ${many ? "they haven't" : "it hasn't"} been paid for, so nothing has been printed or mailed.`,
+        `If you still want to send ${many ? "them" : "it"}, check the print preview and pay on your order page (${money(total)}, printing and postage included).`,
+        `Changed your mind? You don't need to do anything. This is the only reminder we'll send about ${many ? "these" : "this order"}.`,
+      ], { href, label: "Review and pay" }),
+    };
+  }
   if (kind === "paid") {
     const many = group.length > 1;
     const total = group.reduce((t, x) => t + x.price_cents, 0);
@@ -112,15 +128,16 @@ async function send(to: string, subject: string, html: string) {
 export async function emailCustomer(kind: Kind, o: OrderRow) {
   try {
     if (!o.customer_email || o.is_test) return;
-    // One "paid" email per checkout: a group's orders are marked paid one by one, and only the first one sends.
-    const key = kind === "paid" && o.batch_id ? `paid:${o.batch_id}` : `${kind}:${o.id}`;
+    // One "paid" (and one "unpaid") email per checkout: a group shares one checkout, so only the first one sends.
+    const perGroup = (kind === "paid" || kind === "unpaid") && o.batch_id;
+    const key = perGroup ? `${kind}:${o.batch_id}` : `${kind}:${o.id}`;
     const claim = await pool.query(
       `INSERT INTO customer_emails (key, order_id, kind, to_email) VALUES ($1, $2, $3, $4) ON CONFLICT (key) DO NOTHING RETURNING key`,
       [key, o.id, kind, o.customer_email],
     );
     if (!claim.rowCount) return;
-    const group = kind === "paid" && o.batch_id
-      ? (await pool.query<OrderRow>(`SELECT * FROM orders WHERE batch_id = $1 ORDER BY created_at`, [o.batch_id])).rows
+    const group = perGroup
+      ? (await pool.query<OrderRow>(`SELECT * FROM orders WHERE batch_id = $1 ${kind === "unpaid" ? "AND status = 'awaiting_payment'" : ""} ORDER BY created_at`, [o.batch_id])).rows
       : [o];
     const { subject, html } = composeEmail(kind, o, group);
     try {
@@ -140,8 +157,41 @@ export async function emailCustomer(kind: Kind, o: OrderRow) {
 // For /admin: what was emailed for this order (and its group's paid email).
 export async function emailsFor(o: OrderRow) {
   const { rows } = await pool.query<{ kind: string; to_email: string; sent_at: Date; resend_id: string | null; error: string | null }>(
-    `SELECT kind, to_email, sent_at, resend_id, error FROM customer_emails WHERE order_id = $1 OR key = $2 ORDER BY sent_at`,
-    [o.id, o.batch_id ? `paid:${o.batch_id}` : ""],
+    `SELECT kind, to_email, sent_at, resend_id, error FROM customer_emails WHERE order_id = $1 OR key = ANY($2) ORDER BY sent_at`,
+    [o.id, o.batch_id ? [`paid:${o.batch_id}`, `unpaid:${o.batch_id}`] : []],
   );
   return rows;
+}
+
+// Unpaid-order reminders (Ryan, 2026-11-05). Every 10 minutes: orders still awaiting payment 1–48 hours after they were
+// created get ONE reminder (per order, or per group). Skipped when the same email or the same return address has paid for
+// a later order (people often re-create an order and pay that one: seen 2026-11-04), for test orders and orders without
+// an email. The 48-hour cap means turning this on never mails people about old abandoned orders. Off without RESEND_API_KEY,
+// so a local or keyless run doesn't record "skipped" rows that would block the real reminder later.
+export async function unpaidCandidates(now = new Date()) {
+  const { rows } = await pool.query<OrderRow>(
+    `SELECT DISTINCT ON (COALESCE(o.batch_id, o.id)) o.* FROM orders o
+      WHERE o.status = 'awaiting_payment' AND NOT o.is_test AND o.customer_email IS NOT NULL
+        AND o.created_at < $1::timestamptz - interval '1 hour' AND o.created_at > $1::timestamptz - interval '48 hours'
+        AND NOT EXISTS (SELECT 1 FROM customer_emails c WHERE c.key = 'unpaid:' || COALESCE(o.batch_id, o.id))
+      ORDER BY COALESCE(o.batch_id, o.id), o.created_at`,
+    [now.toISOString()],
+  );
+  if (!rows.length) return [];
+  const { rows: paid } = await pool.query<OrderRow>(
+    `SELECT * FROM orders WHERE status IN ('paid', 'printing', 'mailed') AND NOT is_test AND created_at > $1::timestamptz - interval '72 hours'`,
+    [now.toISOString()],
+  );
+  return rows.filter((o) => !paid.some((p) =>
+    new Date(p.created_at) > new Date(o.created_at) &&
+    ((p.customer_email && p.customer_email.toLowerCase() === o.customer_email!.toLowerCase()) || senderKey(p.from_address) === senderKey(o.from_address))));
+}
+
+export function startUnpaidReminders() {
+  if (!env.resendKey) return;
+  const tick = async () => {
+    for (const o of await unpaidCandidates()) await emailCustomer("unpaid", o);
+  };
+  setTimeout(() => tick().catch(console.error), 60 * 1000).unref();
+  setInterval(() => tick().catch(console.error), 10 * 60 * 1000).unref();
 }
