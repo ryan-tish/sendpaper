@@ -199,7 +199,7 @@ export function sendPage(initial: string, fixed: SendKind) {
   const mailing = (["none", "express", "certified", "certified_return_receipt"] as const)
     .map((m) => {
       const [name, price] =
-        m === "none" ? ["First-Class", `${usd(PRODUCTS.letter.cents)} · 3–5 days`]
+        m === "none" ? ["First-Class", `${usd(PRODUCTS.letter.cents)} · 1–5 days`]
         : m === "express" ? ["Express", `${usd(PRODUCTS.letter.cents + EXPRESS_CENTS)} · 2–3 days`]
         : m === "certified" ? ["Certified", `${usd(PRODUCTS.letter_certified.cents)} · tracked`]
         : ["Certified + receipt", `${usd(PRODUCTS.letter_certified_rr.cents)} · signature`];
@@ -243,7 +243,7 @@ export function sendPage(initial: string, fixed: SendKind) {
           <div class="field"><div class="top"><label for="message">Message on the back</label><span class="count" id="mc">0/${LIMITS.postcardMessage}</span></div><textarea id="message" maxlength="${LIMITS.postcardMessage}" placeholder="Wish you were here…"></textarea></div>
           <div class="field"><div class="top">Message font</div><div class="seg" role="radiogroup" aria-label="Message font"><label><input type="radio" name="mfont" value="handwriting" checked>Handwriting</label><label><input type="radio" name="mfont" value="serif">Serif</label><label><input type="radio" name="mfont" value="sans">Sans</label></div></div>
           <div class="field"><div class="top">Delivery</div>
-            <div class="opts" role="radiogroup" aria-label="Postcard delivery"><label><input type="radio" name="pdeliv" value="first" checked><b>First-Class</b><small>Included · 3–5 days</small></label><label><input type="radio" name="pdeliv" value="express"><b>Express</b><small>+${usd(EXPRESS_CENTS)} · 2–3 days</small></label></div>
+            <div class="opts" role="radiogroup" aria-label="Postcard delivery"><label><input type="radio" name="pdeliv" value="first" checked><b>First-Class</b><small>Included · 1–5 days</small></label><label><input type="radio" name="pdeliv" value="express"><b>Express</b><small>+${usd(EXPRESS_CENTS)} · 2–3 days</small></label></div>
             <p class="note" style="margin:0">Express goes by USPS Priority Mail, usually 2–3 days, with tracking.</p></div>
         </div>
 

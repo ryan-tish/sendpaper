@@ -150,7 +150,7 @@ export function landing() {
             <div><span class="ok">✓</span><code>create_postcard</code><span class="muted">4×6 · "Happy birthday, Mom!" · $2.99</span></div>
             <div><span class="ok">✓</span><code>pay_order</code><span class="muted">Link · Visa •• 4242 · approved by you</span></div>
           </div>
-          <div class="agent">Your postcard to Dana Kim is paid and goes out tomorrow. It should arrive in 3–5 days, and I'll let you know when it ships.</div>
+          <div class="agent">Your postcard to Dana Kim is paid and goes out tomorrow. It should arrive in 1–5 days, and I'll let you know when it ships.</div>
         </div>
       </div>
     </section>

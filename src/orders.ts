@@ -14,7 +14,7 @@ const STATUS_COPY: Record<Status, string> = {
   awaiting_payment: "Waiting for payment. Nothing is printed until the checkout link is paid.",
   paid: "Paid. In the print queue; it usually goes out within 1 business day.",
   printing: "Being printed.",
-  mailed: "Mailed via USPS First-Class. Delivery usually takes 3–5 business days.",
+  mailed: "Mailed via USPS First-Class. Delivery usually takes 1–5 business days.",
   cancelled: "Cancelled. Nothing was mailed.",
   refunded: "Refunded. Nothing was mailed.",
 };

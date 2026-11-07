@@ -88,7 +88,7 @@ export function composeEmail(kind: Kind, o: OrderRow, group: OrderRow[] = [o]) {
       subject: `Your ${noun(o)} to ${o.to_address.name} is in the mail`,
       html: layout(`Your ${noun(o)} is in the mail.`, [
         `Your ${pieceName(o)} to <b>${to}</b> has been printed and handed over for mailing.`,
-        `${o.express ? "Express mail usually arrives in 2–3 days" : "First-Class mail usually arrives in 3–5 business days"}, though USPS doesn't guarantee delivery times.`,
+        `${o.express ? "Express mail usually arrives in 2–3 days" : "First-Class mail usually arrives in 1–5 business days"}, though USPS doesn't guarantee delivery times.`,
         ...(tracking ? [tracking] : []),
       ], { href: orderUrl(o.id), label: "View your order" }),
     };
