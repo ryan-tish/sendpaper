@@ -70,7 +70,7 @@ xdrafts.get("/posts", async (req, res) => {
   const status = typeof req.query.status === "string" && POST_LIST.has(req.query.status) ? req.query.status : "draft";
   try {
     const [rows, counts] = await Promise.all([
-      pool.query(`SELECT *, day::text AS day FROM x_posts WHERE status = $1 ORDER BY ${status === "draft" ? "day DESC, id" : "coalesce(decided_at, created_at) DESC"} LIMIT 200`, [status]),
+      pool.query(`SELECT *, day::text AS day FROM x_posts WHERE status = $1 ORDER BY ${status === "draft" ? "x_posts.day DESC, x_posts.id" : "coalesce(decided_at, created_at) DESC"} LIMIT 200`, [status]),
       pool.query(`SELECT count(*) FILTER (WHERE status = 'draft')::int AS draft,
                          count(*) FILTER (WHERE status = 'posted')::int AS posted,
                          count(*) FILTER (WHERE status = 'dismissed')::int AS dismissed FROM x_posts`),
