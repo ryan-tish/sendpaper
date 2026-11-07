@@ -2,6 +2,7 @@
 // auto-publish routine (content-ops/queue.md) and by hand:
 //   node scripts/check-article.ts /how-long-does-first-class-mail-take
 //   node scripts/check-article.ts /compare/click2mail
+//   node scripts/check-article.ts /<slug> --md   (also prints the page as markdown, for QA)
 // Exits non-zero with a list of problems; prints "OK <path>" when clean.
 import { ARTICLES, articleList, articlePage } from "../src/articles.ts";
 import { COMPARES, compareList, comparePage } from "../src/compare.ts";
@@ -59,6 +60,7 @@ for (const m of html.matchAll(/href="([^"]+)"/g)) {
 try {
   const md = htmlToMarkdown(html, path);
   if (!md || md.length < 500) problems.push("markdown version is empty or very short");
+  else if (process.argv.includes("--md")) console.log(md);
 } catch (e) {
   problems.push(`markdown conversion failed: ${(e as Error).message}`);
 }
