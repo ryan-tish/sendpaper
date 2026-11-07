@@ -1,5 +1,6 @@
 import express from "express";
 import { admin } from "./admin.ts";
+import { xdrafts } from "./xdrafts.ts";
 import { api, apiError } from "./api.ts";
 import { BASE_URL, env } from "./config.ts";
 import { migrate, pool } from "./db.ts";
@@ -69,6 +70,8 @@ app.use("/v1", trackApi); // logs every API request (stats.ts), including 404s a
 app.use("/v1", api);
 app.use("/v1", (_req, res) => apiError(res, 404, "not_found", "No such endpoint. See /docs."));
 app.use("/admin", admin);
+// X reply drafts for Ryan's Saffron app (xdrafts.ts): bearer X_DRAFTS_TOKEN, 404 when unset.
+app.use("/api/x-drafts", xdrafts);
 
 app.get("/healthz", async (_req, res) => {
   await pool.query("SELECT 1");
