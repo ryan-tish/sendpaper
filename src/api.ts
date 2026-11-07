@@ -43,6 +43,12 @@ const handle = (fn: (req: Request, res: Response) => Promise<unknown>) => async 
 const client = (req: Request) => req.get("x-client") ?? req.get("user-agent")?.split(" ")[0];
 // Our own /send page posts here with X-Client: web; count those orders as the website, not the API.
 const source = (req: Request) => (req.get("x-client") === "web" ? "web" : "api");
+// The website visitor's PostHog id and first-touch campaign (our /send page sends X-Utm: "<source>/<campaign>",
+// read from localStorage; see layout.ts). Analytics only: both are spoofable and never affect price or review.
+const visitorTracking = (req: Request) => ({
+  analytics_id: req.get("x-analytics-id") || undefined,
+  utm: /^[a-z0-9_.-]{1,40}\/[a-z0-9_.-]{0,40}$/i.test(req.get("x-utm") ?? "") ? req.get("x-utm")!.toLowerCase() : undefined,
+});
 const idem = (req: Request, body: { idempotency_key?: string }) => req.get("idempotency-key") ?? body.idempotency_key;
 
 // One design to many people: see createGroupOrders / publicBatch in orders.ts.
@@ -68,7 +74,7 @@ api.post(
       const { recipients } = RecipientsSchema.parse(req.body);
       const { size, content, ...rest } = CreatePostcardSchema.parse({ ...req.body, recipients: undefined, to: recipients[0] });
       return createGroup(res, recipients, (to, key, batch_id) => createOrder({
-        ...rest, to, content, idempotency_key: key, batch_id, product: postcardProduct(size), source: source(req), client: client(req), analytics_id: req.get("x-analytics-id") || undefined,
+        ...rest, to, content, idempotency_key: key, batch_id, product: postcardProduct(size), source: source(req), client: client(req), ...visitorTracking(req),
       }), idem(req, rest));
     }
     const { size, content, ...rest } = CreatePostcardSchema.parse(req.body);
@@ -79,7 +85,7 @@ api.post(
       product: postcardProduct(size),
       source: source(req),
       client: client(req),
-      analytics_id: req.get("x-analytics-id") || undefined,
+      ...visitorTracking(req),
     });
     res.status(existing ? 200 : 201).json(publicOrder(order));
   }),
@@ -93,7 +99,7 @@ api.post(
       const { certified, ...input } = CreateLetterSchema.parse({ ...req.body, recipients: undefined, to: recipients[0] });
       const content = await prepareLetterContent(input.content); // a PDF is fetched and stored once for the whole group
       return createGroup(res, recipients, (to, key, batch_id) => createOrder({
-        ...input, to, content, idempotency_key: key, batch_id, product: letterProduct(certified), source: source(req), client: client(req), analytics_id: req.get("x-analytics-id") || undefined,
+        ...input, to, content, idempotency_key: key, batch_id, product: letterProduct(certified), source: source(req), client: client(req), ...visitorTracking(req),
       }), idem(req, input));
     }
     const { certified, ...input } = CreateLetterSchema.parse(req.body);
@@ -104,7 +110,7 @@ api.post(
       product: letterProduct(certified),
       source: source(req),
       client: client(req),
-      analytics_id: req.get("x-analytics-id") || undefined,
+      ...visitorTracking(req),
     });
     res.status(existing ? 200 : 201).json(publicOrder(order));
   }),

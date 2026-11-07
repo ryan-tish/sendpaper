@@ -10,7 +10,7 @@ import { startPrintSync } from "./fulfill.ts";
 import { startUnpaidReminders } from "./email.ts";
 import { web } from "./web.ts";
 import { quick } from "./quick.ts";
-import { trackApi, trackViews } from "./stats.ts";
+import { shortLink, trackApi, trackViews } from "./stats.ts";
 import { pingIndexNow, PUBLIC_PATHS, seo } from "./seo.ts";
 import { markdownPages } from "./markdown.ts";
 import { posthogProxy } from "./analytics.ts";
@@ -78,6 +78,9 @@ app.get("/healthz", async (_req, res) => {
 app.get("/.well-known/openai-apps-challenge", (_req, res) => {
   res.type("text/plain").send(process.env.OPENAI_APPS_CHALLENGE ?? "");
 });
+
+// Short tracked links for X/Twitter: /x (bio) and /x/<code> (stats.ts SHORT_LINKS).
+app.get(["/x", "/x/:code"], shortLink);
 
 // Count page views for /admin/stats (pages only: no API, MCP, assets, admin or bots).
 app.use(markdownPages(PUBLIC_PATHS)); // <path>.md or Accept: text/markdown (markdown.ts); rewrites the URL before seo/web see it

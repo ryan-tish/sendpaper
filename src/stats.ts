@@ -40,6 +40,36 @@ function referrerHost(req: Request) {
   }
 }
 
+const utmParam = (v: unknown) => (typeof v === "string" && /^[a-z0-9_.-]{1,40}$/i.test(v) ? v.toLowerCase() : null);
+
+// Short tracked links for X/Twitter (2026-11-07): sendmypaper.com/x/<code> logs a click (same cookieless visitor hash
+// as page_views, no IP) and 302s to the page with UTM tags, so replies and the bio can be measured end to end
+// (click → visit → order, via orders.utm). Unknown codes still land on the homepage, never a 404 on a posted tweet.
+export const SHORT_LINKS: Record<string, { to: string; campaign: string }> = {
+  bio: { to: "/", campaign: "x_bio" },
+  r: { to: "/", campaign: "x_reply" },
+  cm: { to: "/send/certified", campaign: "x_reply" },
+  letter: { to: "/send/letter", campaign: "x_reply" },
+  pc: { to: "/send/postcard", campaign: "x_reply" },
+  ai: { to: "/can-ai-send-mail", campaign: "x_reply" },
+  wcm: { to: "/what-is-certified-mail", campaign: "x_reply" },
+  cancel: { to: "/cancellation-letter-by-mail", campaign: "x_reply" },
+};
+export function shortLink(req: Request, res: Response) {
+  const raw = String(req.params.code ?? "bio");
+  const code = /^[a-z0-9-]{1,24}$/i.test(raw) ? raw.toLowerCase() : "bio";
+  const link = SHORT_LINKS[code] ?? { to: "/", campaign: "x_reply" };
+  const ua = req.get("user-agent") ?? "";
+  const owner = /(?:^|;\s*)sp_owner=1/.test(req.get("cookie") ?? "");
+  if (!owner && ua && !BOT.test(ua)) {
+    dailySalt()
+      .then((salt) => pool.query("INSERT INTO link_clicks (code, visitor, referrer_host) VALUES ($1, $2, $3)", [code, createHash("sha256").update(`${salt}|${req.ip}|${ua}`).digest("hex").slice(0, 16), referrerHost(req)]))
+      .catch((e) => console.error("link_clicks", e));
+  }
+  const q = new URLSearchParams({ utm_source: "twitter", utm_medium: "social", utm_campaign: link.campaign, utm_content: code });
+  res.set("Cache-Control", "no-store").redirect(302, `${link.to}?${q}`);
+}
+
 export function trackViews(req: Request, res: Response, next: NextFunction) {
   const ua = req.get("user-agent") ?? "";
   const owner = /(?:^|;\s*)sp_owner=1/.test(req.get("cookie") ?? "");
@@ -52,7 +82,7 @@ export function trackViews(req: Request, res: Response, next: NextFunction) {
       dailySalt()
         .then((s) => {
           const visitor = createHash("sha256").update(`${s}|${req.ip}|${ua}`).digest("hex").slice(0, 16);
-          return pool.query("INSERT INTO page_views (path, referrer_host, visitor) VALUES ($1, $2, $3)", [normalize(req.path), referrerHost(req), visitor]);
+          return pool.query("INSERT INTO page_views (path, referrer_host, visitor, utm_source, utm_campaign) VALUES ($1, $2, $3, $4, $5)", [normalize(req.path), referrerHost(req), visitor, utmParam(req.query.utm_source), utmParam(req.query.utm_campaign)]);
         })
         .catch((e) => console.error("page_views", e));
     });
@@ -216,6 +246,16 @@ export async function statsPage() {
       SELECT to_char(at AT TIME ZONE 'UTC', 'Mon DD HH24:MI') AS at, channel, endpoint, status, split_part(client, '/', 1) AS client, coalesce(error, '') AS error
       FROM api_calls WHERE NOT ok AND NOT owner AND at >= ${RESET} ORDER BY api_calls.at DESC LIMIT 20`),
   ]);
+  // X/Twitter test (2026-11-07): short-link clicks → visits tagged utm_source=twitter (or from t.co/x.com) → orders with orders.utm "twitter/…".
+  const [xClicks, xVisits, xOrders] = await Promise.all([
+    q<{ code: string; clicks: string; people: string }>(`SELECT code, count(*) AS clicks, count(DISTINCT visitor) AS people FROM link_clicks WHERE at > ${SINCE} GROUP BY code ORDER BY clicks DESC`),
+    q<{ tagged: string; referred: string }>(`SELECT count(DISTINCT visitor) FILTER (WHERE utm_source = 'twitter') AS tagged,
+      count(DISTINCT visitor) FILTER (WHERE referrer_host IN ('t.co', 'x.com', 'twitter.com', 'mobile.twitter.com', 'mobile.x.com')) AS referred FROM page_views WHERE at > ${SINCE}`),
+    q<{ created: string; paid: string; cents: string }>(`SELECT count(*) AS created, count(*) FILTER (WHERE status IN ('paid','printing','mailed')) AS paid,
+      coalesce(sum(price_cents) FILTER (WHERE status IN ('paid','printing','mailed')), 0) AS cents FROM orders WHERE utm LIKE 'twitter/%' AND created_at > ${SINCE} AND NOT is_test`),
+  ]);
+  const xc = xClicks.reduce((a, c) => a + n(c.clicks), 0);
+
   const ch = (c: string) => callTotals.find((t) => t.channel === c);
   const callsAll = callTotals.reduce((a, t) => a + n(t.calls), 0), errAll = callTotals.reduce((a, t) => a + n(t.errors), 0);
   const chanName = (c: string) => (c === "mcp" ? "Agent tools" : "REST API");
@@ -294,6 +334,15 @@ export async function statsPage() {
       ${barTable("Devices", ["Device", "Visitors"], ph.devices, "No data yet.")}
       ${barTable("Countries", ["Country", "Visitors"], ph.countries, "No data yet.")}
     </div>` : ""}
+    <div class="two">
+      <div class="card stat-table"><h3>X / Twitter (test)</h3><table><tr><th>Step</th><th class="num">Count</th><th class="num">Of previous</th></tr>
+        ${funnelRow("Short-link clicks (sendmypaper.com/x/…)", xc, 0, "")}
+        ${funnelRow("Visitors tagged utm_source=twitter", n(xVisits[0]?.tagged), xc)}
+        ${funnelRow("Orders from those visitors", n(xOrders[0]?.created), n(xVisits[0]?.tagged))}
+        ${funnelRow("Paid", n(xOrders[0]?.paid), n(xOrders[0]?.created))}</table>
+        <p class="soft" style="font-size:.82rem;margin:8px 0 0">Paid revenue $${(n(xOrders[0]?.cents) / 100).toFixed(2)} · ${fmt(n(xVisits[0]?.referred))} visitors arrived from t.co/x.com (any link) · orders count a visitor's first campaign in the last 30 days.</p></div>
+      ${barTable("Short links clicked", ["Code", "Clicks"], xClicks.map((c) => ({ label: `/x/${c.code} · ${c.people} people`, value: n(c.clicks) })), "No clicks yet.")}
+    </div>
     <div class="two">
       <div class="card stat-table"><h3>Website funnel</h3><table><tr><th>Step</th><th class="num">Count</th><th class="num">Of previous</th></tr>
         ${funnelRow("Visitors", W.d30[0], 0, "")}

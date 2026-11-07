@@ -304,6 +304,7 @@ export function sendPage(initial: string, fixed: SendKind) {
     </dialog>
 
     <script>
+      function spUtm() { try { var o = JSON.parse(localStorage.getItem("sp_utm") || "null"); return o && o.v && Date.now() - o.at < 2592000000 ? { "X-Utm": o.v } : {}; } catch (e) { return {}; } }
     const PRODUCTS = ${JSON.stringify(PRODUCTS)};
     const THEMES = ${JSON.stringify(THEMES)};
     const MAX_IMG = ${LIMITS.imageBytes}, MAX_ORIGINAL = 25 * 1024 * 1024, COLOR_LETTER = ${COLOR_LETTER_CENTS};
@@ -700,7 +701,7 @@ export function sendPage(initial: string, fixed: SendKind) {
         const ps = prefixes();
         if (ps.length > 1) body.recipients = ps.map(addr); else body.to = addr("to");
         Object.assign(body, { from: addr("from"), customer_email: $("email").value.trim() || undefined });
-        const r = await fetch(url, { method: "POST", headers: Object.assign({ "Content-Type": "application/json", "X-Client": "web" }, window.posthog && posthog.get_distinct_id ? { "X-Analytics-Id": String(posthog.get_distinct_id()) } : {}), body: JSON.stringify(body) });
+        const r = await fetch(url, { method: "POST", headers: Object.assign({ "Content-Type": "application/json", "X-Client": "web" }, window.posthog && posthog.get_distinct_id ? { "X-Analytics-Id": String(posthog.get_distinct_id()) } : {}, spUtm()), body: JSON.stringify(body) });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error.fields ? j.error.fields.map(f => recipField(f.field || "form").replace(/^to\\./, "Send to: ").replace(/^from\\./, "From: ").replace(/^content\\./, "") + " " + f.message.toLowerCase()).join(" · ") : j.error.message);
         location.href = j.batch ? "/b/" + j.batch.id : "/o/" + j.id;

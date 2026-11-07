@@ -108,6 +108,12 @@ export function docsUrl(path = "") {
   return DOCS_URL ? `${DOCS_URL}${path}` : "/docs";
 }
 
+// First-touch campaign (2026-11-07, for measuring X/Twitter): when a page is opened with ?utm_source=..., remember
+// "<source>/<campaign>" in localStorage for 30 days (first touch wins; no cookie). /send sends it as X-Utm so the
+// order records where the visitor came from (orders.utm). Wrapped in try/catch: storage can be blocked.
+// NOTE: no backslashes in here (this is a TS template literal; see the Traps in CLAUDE.md).
+const UTM_SNIPPET = `<script>try{var q=new URLSearchParams(location.search),s=q.get("utm_source");if(s){var o=JSON.parse(localStorage.getItem("sp_utm")||"null");if(!o||Date.now()-o.at>2592000000)localStorage.setItem("sp_utm",JSON.stringify({v:(s+"/"+(q.get("utm_campaign")||"")).toLowerCase().slice(0,81),at:Date.now()}))}}catch(e){}</script>`;
+
 export function page(title: string, body: string, opts: { description?: string; noindex?: boolean } = {}) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -129,7 +135,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
 <script>try { if (localStorage.getItem("theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch {}</script>
-<style>${CSS}</style>${analyticsSnippet()}</head><body>
+<style>${CSS}</style>${analyticsSnippet()}${UTM_SNIPPET}</head><body>
 ${OFFER_ACTIVE ? `<a class="promo" href="/send"><b>${esc(OFFER_LINE)}</b><span>Taken off automatically · any postcard or letter</span><i aria-hidden="true">→</i></a>` : ""}
 <header class="site"><div class="wrap"><nav>
   <a class="logo" href="/">${LOGO_FULL}</a>

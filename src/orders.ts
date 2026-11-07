@@ -212,6 +212,7 @@ export type OrderRow = {
   express: boolean;
   batch_id: string | null;
   analytics_id: string | null;
+  utm: string | null;
   is_test: boolean;
   tracking_number: string | null;
 };
@@ -227,6 +228,8 @@ type CreateInput = {
   client?: string;
   // The website visitor's PostHog id, so the order's events join their browsing funnel.
   analytics_id?: string;
+  // First-touch campaign "<utm_source>/<utm_campaign>" of the website visitor, e.g. "twitter/x_reply".
+  utm?: string;
   express?: boolean;
   batch_id?: string;
 };
@@ -350,8 +353,8 @@ export async function createOrder(input: CreateInput): Promise<{ order: OrderRow
   const events = [{ at: new Date().toISOString(), status: "awaiting_payment" }];
   const { rows } = await pool.query<OrderRow>(
     `INSERT INTO orders (id, product, to_address, from_address, content, price_cents, customer_email,
-                         source, client, idempotency_key, events, analytics_id, discount_cents, express, batch_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+                         source, client, idempotency_key, events, analytics_id, discount_cents, express, batch_id, utm)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
     [
       id,
       input.product,
@@ -368,6 +371,7 @@ export async function createOrder(input: CreateInput): Promise<{ order: OrderRow
       discount,
       Boolean(input.express),
       input.batch_id ?? null,
+      input.utm ?? null,
     ],
   );
   const o = rows[0];

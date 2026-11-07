@@ -46,6 +46,7 @@ export async function migrate() {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS express boolean NOT NULL DEFAULT false;
     -- One design to many people (2026-10-05): every recipient is its own order; a group shares batch_id and one checkout.
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS batch_id text;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS utm text;
     CREATE INDEX IF NOT EXISTS orders_batch_id ON orders (batch_id) WHERE batch_id IS NOT NULL;
     -- Orders created while building and testing Sendpaper (2026-10-01..04); hidden from /admin lists and stats.
     UPDATE orders SET is_test = true WHERE id IN ('ord_tbzmm78n5x6k2pnn','ord_p880an9yghhqjq60','ord_sg875bgv28ke739q',
@@ -63,6 +64,17 @@ export async function migrate() {
       visitor        text NOT NULL
     );
     CREATE INDEX IF NOT EXISTS page_views_at_idx ON page_views (at);
+    ALTER TABLE page_views ADD COLUMN IF NOT EXISTS utm_source text;
+    ALTER TABLE page_views ADD COLUMN IF NOT EXISTS utm_campaign text;
+    -- Short tracked links (/x/<code>), e.g. in X/Twitter replies and bio. No IPs, same visitor hash as page_views.
+    CREATE TABLE IF NOT EXISTS link_clicks (
+      id bigserial PRIMARY KEY,
+      at timestamptz NOT NULL DEFAULT now(),
+      code text NOT NULL,
+      visitor text,
+      referrer_host text
+    );
+    CREATE INDEX IF NOT EXISTS link_clicks_at_idx ON link_clicks (at);
     CREATE TABLE IF NOT EXISTS mcp_calls (
       id      bigserial PRIMARY KEY,
       at      timestamptz NOT NULL DEFAULT now(),
