@@ -8,7 +8,7 @@ import { postgridMode, printProofUrl, sendToPrint, syncPrint } from "./fulfill.t
 import { addressBlock, esc, printSheet } from "./render.ts";
 import { listReviews, setReviewApproved } from "./offer.ts";
 import { resetStats, statsPage } from "./stats.ts";
-import { emailsFor, sendTestEmail } from "./email.ts";
+import { emailCustomer, emailsFor, sendTestEmail } from "./email.ts";
 
 // The operator's queue: paid orders get reviewed, printed (or sent to a print partner), then marked mailed.
 export const admin = Router();
@@ -131,6 +131,12 @@ admin.get("/orders/:id", async (req, res) => {
         ${btn("refunded", "Reject & refund via Stripe", `<label style="flex:1">Reason (emailed to the customer; keep it neutral)<input name="note" required></label>`)}
         ${btn("cancelled", "Cancel without refund")}
       </div>
+      ${!o.print_id && (o.status === "paid" || o.status === "awaiting_payment") ? `<div class="card" style="gap:8px"><b>Payment failed</b>
+        <p class="soft">Only when Stripe did NOT take the money (blocked or failed). Emails the customer that the payment didn't go through (order number only, no names) and cancels the order. If Stripe did charge, use "Reject &amp; refund" instead.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <form method="post" action="/admin/orders/${o.id}/payment-failed"><button class="btn alt"${o.customer_email ? "" : " disabled"}>Email "payment failed" &amp; cancel</button></form>
+          <form method="post" action="/admin/test-email"><input type="hidden" name="kind" value="payment_failed"><button class="btn alt">Send me a test of this email</button></form>
+        </div></div>` : ""}
       <form method="post" action="/admin/orders/${o.id}/test"><input type="hidden" name="is_test" value="${o.is_test ? "0" : "1"}">
         <button class="btn alt">${o.is_test ? "Unmark as test (show in lists and stats)" : "Mark as test (hide from lists and stats)"}</button></form>
       <h2>Emails to the customer</h2>${emails.length
@@ -153,10 +159,10 @@ admin.post("/stats/reset", async (req, res) => {
   res.redirect(303, "/admin/stats");
 });
 
-admin.post("/test-email", async (_req, res) => {
+admin.post("/test-email", async (req, res) => {
   try {
-    const r = await sendTestEmail("paid");
-    const msg = r.skipped ? "Not sent: RESEND_API_KEY isn't set on this server." : `Sent a test "Payment received" email to ${r.to} (Resend id ${r.id ?? "?"}).`;
+    const r = await sendTestEmail(req.body?.kind === "payment_failed" ? "payment_failed" : "paid");
+    const msg = r.skipped ? "Not sent: RESEND_API_KEY isn't set on this server." : `Sent a test "${req.body?.kind === "payment_failed" ? "Payment failed" : "Payment received"}" email to ${r.to} (Resend id ${r.id ?? "?"}).`;
     res.send(page("Admin · Test email", `<section style="max-width:640px;margin:40px auto;padding:0 16px"><p>${esc(msg)}</p><p><a href="/admin/stats">Back to stats</a></p></section>`, { noindex: true }));
   } catch (e) {
     console.error("test email", e);
@@ -214,6 +220,18 @@ admin.get("/orders/:id/print", async (req, res) => {
 admin.post("/orders/:id/test", async (req, res) => {
   await setTest(String(req.params.id), req.body.is_test === "1");
   res.redirect(303, `/admin/orders/${req.params.id}`);
+});
+
+// "Payment failed" (Ryan, 2026-11-07): Stripe blocked/failed the payment but the order still looks open. Emails the customer
+// once (customer_emails key payment_failed:<id>) and cancels. Refused once the order is with PostGrid or closed.
+admin.post("/orders/:id/payment-failed", async (req, res) => {
+  const o = await getOrder(String(req.params.id));
+  if (!o) return res.status(404).send("Not found");
+  if (o.print_id || !(o.status === "paid" || o.status === "awaiting_payment")) return res.status(409).send("This order is already with PostGrid or closed.");
+  if (!o.customer_email) return res.status(400).send("No email address on this order.");
+  await emailCustomer("payment_failed", o);
+  await setStatus(o.id, "cancelled", "Payment failed (Stripe); customer emailed");
+  res.redirect(303, `/admin/orders/${o.id}`);
 });
 
 admin.post("/orders/:id/status", async (req, res) => {

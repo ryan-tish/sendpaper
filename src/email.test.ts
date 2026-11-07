@@ -52,3 +52,12 @@ test("unpaid: one reminder, links the order page, never quotes the mail", () => 
   assert.equal(g.subject, "Your 2 letters haven't been sent yet");
   assert.match(g.html, /\/b\/bat_9/);
 });
+
+test("payment_failed: only the order number, no names, addresses, product or content", () => {
+  const { subject, html, } = composeEmail("payment_failed", base);
+  assert.match(html, /ord_test1/);
+  for (const secret of ["Pat", "Lee", "Sam", "Main St", "Oak St", "Austin", "78701", "PRIVATE LETTER TEXT", "letter", "Certified", "$14.99"]) {
+    assert.ok(!html.includes(secret) && !subject.includes(secret), `leaks ${secret}`);
+  }
+  assert.match(html, /\/send"/);
+});

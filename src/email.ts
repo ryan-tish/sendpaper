@@ -10,7 +10,9 @@ import { senderKey, type OrderRow } from "./orders.ts";
 
 // "unpaid" (Ryan, 2026-11-05, after a Cursor order sat unpaid): ONE reminder per order (or per group) an hour after it was
 // created and still not paid, sent by startUnpaidReminders below. Never repeated.
-type Kind = "paid" | "mailed" | "refunded" | "unpaid";
+// "payment_failed" (Ryan, 2026-11-07, after Stripe flagged a payment): sent by hand from the admin order page when Stripe did
+// NOT take the money. Deliberately no names, addresses or product: only the order number (Ryan: "just the order").
+type Kind = "paid" | "mailed" | "refunded" | "unpaid" | "payment_failed";
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 const orderUrl = (id: string) => `${BASE_URL}/o/${id}`;
@@ -71,6 +73,15 @@ const toText = (html: string) =>
 export function composeEmail(kind: Kind, o: OrderRow, group: OrderRow[] = [o]) {
   const to = esc(o.to_address.name);
   const certified = Boolean(EXTRA_SERVICE[o.product]);
+  if (kind === "payment_failed") {
+    return {
+      subject: `Your ${BRAND} payment didn't go through`,
+      html: layout("Your payment didn't go through.", [
+        `We couldn't complete the payment for your ${esc(BRAND)} order <b>${esc(o.id)}</b>, so it hasn't been printed or mailed, and you haven't been charged.`,
+        `If you'd still like to send it, you can place the order again. If the payment fails again, try a different card, or reply to this email and we'll help.`,
+      ], { href: `${BASE_URL}/send`, label: "Place the order again" }),
+    };
+  }
   if (kind === "unpaid") {
     const many = group.length > 1;
     const total = group.reduce((t, x) => t + x.price_cents, 0);
