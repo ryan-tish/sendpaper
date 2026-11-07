@@ -315,6 +315,7 @@ export async function statsPage() {
       <p class="soft">${source} Agent orders never visit the website, so they're under Agents and Orders. <a href="/admin">Orders</a> · <a href="/admin/reviews">Reviews</a></p>
       <form method="post" action="/admin/stats/reset" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
         <button class="btn alt" name="action" value="reset">Reset stats to now</button>
+        <button class="btn alt" formaction="/admin/test-email">Send me a test payment email</button>
         ${resetAt ? `<button class="btn alt" name="action" value="clear">Undo reset (show full 30 days)</button>` : ""}
       </form>
       <p class="soft" style="font-size:.82rem;margin:6px 0 0">Reset only changes where counting starts. No data is deleted; reviews and the orders list are unaffected.</p></div>

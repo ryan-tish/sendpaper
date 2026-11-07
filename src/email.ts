@@ -160,6 +160,20 @@ async function send(to: string, subject: string, html: string) {
   return { id: body.id ?? null, skipped: false };
 }
 
+// Admin button "Send me a test payment email" (2026-11-07): the real "paid" template with SAMPLE data (not a real
+// order, so its links 404), sent to NOTIFY_EMAIL with a [TEST] subject. Exists so a template change can be checked
+// in a real inbox without placing an order, and without the Resend key ever leaving Render.
+export async function sendTestEmail(kind: Kind = "paid") {
+  if (!env.notifyEmail) throw new Error("NOTIFY_EMAIL is not set");
+  const sample = {
+    id: "ord_test7k2m9q4x8p", product: "letter_certified", price_cents: 1499, express: false, batch_id: null, tracking_number: null, operator_note: null,
+    to_address: { name: "Dana Kim", line1: "12 Oak St", city: "Austin", state: "TX", zip: "78701" },
+    from_address: { name: "Test Customer", line1: "1 Test St", city: "New York", state: "NY", zip: "10001" }, content: {},
+  } as unknown as OrderRow;
+  const { subject, html } = composeEmail(kind, sample);
+  return { to: env.notifyEmail, ...(await send(env.notifyEmail, `[TEST] ${subject}`, html)) };
+}
+
 // Called after a status change. Never throws: an email problem must not undo or block the status change.
 export async function emailCustomer(kind: Kind, o: OrderRow) {
   try {

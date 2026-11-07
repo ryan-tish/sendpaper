@@ -8,7 +8,7 @@ import { postgridMode, printProofUrl, sendToPrint, syncPrint } from "./fulfill.t
 import { addressBlock, esc, printSheet } from "./render.ts";
 import { listReviews, setReviewApproved } from "./offer.ts";
 import { resetStats, statsPage } from "./stats.ts";
-import { emailsFor } from "./email.ts";
+import { emailsFor, sendTestEmail } from "./email.ts";
 
 // The operator's queue: paid orders get reviewed, printed (or sent to a print partner), then marked mailed.
 export const admin = Router();
@@ -151,6 +151,17 @@ admin.get("/stats", async (_req, res) => {
 admin.post("/stats/reset", async (req, res) => {
   await resetStats(req.body.action === "clear");
   res.redirect(303, "/admin/stats");
+});
+
+admin.post("/test-email", async (_req, res) => {
+  try {
+    const r = await sendTestEmail("paid");
+    const msg = r.skipped ? "Not sent: RESEND_API_KEY isn't set on this server." : `Sent a test "Payment received" email to ${r.to} (Resend id ${r.id ?? "?"}).`;
+    res.send(page("Admin · Test email", `<section style="max-width:640px;margin:40px auto;padding:0 16px"><p>${esc(msg)}</p><p><a href="/admin/stats">Back to stats</a></p></section>`, { noindex: true }));
+  } catch (e) {
+    console.error("test email", e);
+    res.status(500).send(page("Admin · Test email", `<section style="max-width:640px;margin:40px auto;padding:0 16px"><p>Test email failed: ${esc(String((e as Error).message))}</p><p><a href="/admin/stats">Back to stats</a></p></section>`, { noindex: true }));
+  }
 });
 
 admin.get("/reviews", async (_req, res) => {
