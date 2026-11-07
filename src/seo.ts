@@ -4,8 +4,8 @@
 import { Router } from "express";
 import { BASE_URL, DOCS_URL } from "./config.ts";
 import { GUIDE_PATHS } from "./guides.ts";
-import { ARTICLE_PATHS } from "./articles.ts";
-import { COMPARE_PATHS } from "./compare.ts";
+import { ARTICLE_PATHS, ARTICLES } from "./articles.ts";
+import { COMPARE_PATHS, COMPARES } from "./compare.ts";
 
 // Pages we want indexed. Order pages, admin, order links and the API stay out (they're private or per-order).
 export const PUBLIC_PATHS = ["/", "/send", "/send/postcard", "/send/letter", "/send/certified", "/use-cases", "/guides", ...ARTICLE_PATHS, ...GUIDE_PATHS, ...COMPARE_PATHS, "/reviews", "/privacy", "/terms", "/content-policy"];
@@ -36,8 +36,19 @@ seo.get("/robots.txt", (_req, res) => {
   );
 });
 
+// <lastmod> only where we know the real date of the last substantive change (Google ignores
+// lastmod it finds to be inaccurate, so pages without a tracked date get none).
+const LASTMOD = new Map<string, string>([
+  ...ARTICLES.map((a) => [`/${a.slug}`, a.modified] as [string, string]),
+  ...COMPARES.map((c) => [`/compare/${c.slug}`, c.modified] as [string, string]),
+]);
+LASTMOD.set("/guides", [...LASTMOD.values()].sort().at(-1) ?? "");
+
 seo.get("/sitemap.xml", (_req, res) => {
-  const urls = PUBLIC_PATHS.map((p) => `  <url><loc>${BASE_URL}${p === "/" ? "/" : p}</loc></url>`).join("\n");
+  const urls = PUBLIC_PATHS.map((p) => {
+    const mod = LASTMOD.get(p);
+    return `  <url><loc>${BASE_URL}${p === "/" ? "/" : p}</loc>${mod ? `<lastmod>${mod}</lastmod>` : ""}</url>`;
+  }).join("\n");
   res
     .type("application/xml")
     .set("Cache-Control", "public, max-age=3600")
