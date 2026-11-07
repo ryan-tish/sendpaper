@@ -47,6 +47,8 @@ const utmParam = (v: unknown) => (typeof v === "string" && /^[a-z0-9_.-]{1,40}$/
 // (click → visit → order, via orders.utm). Unknown codes still land on the homepage, never a 404 on a posted tweet.
 export const SHORT_LINKS: Record<string, { to: string; campaign: string }> = {
   bio: { to: "/", campaign: "x_bio" },
+  p: { to: "/", campaign: "x_post" },
+  psend: { to: "/send", campaign: "x_post" },
   r: { to: "/", campaign: "x_reply" },
   cm: { to: "/send/certified", campaign: "x_reply" },
   letter: { to: "/send/letter", campaign: "x_reply" },
