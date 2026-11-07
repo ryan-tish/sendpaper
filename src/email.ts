@@ -23,16 +23,36 @@ function pieceName(o: OrderRow) {
 // "letter" / "postcard", for sentences like "Your letter is on its way".
 const noun = (o: OrderRow) => (isLetter(o.product) ? "letter" : "postcard");
 
-// Table-based with inline styles only: Gmail strips <style> blocks.
-function layout(heading: string, paragraphs: string[], button?: { href: string; label: string }) {
-  const p = (html: string) => `<tr><td style="padding:0 0 14px;font:15px/1.55 Arial,Helvetica,sans-serif;color:#1a1f1c">${html}</td></tr>`;
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7f5;padding:24px 0"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #e3e6e2;border-radius:12px">
-<tr><td style="padding:28px 28px 8px;font:600 13px Arial,Helvetica,sans-serif;color:#0f7a52;letter-spacing:.02em">${esc(BRAND)}</td></tr>
-<tr><td style="padding:0 28px 16px;font:600 22px/1.3 Arial,Helvetica,sans-serif;color:#0d1512">${heading}</td></tr>
-<tr><td style="padding:0 28px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${paragraphs.map(p).join("")}</table></td></tr>
-${button ? `<tr><td style="padding:4px 28px 24px"><a href="${button.href}" style="display:inline-block;background:#0d1512;color:#ffffff;text-decoration:none;font:600 14px Arial,Helvetica,sans-serif;padding:12px 18px;border-radius:8px">${esc(button.label)}</a></td></tr>` : ""}
-<tr><td style="padding:16px 28px 24px;border-top:1px solid #e3e6e2;font:13px/1.5 Arial,Helvetica,sans-serif;color:#5b635e">Questions? Just reply to this email, or write to <a href="mailto:${SUPPORT_EMAIL}" style="color:#0f7a52">${SUPPORT_EMAIL}</a>.</td></tr>
+// Layout (Ryan, 2026-11-07: modelled on Vercel's billing emails): white card on a light grey page, the logo mark,
+// a short bold heading, plain paragraphs, "Label: value" fact lines, an optional bulleted list, one black button
+// and an optional "Or …" text link, then a small grey footer. Table-based with inline styles only: Gmail strips
+// <style> blocks. The logo is a hosted PNG (alt text "Sendpaper" when images are blocked).
+const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
+const LINK = "color:#0f7a52;text-decoration:underline";
+type Block = string; // already-rendered <tr> rows, from the helpers below
+const para = (html: string): Block => `<tr><td style="padding:0 0 16px;font:14px/1.6 ${FONT};color:#111111">${html}</td></tr>`;
+const facts = (rows: [string, string][]): Block =>
+  rows.map(([k, v], i) => `<tr><td style="padding:0 0 ${i === rows.length - 1 ? 16 : 6}px;font:14px/1.6 ${FONT};color:#111111"><b>${k}:</b> ${v}</td></tr>`).join("");
+const list = (title: string, items: string[]): Block =>
+  `<tr><td style="padding:0 0 6px;font:600 14px/1.6 ${FONT};color:#111111">${title}</td></tr>
+<tr><td style="padding:0 0 16px"><table role="presentation" cellpadding="0" cellspacing="0">${items
+    .map((it) => `<tr><td valign="top" style="padding:0 8px 4px 2px;font:14px/1.6 ${FONT};color:#111111">&#8226;</td><td style="padding:0 0 4px;font:14px/1.6 ${FONT};color:#111111">${it}</td></tr>`)
+    .join("")}</table></td></tr>`;
+
+function layout(heading: string, blocks: (Block | string)[], button?: { href: string; label: string }, secondary?: string) {
+  // Plain strings are paragraphs; helper output (starting with <tr>) is used as is.
+  const body = blocks.map((b) => (b.startsWith("<tr>") ? b : para(b))).join("");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fafafa;padding:32px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #eaeaea;border-radius:8px">
+<tr><td style="padding:36px 40px 0"><img src="https://docs.sendmypaper.com/logo/icon-512.png" width="28" height="28" alt="${esc(BRAND)}" style="display:block;border:0;border-radius:6px"></td></tr>
+<tr><td style="padding:28px 40px 20px;font:600 22px/1.3 ${FONT};color:#111111">${heading}</td></tr>
+<tr><td style="padding:0 40px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${body}</table></td></tr>
+${button ? `<tr><td style="padding:8px 40px ${secondary ? 16 : 32}px"><a href="${button.href}" style="display:inline-block;background:#000000;color:#ffffff;text-decoration:none;font:600 14px ${FONT};padding:11px 18px;border-radius:6px">${esc(button.label)}</a></td></tr>` : ""}
+${secondary ? `<tr><td style="padding:0 40px 32px;font:14px/1.6 ${FONT};color:#111111">${secondary}</td></tr>` : ""}
+<tr><td style="padding:0 40px"><div style="border-top:1px solid #eaeaea;font-size:0;line-height:0">&nbsp;</div></td></tr>
+<tr><td style="padding:20px 40px 36px;font:12px/1.7 ${FONT};color:#666666">Questions about this order? Reply to this email or write to <a href="mailto:${SUPPORT_EMAIL}" style="color:#666666;text-decoration:underline">${SUPPORT_EMAIL}</a>.<br>
+You're getting this because you placed an order on ${esc(BRAND)}. We never put the words of your mail in an email.<br>
+&copy; ${new Date().getFullYear()} ${esc(BRAND)} &middot; <a href="${BASE_URL}" style="color:#666666;text-decoration:underline">${BASE_URL.replace(/^https?:\/\//, "")}</a></td></tr>
 </table></td></tr></table>`;
 }
 
@@ -43,6 +63,7 @@ const toText = (html: string) =>
     .replace(/<br>/g, "\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&nbsp;/g, " ").replace(/&middot;/g, "·").replace(/&copy;/g, "©").replace(/&amp;/g, "&")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -67,15 +88,30 @@ export function composeEmail(kind: Kind, o: OrderRow, group: OrderRow[] = [o]) {
   if (kind === "paid") {
     const many = group.length > 1;
     const total = group.reduce((t, x) => t + x.price_cents, 0);
-    const what = many ? `${group.length} ${noun(o)}s` : `your ${pieceName(o)} to ${to}`;
     const href = many && o.batch_id ? `${BASE_URL}/b/${o.batch_id}` : orderUrl(o.id);
+    const mailing = certified
+      ? `USPS Certified Mail, with a tracking number${o.product.endsWith("_rr") ? " and return receipt" : ""}`
+      : o.express ? "USPS Priority Mail (express), usually 2–3 days" : "USPS First-Class, usually 1–5 business days after mailing";
+    const place = (x: OrderRow) => [x.to_address.city, x.to_address.state].filter(Boolean).map((s) => esc(String(s))).join(", ");
+    const pieces = group.slice(0, 25).map((x) => `<a href="${orderUrl(x.id)}" style="${LINK}">${esc(x.to_address.name)}</a>&nbsp; ${place(x)}`);
     return {
       subject: many ? `We've got your ${group.length} ${noun(o)}s` : `We've got your ${noun(o)} to ${o.to_address.name}`,
-      html: layout(`Thanks, your ${many ? `${noun(o)}s are` : `${noun(o)} is`} paid.`, [
-        `We've received your payment of <b>${money(total)}</b> for ${what}.`,
-        `What happens next: a person at ${esc(BRAND)} checks every piece before it's printed, usually within one business day. Then it's printed and mailed by USPS First-Class${certified ? " as Certified Mail, with a tracking number" : ""}${o.express ? " (express: USPS Priority Mail)" : ""}. We'll email you again when it's in the mail.`,
-        `You can see the exact print preview and follow the status at any time on your order page.`,
-      ], { href, label: many ? "View your orders" : "View your order" }),
+      html: layout(
+        "Payment received",
+        [
+          `Hello, ${esc(o.from_address.name)}.`,
+          `Thanks, we've got your payment for ${many ? `<b>${group.length} ${noun(o)}s</b>` : `your <b>${esc(pieceName(o))}</b>`}.`,
+          facts([
+            ["Amount paid", `${money(total)} USD`],
+            ["Mailing", mailing],
+            ["Order", many && o.batch_id ? esc(o.batch_id) : esc(o.id)],
+          ]),
+          list("Going to", pieces),
+          `A person at ${esc(BRAND)} checks every piece before it's printed, usually within <b>one business day</b>. We'll email you again when it's in the mail.`,
+        ],
+        { href, label: many ? "View your orders" : "View your order" },
+        `Or <a href="${many && o.batch_id ? href : `${orderUrl(o.id)}/preview`}" style="${LINK}">see exactly what will print</a>.`,
+      ),
     };
   }
   if (kind === "mailed") {
