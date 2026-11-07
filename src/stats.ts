@@ -57,18 +57,38 @@ export const SHORT_LINKS: Record<string, { to: string; campaign: string }> = {
   wcm: { to: "/what-is-certified-mail", campaign: "x_reply" },
   cancel: { to: "/cancellation-letter-by-mail", campaign: "x_reply" },
 };
+// Directory / partner listings (2026-11-07, Ryan: "a specific url for TrustRadius"): sendmypaper.com/go/<name> works
+// like /x but carries its own utm_source, so each listing's traffic and orders are counted separately. Clicks are
+// stored as code "go/<name>" so they never mix into the X/Twitter panel. Add a listing here and deploy before using it.
+export const GO_LINKS: Record<string, { to: string; source: string; medium: string; campaign: string }> = {
+  trustradius: { to: "/", source: "trustradius", medium: "directory", campaign: "listing" },
+};
+
+function logClick(req: Request, code: string) {
+  const ua = req.get("user-agent") ?? "";
+  const owner = /(?:^|;\s*)sp_owner=1/.test(req.get("cookie") ?? "");
+  if (owner || !ua || BOT.test(ua)) return;
+  dailySalt()
+    .then((salt) => pool.query("INSERT INTO link_clicks (code, visitor, referrer_host) VALUES ($1, $2, $3)", [code, createHash("sha256").update(`${salt}|${req.ip}|${ua}`).digest("hex").slice(0, 16), referrerHost(req)]))
+    .catch((e) => console.error("link_clicks", e));
+}
+
 export function shortLink(req: Request, res: Response) {
   const raw = String(req.params.code ?? "bio");
   const code = /^[a-z0-9-]{1,24}$/i.test(raw) ? raw.toLowerCase() : "bio";
   const link = SHORT_LINKS[code] ?? { to: "/", campaign: "x_reply" };
-  const ua = req.get("user-agent") ?? "";
-  const owner = /(?:^|;\s*)sp_owner=1/.test(req.get("cookie") ?? "");
-  if (!owner && ua && !BOT.test(ua)) {
-    dailySalt()
-      .then((salt) => pool.query("INSERT INTO link_clicks (code, visitor, referrer_host) VALUES ($1, $2, $3)", [code, createHash("sha256").update(`${salt}|${req.ip}|${ua}`).digest("hex").slice(0, 16), referrerHost(req)]))
-      .catch((e) => console.error("link_clicks", e));
-  }
+  logClick(req, code);
   const q = new URLSearchParams({ utm_source: "twitter", utm_medium: "social", utm_campaign: link.campaign, utm_content: code });
+  res.set("Cache-Control", "no-store").redirect(302, `${link.to}?${q}`);
+}
+
+export function goLink(req: Request, res: Response) {
+  const raw = String(req.params.name ?? "");
+  const name = /^[a-z0-9-]{1,40}$/i.test(raw) ? raw.toLowerCase() : "";
+  const link = GO_LINKS[name];
+  if (!link) return res.redirect(302, "/"); // never a dead link on someone else's site
+  logClick(req, `go/${name}`);
+  const q = new URLSearchParams({ utm_source: link.source, utm_medium: link.medium, utm_campaign: link.campaign });
   res.set("Cache-Control", "no-store").redirect(302, `${link.to}?${q}`);
 }
 
@@ -250,13 +270,21 @@ export async function statsPage() {
   ]);
   // X/Twitter test (2026-11-07): short-link clicks → visits tagged utm_source=twitter (or from t.co/x.com) → orders with orders.utm "twitter/…".
   const [xClicks, xVisits, xOrders] = await Promise.all([
-    q<{ code: string; clicks: string; people: string }>(`SELECT code, count(*) AS clicks, count(DISTINCT visitor) AS people FROM link_clicks WHERE at > ${SINCE} GROUP BY code ORDER BY clicks DESC`),
+    q<{ code: string; clicks: string; people: string }>(`SELECT code, count(*) AS clicks, count(DISTINCT visitor) AS people FROM link_clicks WHERE at > ${SINCE} AND code NOT LIKE 'go/%' GROUP BY code ORDER BY clicks DESC`),
     q<{ tagged: string; referred: string }>(`SELECT count(DISTINCT visitor) FILTER (WHERE utm_source = 'twitter') AS tagged,
       count(DISTINCT visitor) FILTER (WHERE referrer_host IN ('t.co', 'x.com', 'twitter.com', 'mobile.twitter.com', 'mobile.x.com')) AS referred FROM page_views WHERE at > ${SINCE}`),
     q<{ created: string; paid: string; cents: string }>(`SELECT count(*) AS created, count(*) FILTER (WHERE status IN ('paid','printing','mailed')) AS paid,
       coalesce(sum(price_cents) FILTER (WHERE status IN ('paid','printing','mailed')), 0) AS cents FROM orders WHERE utm LIKE 'twitter/%' AND created_at > ${SINCE} AND NOT is_test`),
   ]);
   const xc = xClicks.reduce((a, c) => a + n(c.clicks), 0);
+  const goRows = await q<{ name: string; clicks: string; visitors: string; orders: string; paid: string }>(`
+    SELECT g.name, coalesce(c.clicks, 0) AS clicks, coalesce(v.visitors, 0) AS visitors, coalesce(o.orders, 0) AS orders, coalesce(o.paid, 0) AS paid
+    FROM unnest($1::text[], $2::text[]) AS g(name, source)
+    LEFT JOIN (SELECT code, count(*) AS clicks FROM link_clicks WHERE at > ${SINCE} GROUP BY code) c ON c.code = 'go/' || g.name
+    LEFT JOIN (SELECT utm_source, count(DISTINCT visitor) AS visitors FROM page_views WHERE at > ${SINCE} GROUP BY utm_source) v ON v.utm_source = g.source
+    LEFT JOIN (SELECT split_part(utm, '/', 1) AS src, count(*) AS orders, count(*) FILTER (WHERE status IN ('paid','printing','mailed')) AS paid
+               FROM orders WHERE created_at > ${SINCE} AND NOT is_test AND utm IS NOT NULL GROUP BY 1) o ON o.src = g.source
+    ORDER BY clicks DESC`, [Object.keys(GO_LINKS), Object.values(GO_LINKS).map((l) => l.source)]);
 
   const ch = (c: string) => callTotals.find((t) => t.channel === c);
   const callsAll = callTotals.reduce((a, t) => a + n(t.calls), 0), errAll = callTotals.reduce((a, t) => a + n(t.errors), 0);
@@ -346,6 +374,9 @@ export async function statsPage() {
         <p class="soft" style="font-size:.82rem;margin:8px 0 0">Paid revenue $${(n(xOrders[0]?.cents) / 100).toFixed(2)} · ${fmt(n(xVisits[0]?.referred))} visitors arrived from t.co/x.com (any link) · orders count a visitor's first campaign in the last 30 days.</p></div>
       ${barTable("Short links clicked", ["Code", "Clicks"], xClicks.map((c) => ({ label: `/x/${c.code} · ${c.people} people`, value: n(c.clicks) })), "No clicks yet.")}
     </div>
+    <div class="card stat-table"><h3>Listing links (sendmypaper.com/go/…)</h3><table><tr><th>Link</th><th class="num">Clicks</th><th class="num">Tagged visitors</th><th class="num">Orders</th><th class="num">Paid</th></tr>
+      ${goRows.map((g) => `<tr><td>/go/${esc(g.name)}</td><td class="num">${fmt(n(g.clicks))}</td><td class="num">${fmt(n(g.visitors))}</td><td class="num">${fmt(n(g.orders))}</td><td class="num">${fmt(n(g.paid))}</td></tr>`).join("")}</table>
+      <p class="soft" style="font-size:.82rem;margin:8px 0 0">One link per directory listing; each tags visitors with its own utm_source. Add listings in GO_LINKS (stats.ts).</p></div>
     <div class="two">
       <div class="card stat-table"><h3>Website funnel</h3><table><tr><th>Step</th><th class="num">Count</th><th class="num">Of previous</th></tr>
         ${funnelRow("Visitors", W.d30[0], 0, "")}
