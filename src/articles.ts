@@ -3,7 +3,7 @@
 // answers a question first and sends readers to the right sending option second. Paragraphs use rich() markup:
 // **bold** for the one key distinction, [text](/path) for our pages, [text](https://…) for a source next to a claim.
 // Claim ledger: the private ryan-tish/sendpaper-content repo, sources/<slug>.md. Never state a fact that isn't in it.
-import { BASE_URL, BRAND, PRODUCTS } from "./config.ts";
+import { BASE_URL, BRAND, LIMITS, PRODUCTS } from "./config.ts";
 import { ARTICLE_CSS, INDEX_CSS, type CardArt, type CardCat, type IndexCard } from "./guides.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc, plain, rich } from "./render.ts";
@@ -634,6 +634,99 @@ Sincerely,
       ["FTC: LA Fitness made it difficult for people to cancel gym memberships (August 2025)", "https://consumer.ftc.gov/consumer-alerts/2025/08/la-fitness-made-it-difficult-people-cancel-gym-memberships-ftc-says"],
     ],
     sourceNote: "Laws and gym terms change; check your state's current law and your own contract before relying on a detail. This is general information, not legal advice.",
+  },
+  {
+    slug: "can-ai-send-mail",
+    kicker: "AI agents",
+    title: "Can AI send physical mail? ChatGPT, Claude and Codex",
+    metaTitle: "Can AI Send Physical Mail? ChatGPT, Claude and Codex",
+    description: "AI assistants can't mail a letter on their own. Connected to a print-and-mail service, ChatGPT, Claude or Codex can draft one and set up the order for you.",
+    lede: "Not on their own. With a mail connector, your assistant writes the letter and sets up the order, and you approve it.",
+    checked: "November 6, 2026",
+    published: "2026-11-06",
+    modified: "2026-11-06",
+    card: { cat: "agents", date: "2026-11-06", art: "chat", label: "Can AI Mail?", blurb: "What it takes for ChatGPT, Claude or Codex to mail a real letter or postcard, and what stays in your hands." },
+    answer: [
+      "**No AI assistant can mail a letter or postcard by itself.** ChatGPT, Claude and Codex produce text. Getting it onto paper and into the mail takes a print-and-mail service the assistant can call, usually through a connector built on the [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro) (MCP).",
+      `With ${BRAND} connected, the assistant drafts the piece and creates the order, and you get a preview and a checkout link. **Nothing is printed until the order is paid, and a person reviews every piece first.** Recipients must have a US address.`,
+    ],
+    sections: [
+      {
+        id: "why",
+        h: "Why an assistant needs a connector",
+        ps: [
+          "An assistant can only act through the tools it's given. MCP is the open standard most assistants use for that: the MCP project describes it as a way for AI applications to [connect to external systems](https://modelcontextprotocol.io/docs/getting-started/intro), such as a calendar, a database or, here, a printing service.",
+          "Each assistant calls these add-ons something slightly different: Claude has connectors, ChatGPT and Codex have plugins, and all three can also add an MCP server directly. The idea is the same. You add the service once, and the assistant can then call its tools when you ask.",
+          `Only add connectors you trust. Anthropic notes that custom connectors [aren't verified by Anthropic](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) and suggests choosing "Allow always" only for tools you trust to run unsupervised. A mail connector is a good one to keep on manual approval.`,
+        ],
+      },
+      {
+        id: "how",
+        h: `How it works with ${BRAND}`,
+        ps: ["Once the connector is added, sending mail is a conversation:"],
+        after: [
+          "**Ask in plain words.** Give the recipient's US address, your return address and what to say, or ask the assistant to draft it. A good assistant reads the addresses and wording back before it goes further.",
+          `**The assistant creates the order** with ${BRAND}'s create_postcard or create_letter tool. To mail your own document, give it a public link to a PDF of up to ${LIMITS.pdfPages} pages.`,
+          "**You check the preview.** The order comes back with a preview link showing exactly what will print, and a checkout link.",
+          "**You pay, or approve a payment.** Either pay at the checkout link yourself, or, if your assistant can use Stripe Link, it can pay with a one-time payment token that you approve for that order's price. It should only do that with your explicit go-ahead.",
+          "**A person reviews it, then it's printed and mailed.** Our print partner prints it and hands it to USPS. If the order has your email address (checkout asks for one, or the assistant can add it when it creates the order), we email you when it's paid, when it's mailed and if it's refunded. You can also ask the assistant to check the order's status.",
+        ],
+      },
+      {
+        id: "limits",
+        h: "What it can and can't do",
+        ps: [`What an assistant can send through ${BRAND}, and where it stops. Prices include printing, USPS First-Class postage and, for letters, the envelope.`],
+        table: {
+          head: ["", `Through ${BRAND}`],
+          rows: [
+            ["Postcards", `Yes: 4×6, 6×9 or 6×11, from ${usd(PRODUCTS.postcard_4x6.cents)}`],
+            ["Letters", `Yes: typed (up to about 3 pages) or your own PDF (up to ${LIMITS.pdfPages} pages), ${LETTER}`],
+            ["Certified Mail", `Yes, for letters: ${CERT} with a USPS tracking number, or ${RR} with a return receipt`],
+            ["Where it can mail", "US addresses only, including Puerto Rico, US territories and APO/FPO/DPO. Your return address can be in any country."],
+            ["Mail on a future date", "No. There's no scheduling: a paid order goes to review and printing."],
+            ["Legal or tax advice", "No. We print and mail what you and your assistant write."],
+            ["Spend money without you", "No. You pay at the checkout link, or approve a one-time payment for that order."],
+          ],
+        },
+        after: [
+          "Some mail is refused at review and refunded, such as threats, harassment, fraud or impersonation; see the [content policy](/content-policy). If the recipient needs proof it was sent and delivered, read [what Certified Mail gives you](/what-is-certified-mail) before choosing it.",
+        ],
+      },
+      {
+        id: "setup",
+        h: "Connect your assistant",
+        ps: [
+          `Every assistant connects to the same server, https://sendmypaper.com/mcp, with no account or API key. Menus change often, so the exact steps live in our docs and in each company's own help pages:`,
+        ],
+        after: [
+          `**Claude:** in Claude Code it's one command; in claude.ai and Claude Desktop you add ${BRAND} as a custom connector, which Anthropic says works on every plan (the Free plan allows one; on Team and Enterprise an Owner adds it). [Claude setup](${docsUrl("/agents/claude")}).`,
+          `**ChatGPT:** open Plugins in the sidebar, search for ${BRAND} in the plugin directory and install it. OpenAI says [what you can install depends on your plan and workspace](https://help.openai.com/en/articles/20001256-plugins), so on a work account an admin may need to allow it. [ChatGPT and other assistants](${docsUrl("/agents/other-clients")}).`,
+          `**Codex:** install the ${BRAND} plugin, or add the MCP server with one codex mcp add command. OpenAI says the [Codex CLI and IDE extension share that configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli). [Codex setup](${docsUrl("/agents/codex")}).`,
+          "**Anything else that supports remote MCP servers**, such as Cursor or VS Code, uses the same address.",
+        ],
+      },
+    ],
+    cta: {
+      title: "Let your assistant send real mail",
+      body: `Postcards from ${usd(PRODUCTS.postcard_4x6.cents)}, letters from ${LETTER}, US postage included. No account or API key, and nothing prints until you've paid.`,
+      primary: ["Connect your assistant", docsUrl("/quickstart")],
+      secondary: ["Send from the web instead", "/send"],
+    },
+    faqs: [
+      ["Can ChatGPT or Claude send a letter by itself?", `No. On its own an assistant can only write the letter. It needs a connector to a print-and-mail service, such as ${BRAND}, to put it on paper and into the mail.`],
+      ["Can the assistant spend my money without asking?", "No. Nothing is paid until you pay at the checkout link or approve a one-time payment for that order's exact price through Stripe Link. Keep the connector's payment tool on manual approval if you want to confirm each payment yourself."],
+      ["Can it mail to another country?", "No. Recipients must have a US address, including Puerto Rico, US territories and APO/FPO/DPO military addresses. The return address can be in any country."],
+      ["Can I schedule a card to arrive on a birthday?", "Not yet. There's no scheduling: a paid order goes to review and then to print, so order when you want it sent."],
+      [`Does anyone at ${BRAND} see my letter?`, "Yes. A person reviews every piece before it's printed, and we refuse and refund mail that breaks our content policy."],
+    ],
+    sources: [
+      ["Model Context Protocol: What is MCP?", "https://modelcontextprotocol.io/docs/getting-started/intro"],
+      ["Anthropic: Get started with custom connectors using remote MCP", "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp"],
+      ["Claude Code docs: Connect Claude Code to tools via MCP", "https://code.claude.com/docs/en/mcp"],
+      ["OpenAI Help: Plugins in ChatGPT and Codex", "https://help.openai.com/en/articles/20001256-plugins"],
+      ["OpenAI: Model Context Protocol in Codex", "https://learn.chatgpt.com/docs/extend/mcp?surface=cli"],
+    ],
+    sourceNote: "Assistant menus, plans and features change often; check Anthropic's and OpenAI's current help pages before relying on a step.",
   },
 ];
 
