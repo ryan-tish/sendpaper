@@ -82,6 +82,41 @@ xdrafts.get("/posts", async (req, res) => {
   }
 });
 
+// Reddit comment drafts (2026-11-08): x_reddit / x_reddit_runs, written by the same Saffron job (hourly). `pending`
+// rows (matched, not drafted yet) never show; Ryan sees draft / posted / dismissed, plus Claude's skips.
+const REDDIT_LIST = new Set(["draft", "posted", "dismissed", "skipped"]);
+xdrafts.get("/reddit", async (req, res) => {
+  const status = typeof req.query.status === "string" && REDDIT_LIST.has(req.query.status) ? req.query.status : "draft";
+  const order = status === "draft" ? "coalesce(created_at, seen_at) DESC" : "coalesce(decided_at, drafted_at, seen_at) DESC";
+  try {
+    const [rows, counts, runs] = await Promise.all([
+      pool.query(`SELECT * FROM x_reddit WHERE status = $1 ORDER BY ${order} LIMIT 200`, [status]),
+      pool.query(`SELECT count(*) FILTER (WHERE status = 'draft')::int AS draft,
+                         count(*) FILTER (WHERE status = 'posted')::int AS posted,
+                         count(*) FILTER (WHERE status = 'dismissed')::int AS dismissed,
+                         count(*) FILTER (WHERE status = 'skipped')::int AS skipped,
+                         count(*) FILTER (WHERE status = 'pending')::int AS pending FROM x_reddit`),
+      pool.query(`SELECT * FROM x_reddit_runs ORDER BY id DESC LIMIT 24`),
+    ]);
+    res.json({ status, rows: rows.rows, counts: counts.rows[0], runs: runs.rows });
+  } catch (e) {
+    if (missingTable(e)) return res.json({ status, rows: [], counts: { draft: 0, posted: 0, dismissed: 0, skipped: 0, pending: 0 }, runs: [] });
+    throw e;
+  }
+});
+
+xdrafts.post("/reddit/:id", async (req, res) => {
+  const { status, reply } = (req.body ?? {}) as { status?: unknown; reply?: unknown };
+  if (status !== undefined && (typeof status !== "string" || !RYAN.has(status))) return res.status(400).json({ error: "status must be draft, posted or dismissed" });
+  if (reply !== undefined && typeof reply !== "string") return res.status(400).json({ error: "reply must be a string" });
+  const id = String(req.params.id);
+  if (typeof reply === "string") await pool.query(`UPDATE x_reddit SET reply = $2, edited = true WHERE id = $1 AND status <> 'pending'`, [id, reply.slice(0, 4000)]);
+  if (typeof status === "string") await pool.query(`UPDATE x_reddit SET status = $2, decided_at = CASE WHEN $2 = 'draft' THEN NULL ELSE now() END WHERE id = $1 AND status <> 'pending'`, [id, status]);
+  const { rows } = await pool.query(`SELECT * FROM x_reddit WHERE id = $1 AND status <> 'pending'`, [id]);
+  if (!rows[0]) return res.status(404).json({ error: "no such post" });
+  res.json({ ok: true, row: rows[0] });
+});
+
 xdrafts.post("/posts/:id", async (req, res) => {
   const { status, text } = (req.body ?? {}) as { status?: unknown; text?: unknown };
   if (status !== undefined && (typeof status !== "string" || !RYAN.has(status))) return res.status(400).json({ error: "status must be draft, posted or dismissed" });
