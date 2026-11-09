@@ -99,9 +99,6 @@ const CSS = `
 .kart .wl { fill: none; stroke: var(--green); stroke-width: 2; stroke-linecap: round; }
 .kart .tick { fill: none; stroke: var(--paper); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .kart .bar { fill: none; stroke: var(--ink); stroke-width: 1.6; }
-.paynote { margin-top: -20px; max-width: none; color: var(--soft); font-size: .95rem; }
-.paynote b { color: var(--ink); font-weight: 600; }
-.paynote a { font-weight: 600; text-decoration: none; white-space: nowrap; }
 /* Enterprise band: near-black in light mode; a card in dark mode so it doesn't vanish into the page. */
 .ent { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 40px; padding: 36px 40px; border-radius: 20px; background: #0d1512; color: #e6ede9; }
 .ent > div { display: grid; gap: 8px; flex: 1 1 420px; min-width: 0; }
@@ -191,7 +188,6 @@ ${SEND_KINDS.map((k) => `<div class="card pcard"><div class="kart" aria-hidden="
           <div class="price"><small>from</small>${usd(KIND_INFO[k].cents)}</div>
           <a class="btn" href="/send/${k}">${KIND_INFO[k].cta}</a></div>`).join("")}
       </div>
-      <p class="paynote"><b>Your agent can pay, with your OK.</b> It uses a one-time Stripe token for the exact amount you approve, and your card is never shared. Or pay the checkout link yourself. <a href="${esc(docsUrl("/guides/agent-payments"))}">How it works →</a></p>
       <div class="ent">
         <div><span class="eyebrow">Enterprise</span><h3>Sending in bulk or every month?</h3><p>We'll set volume rates, send one monthly invoice and help connect your app or agent. Marketing mail and campaigns welcome.</p></div>
         <a class="btn" href="/enterprise">Talk to us</a>
