@@ -8,7 +8,7 @@ import { ARTICLE_PATHS, ARTICLES } from "./articles.ts";
 import { COMPARE_PATHS, COMPARES } from "./compare.ts";
 
 // Pages we want indexed. Order pages, admin, order links and the API stay out (they're private or per-order).
-export const PUBLIC_PATHS = ["/", "/send", "/send/postcard", "/send/letter", "/send/certified", "/use-cases", "/guides", ...ARTICLE_PATHS, ...GUIDE_PATHS, ...COMPARE_PATHS, "/reviews", "/privacy", "/terms", "/content-policy"];
+export const PUBLIC_PATHS = ["/", "/send", "/send/postcard", "/send/letter", "/send/certified", "/use-cases", "/guides", ...ARTICLE_PATHS, ...GUIDE_PATHS, ...COMPARE_PATHS, "/enterprise", "/reviews", "/privacy", "/terms", "/content-policy"];
 
 const INDEXNOW_KEY = "5a91dadb8889cecc61126822710dc0b0";
 const isProd = () => BASE_URL.startsWith("https://") && !BASE_URL.includes("localhost");

@@ -50,7 +50,7 @@ When several mail tools are installed, **the agent picks whichever is described 
 - **Stripe:** we're an early shared-payment-token seller, so pitch a case study or a place in their agentic commerce showcase.
 - **Meta Muse platform team and OpenAI devrel:** early connector partners are what they feature.
 - **PostGrid:** partner directory and co-marketing.
-- **Builders:** volume pricing and API keys for apps that send mail on behalf of users. An n8n/Zapier node and a Shopify
+- **Builders:** volume pricing and API keys for apps that send mail on behalf of users. **Update 2026-11-08 (Ryan):** volume is handled by hand for now: an Enterprise band on the pricing section ("Sending in bulk or every month?") → `/enterprise` form / `POST /v1/enterprise-inquiries`, quoted per customer, marketing mail allowed by agreement. Prepaid credits, plans and a volume slider were considered and rejected for traction reasons; build them only when 2–3 real leads ask for the same thing. An n8n/Zapier node and a Shopify
   "thank-you card" app are distribution channels that agent-only competitors don't have.
 - **Search content:** use-case pages ("send a postcard from ChatGPT", "mail a letter online", "send a birthday card from Claude").
 

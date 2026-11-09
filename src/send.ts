@@ -135,7 +135,7 @@ export const SEND_KINDS: SendKind[] = ["postcard", "letter", "certified"];
 export const KIND_INFO: Record<SendKind, { title: string; h1: string; cta: string; cents: number; purpose: string; format: string; included: string; delivery: string }> = {
   postcard: { title: "Postcard", h1: "Send a postcard", cta: "Send a postcard", cents: PRODUCTS.postcard_4x6.cents, purpose: "For photos and quick notes", format: "4×6, 6×9 or 6×11 card", included: "Printing and postage", delivery: "First-Class or express" },
   letter: { title: "Letter", h1: "Send a letter", cta: "Send a letter", cents: PRODUCTS.letter.cents, purpose: "For documents and correspondence", format: "Up to 3 pages, 8.5×11", included: "Printing, envelope, postage", delivery: "First-Class or express" },
-  certified: { title: "Certified letter", h1: "Send a certified letter", cta: "Send a certified letter", cents: PRODUCTS.letter_certified.cents, purpose: "For mail that needs delivery documentation", format: "Up to 3 pages, 8.5×11", included: "Printing, envelope, postage", delivery: "Tracked, proof of delivery" },
+  certified: { title: "Certified letter", h1: "Send a certified letter", cta: "Send a certified letter", cents: PRODUCTS.letter_certified.cents, purpose: "For mail that needs proof of delivery", format: "Up to 3 pages, 8.5×11", included: "Printing, envelope, postage", delivery: "Tracked, proof of delivery" },
 };
 
 export const kindSpec = (k: SendKind) => {

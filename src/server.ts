@@ -11,6 +11,7 @@ import { startPrintSync } from "./fulfill.ts";
 import { startUnpaidReminders } from "./email.ts";
 import { web } from "./web.ts";
 import { quick } from "./quick.ts";
+import { enterprise } from "./enterprise.ts";
 import { goLink, shortLink, trackApi, trackViews } from "./stats.ts";
 import { pingIndexNow, PUBLIC_PATHS, seo } from "./seo.ts";
 import { markdownPages } from "./markdown.ts";
@@ -93,6 +94,7 @@ app.use(seo);
 app.use(trackViews);
 app.use(docs);
 app.use(quick);
+app.use(enterprise); // /enterprise form (volume inquiries)
 app.use(web);
 
 // Last-resort handler: log the error, but never forward an upstream error's status or headers (Stripe errors carry both).

@@ -1,7 +1,8 @@
 import express, { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
 import { PdfError, normalizePdf, prepareLetterContent, storePdf } from "./pdf.ts";
-import { BASE_URL, LIMITS, PRODUCTS, letterProduct, postcardProduct } from "./config.ts";
+import { BASE_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL, letterProduct, postcardProduct } from "./config.ts";
+import { InquirySchema, allowInquiry, createInquiry } from "./enterprise.ts";
 import { pool } from "./db.ts";
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import {
@@ -66,6 +67,18 @@ api.get(["/products", "/pricing"], (_req, res) => {
     data: Object.entries(PRODUCTS).map(([id, p]) => ({ id, ...p, currency: "usd", amount_cents: p.cents })),
   });
 });
+
+// Volume / enterprise inquiries (2026-11-08): same schema as the /enterprise form. A person replies by email with rates;
+// nothing is priced or charged here. Rate-limited per IP like the form.
+api.post(
+  "/enterprise-inquiries",
+  handle(async (req, res) => {
+    const inquiry = InquirySchema.parse(req.body ?? {});
+    if (!allowInquiry(req.ip ?? "unknown")) return apiError(res, 429, "rate_limited", `Too many inquiries from here in the last hour. Email ${SUPPORT_EMAIL} instead.`);
+    const row = await createInquiry(inquiry, { source: "api", client: client(req) });
+    res.status(201).json({ id: row.id, status: "received", message: "Thanks. A person at Sendpaper will reply by email with rates." });
+  }),
+);
 
 api.post(
   "/postcards",

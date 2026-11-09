@@ -55,7 +55,7 @@ export const COMPARES: Compare[] = [
       ["Certified mail", "Add-on, with an optional electronic return receipt", "Certified letters, with an optional return receipt"],
       ["Review before printing", "You proof your own mail; Lob doesn't review content", "A real person checks every piece before it prints"],
       ["Where it mails", "US and international", "US only, including territories and military addresses"],
-      ["Volume", "Built for large volumes", "Up to 25 recipients per order; no bulk marketing"],
+      ["Volume", "Built for large volumes", "Up to 25 recipients per order; bulk and marketing mail through Enterprise"],
     ],
     rivalFits: [
       "Lob is the better choice when mail is part of how your business runs: hundreds or thousands of marketing pieces, or recurring statements and notices, often triggered from a CRM or marketing tool. **Its [per-piece prices](https://help.lob.com/print-and-mail/ready-to-get-started/pricing-details) are lower, especially at volume,** and it covers more ground, with international mail, self-mailers, checks and legal-size letters.",

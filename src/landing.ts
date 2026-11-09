@@ -1,7 +1,7 @@
 import { BASE_URL, BRAND, EXPRESS_CENTS, FIRST_ORDER_DISCOUNT_PCT, LIMITS, OFFER_ACTIVE, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
-import { KIND_INFO, SEND_KINDS, SPEC_CSS, kindSpec } from "./send.ts";
+import { KIND_INFO, SEND_KINDS, type SendKind } from "./send.ts";
 
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 
@@ -16,6 +16,13 @@ const CLIENTS: [string, string][] = [
   ["VS Code", "/agents/other-clients"],
 ];
 
+
+// Small line drawings for the pricing cards (decorative; colors are CSS classes so dark mode works).
+const KIND_ART: Record<SendKind, string> = {
+  postcard: `<svg viewBox="0 0 160 100" width="168" height="105"><rect class="pp" x="1" y="1" width="158" height="98" rx="6"/><rect class="photo" x="8" y="8" width="72" height="84" rx="3"/><circle class="sun" cx="62" cy="28" r="8"/><path class="hill" d="M8 82 30 56 44 68 58 50 80 76V92H8Z"/><rect class="stamp" x="134" y="9" width="17" height="21" rx="2"/><path class="ln" d="M92 46h40M92 58h52M92 70h34"/></svg>`,
+  letter: `<svg viewBox="0 0 160 100" width="168" height="105"><rect class="pp" x="40" y="4" width="80" height="62" rx="3"/><path class="ln" d="M50 16h44M50 26h60M50 36h52"/><rect class="pp" x="20" y="40" width="120" height="58" rx="5"/><rect class="win" x="32" y="58" width="60" height="22" rx="3"/><path class="wl" d="M39 66h36M39 73h24"/></svg>`,
+  certified: `<svg viewBox="0 0 160 100" width="168" height="105"><rect class="pp" x="20" y="16" width="120" height="72" rx="5"/><path class="ln" d="M32 34h44M32 44h56M32 54h40"/><rect class="seal" x="98" y="24" width="32" height="26" rx="3"/><path class="tick" d="m106 37 5 5 10-10"/><path class="bar" d="M32 68v10M35 68v10M39 68v10M44 68v10M47 68v10M52 68v10M55 68v10M60 68v10M64 68v10M67 68v10M72 68v10M75 68v10M80 68v10"/></svg>`,
+};
 
 const CSS = `
 .hero-wrap { position: relative; margin-inline: -24px; padding-inline: 24px; }
@@ -50,11 +57,6 @@ const CSS = `
 .steps code { font-size: .8rem; color: var(--green); background: var(--green-soft); border-color: var(--green-line); }
 .steps .muted { color: var(--faint); font-size: .82rem; }
 .agent { justify-self: start; background: var(--tint); border: 1px solid var(--rule); padding: 10px 13px; border-radius: 14px 14px 14px 4px; max-width: 86%; }
-.pay-band { display: flex; justify-content: space-between; align-items: center; gap: 16px 40px; flex-wrap: wrap; background: var(--tint); border: 1px solid var(--rule); border-radius: 16px; padding: 24px 28px; }
-#pricing .pay-band { margin-top: -28px; } /* section gap 36 + card margin 16 → 24px under the cards */
-.pay-band > div { display: grid; gap: 6px; max-width: 680px; }
-.pay-band p { color: var(--soft); font-size: .95rem; }
-.more { white-space: nowrap; color: var(--green); text-decoration: none; font-weight: 500; font-size: .95rem; }
 .showcase { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr); gap: 64px; align-items: center; }
 .shot { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; box-shadow: 0 24px 48px -30px rgba(12, 80, 50, .38), 0 2px 6px rgba(13, 21, 18, .04); overflow: hidden; min-width: 0; }
 .shot .bar { display: flex; align-items: center; gap: 6px; padding: 11px 14px; border-bottom: 1px solid var(--rule); font: .74rem var(--f-mono); color: var(--faint); }
@@ -67,23 +69,48 @@ const CSS = `
 .works a:hover { color: var(--ink); }
 .section-head { display: grid; gap: 12px; max-width: 640px; }
 .section-head .soft { font-size: 1.05rem; }
-.prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.prices.three { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
-.pcard { display: flex; flex-direction: column; gap: 12px; padding: 26px; }
-.pcard h3 { margin: 0; font-size: 1.15rem; }
-.pcard .purpose { color: var(--ink); font-weight: 500; }
-/* Each card is a subgrid row-span, so the name, price, purpose line, spec table and button line up across cards
-   even when one purpose line wraps. */
+/* Pricing (Ryan, 2026-11-08): three product cards = drawing, name, purpose line, "from" price, near-black button.
+   The Format/Included/Delivery spec table was dropped (what's common to all moved into the section subtitle). */
+.prices.three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px; }
+.pcard { display: flex; flex-direction: column; gap: 10px; padding: 12px 12px 24px; border-radius: 18px; }
+.pcard > * { margin: 0 12px; }
+.pcard > .kart { margin: 0 0 10px; }
+.pcard h3 { font-size: 1.15rem; }
+.pcard .purpose { color: var(--soft); font-size: .95rem; }
+.pcard .price { margin-top: 2px; font-size: 2.3rem; line-height: 1.1; }
+.pcard .price small { font: 500 .88rem var(--f-ui); color: var(--soft); margin-right: 6px; letter-spacing: 0; }
+.pcard .btn { margin-top: auto; justify-content: center; padding-block: 12px; border-radius: 10px; }
+/* Each card is a subgrid row-span, so drawing, name, purpose, price and button line up even when a purpose line wraps. */
 @supports (grid-template-rows: subgrid) {
   .prices.three { row-gap: 0; }
-  .prices.three .pcard { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 12px; margin-bottom: 16px; }
+  .prices.three .pcard { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 10px; margin-bottom: 16px; }
+  .prices.three .pcard .btn { margin-top: 10px; }
 }
-.pcard p { margin: 0; font-size: .92rem; }
-.pcard .btn { margin-top: auto; }
-.prices .price small { font: 500 .85rem var(--f-ui); color: var(--faint); margin-right: 4px; }
-.prices .card { padding: 24px; gap: 14px; }
-.prices .btn { justify-content: center; }
-.prices .size { font: 600 .8rem var(--f-mono); color: var(--green); letter-spacing: .02em; margin-bottom: -10px; }
+/* Line drawings on the cards: colors come from these classes so dark mode works. */
+.kart { display: grid; place-items: center; height: 150px; border-radius: 12px; background: var(--tint); }
+.kart svg { width: 168px; max-width: 80%; height: auto; }
+.kart .pp { fill: var(--card); stroke: color-mix(in srgb, var(--ink) 20%, transparent); stroke-width: 1.5; }
+.kart .ln { fill: none; stroke: color-mix(in srgb, var(--ink) 13%, transparent); stroke-width: 3; stroke-linecap: round; }
+.kart .photo { fill: var(--green-line); }
+.kart .hill, .kart .seal { fill: var(--green); }
+.kart .sun { fill: var(--lime); }
+.kart .stamp { fill: none; stroke: var(--green); stroke-width: 1.5; stroke-dasharray: 2 2; }
+.kart .win { fill: var(--green-soft); stroke: var(--green); stroke-width: 1.2; }
+.kart .wl { fill: none; stroke: var(--green); stroke-width: 2; stroke-linecap: round; }
+.kart .tick { fill: none; stroke: var(--paper); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.kart .bar { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+.paynote { margin-top: -20px; max-width: none; color: var(--soft); font-size: .95rem; }
+.paynote b { color: var(--ink); font-weight: 600; }
+.paynote a { font-weight: 600; text-decoration: none; white-space: nowrap; }
+/* Enterprise band: near-black in light mode; a card in dark mode so it doesn't vanish into the page. */
+.ent { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 40px; padding: 36px 40px; border-radius: 20px; background: #0d1512; color: #e6ede9; }
+.ent > div { display: grid; gap: 8px; flex: 1 1 420px; min-width: 0; }
+.ent .eyebrow { color: #8fd16a; }
+.ent h3 { color: #ffffff; font-size: clamp(1.4rem, 2.4vw, 1.75rem); letter-spacing: -0.025em; line-height: 1.2; }
+.ent p { color: #a1aea7; max-width: 60ch; }
+.ent .btn { background: #ffffff; border-color: #ffffff; color: #0d1512; padding: 13px 26px; border-radius: 10px; }
+:root[data-theme="dark"] .ent { background: var(--card); border: 1px solid var(--rule); }
+@media (max-width: 720px) { .ent { padding: 28px 24px; } }
 .faq { max-width: 760px; gap: 20px; }
 details.q { border-bottom: 1px solid var(--rule); padding-block: 16px; }
 details.q summary { font-weight: 500; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
@@ -122,7 +149,7 @@ export function landing() {
   const docs = docsUrl();
   return page(
     `${BRAND}: physical mail for AI agents`,
-    `${structuredData()}<style>${CSS}${SPEC_CSS}</style>
+    `${structuredData()}<style>${CSS}</style>
     <div class="hero-wrap">
       <div class="art" aria-hidden="true"><canvas id="lines"></canvas></div>
       <div class="hero">
@@ -156,15 +183,19 @@ export function landing() {
     </section>
 
     <section id="pricing">
-      <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS First-Class postage included. US addresses only.</p></div>
+      <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS postage included. USPS delivers in 1–5 business days, or 2–3 with express. Send from anywhere to any US address.</p></div>
       <div class="prices three">
-${SEND_KINDS.map((k) => `<div class="card pcard"><h3>${KIND_INFO[k].title}</h3><div class="price"><small>from</small> ${usd(KIND_INFO[k].cents)}</div>
+${SEND_KINDS.map((k) => `<div class="card pcard"><div class="kart" aria-hidden="true">${KIND_ART[k]}</div>
+          <h3>${KIND_INFO[k].title}</h3>
           <p class="purpose">${KIND_INFO[k].purpose}</p>
-          ${kindSpec(k)}
-          <a class="btn green" href="/send/${k}">${KIND_INFO[k].cta}</a></div>`).join("")}
+          <div class="price"><small>from</small>${usd(KIND_INFO[k].cents)}</div>
+          <a class="btn" href="/send/${k}">${KIND_INFO[k].cta}</a></div>`).join("")}
       </div>
-      <div class="pay-band"><div><h3>Your agent can pay, with your OK.</h3><p>Sendpaper accepts Stripe's one-time agent payment tokens. You approve the amount and your card is never shared. Prefer to pay yourself? Every order has a checkout link too.</p></div>
-      <a class="more" href="${esc(docsUrl("/guides/agent-payments"))}">How it works →</a></div>
+      <p class="paynote"><b>Your agent can pay, with your OK.</b> It uses a one-time Stripe token for the exact amount you approve, and your card is never shared. Or pay the checkout link yourself. <a href="${esc(docsUrl("/guides/agent-payments"))}">How it works →</a></p>
+      <div class="ent">
+        <div><span class="eyebrow">Enterprise</span><h3>Sending in bulk or every month?</h3><p>We'll set volume rates, send one monthly invoice and help connect your app or agent. Marketing mail and campaigns welcome.</p></div>
+        <a class="btn" href="/enterprise">Talk to us</a>
+      </div>
     </section>
 
     <section class="faq">
@@ -178,7 +209,7 @@ ${SEND_KINDS.map((k) => `<div class="card pcard"><h3>${KIND_INFO[k].title}</h3><
         <details class="q"><summary>Can my agent pay for me?</summary><p>Yes, if you let it. Agents pay with a one-time Stripe token capped at the order's exact price, which you approve in your agent (for example through Stripe Link). Your card details are never shared. Or pay the checkout link yourself. Either way, nothing is mailed until it's paid.</p></details>
         <details class="q"><summary>Which agents work?</summary><p>Anything that supports remote MCP servers over Streamable HTTP: Codex, Muse Code, Claude Code, Claude Desktop, claude.ai, ChatGPT developer mode, Cursor and VS Code. Everything else can use the <a href="${esc(docsUrl("/api/introduction"))}">REST API</a>.</p></details>
         <details class="q"><summary>Where can you mail to?</summary><p>US addresses, including Puerto Rico, US territories and APO/FPO/DPO military addresses. You can send from anywhere: the return address can be in another country.</p></details>
-        <details class="q"><summary>What won't you print?</summary><p>Threats, harassment, fraud, impersonation and obscene content, plus bulk marketing. See the <a href="/content-policy">content policy</a>.</p></details>
+        <details class="q"><summary>What won't you print?</summary><p>Threats, harassment, fraud, impersonation and obscene content. Bulk marketing only through <a href="/enterprise">Enterprise</a>, by agreement. See the <a href="/content-policy">content policy</a>.</p></details>
         <details class="q"><summary>Is there a machine-readable description?</summary><p><a href="/llms.txt">/llms.txt</a> for language models, <a href="/openapi.json">/openapi.json</a> for the REST API, and the <a href="${esc(docs)}">docs</a> for everything else.</p></details>
       </div>
     </section>

@@ -452,6 +452,75 @@
           }
         }
       }
+    },
+    "/enterprise-inquiries": {
+      "post": {
+        "summary": "Ask for volume rates",
+        "description": "For senders who mail in bulk or every month, including marketing campaigns. A person at Sendpaper replies by email with volume rates and monthly invoicing; nothing is priced or charged by this call. Same fields as the form at https://sendmypaper.com/enterprise. Limited to 5 requests an hour per IP.",
+        "operationId": "createEnterpriseInquiry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnterpriseInquiry"
+              },
+              "example": {
+                "name": "Alex Kim",
+                "email": "alex@example.com",
+                "company": "Kim Property Management",
+                "volume": "100-1000",
+                "kinds": [
+                  "letters",
+                  "certified"
+                ],
+                "channel": "api",
+                "message": "Monthly rent notices to about 300 tenants."
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Inquiry received",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "example": "inq_3k9w2m8q4x7n5r1t"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "received"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "429": {
+            "description": "Too many inquiries from this IP in the last hour",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1109,6 +1178,72 @@
             "default": "US",
             "description": "Two-letter ISO 3166-1 country code of the return address, e.g. GB. Defaults to US. US territories use US with their state code.",
             "example": "GB"
+          }
+        }
+      },
+      "EnterpriseInquiry": {
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "volume"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Your full name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 200,
+            "description": "Work email; a person replies here"
+          },
+          "company": {
+            "type": "string",
+            "maxLength": 160,
+            "description": "Company or organization, if any"
+          },
+          "volume": {
+            "type": "string",
+            "enum": [
+              "few",
+              "10-100",
+              "100-1000",
+              "1000+",
+              "one-off"
+            ],
+            "description": "How much you send: a few a month, 10-100 a month, 100-1000 a month, more than 1000 a month, or one large send"
+          },
+          "kinds": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "string",
+              "enum": [
+                "letters",
+                "certified",
+                "postcards",
+                "marketing"
+              ]
+            },
+            "description": "What you'll send"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "api",
+              "agent",
+              "list",
+              "unsure"
+            ],
+            "description": "How you'd like to send: from your app through the API, through an AI agent, by uploading a list, or not sure yet"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 4000,
+            "description": "Anything else: what you send, how often, deadlines"
           }
         }
       }

@@ -72,7 +72,7 @@ docs.get("/content-policy", (_req, res) => {
       <ul><li>threatens, harasses, stalks or intimidates anyone, or that the recipient has asked not to receive;</li>
       <li>is fraudulent, impersonates a person, business or government agency, or looks like a bill without saying it is not one;</li>
       <li>is obscene, sexually explicit, or puts offensive text on the outside of a postcard;</li>
-      <li>advertises to people who did not agree to hear from you (no bulk marketing on this service).</li></ul>
+      <li>advertises to people who did not agree to hear from you. Bulk marketing and campaigns are accepted only from <a href="/enterprise">Enterprise</a> customers, by agreement.</li></ul>
       <p>The sender's name and return address are printed on every piece. We keep order records and cooperate with law enforcement on valid legal requests.</p>`,
     ),
   );
@@ -102,6 +102,7 @@ docs.get("/privacy", (_req, res) => {
       <p>We use this information only to print, mail and support your order, and to prevent abuse. A person at ${esc(BRAND)} reviews each piece before it is printed.</p>
       <p>Who receives it: Stripe (payments), PostGrid, our print-and-mail partner (only what is needed to print and address the piece), Resend, which delivers our order emails (your email address and the order status, never the content of your mail), and the US Postal Service (the printed piece itself). When you order through an AI agent such as ChatGPT, Codex or Claude, that agent's provider handles your conversation under its own privacy policy; we receive only the order details the agent sends us. We do not sell personal information or use it for advertising.</p>
       <p>Analytics: we use PostHog to count page views and order steps (for example "order created" or "paid") so we can improve the service. Its data is sent through our own domain (sendmypaper.com/ingest) and passed on to PostHog. It uses your browser's local storage, not cookies; it doesn't record your screen; and it doesn't include addresses, messages or payment details. Orders placed by AI agents are counted by which agent placed them. We also count page views on our own server: instead of cookies or stored IP addresses, a visitor is an anonymous code that changes every day, so we can count unique visitors without following anyone. If you arrive through a tagged link (for example from one of our posts on X), your browser's local storage keeps the name of that campaign for 30 days, and an order you place records it, so we can tell which channels bring customers. The only cookie we set is on our own operator's browser, to leave our visits out of the counts.</p>
+      <p>If you ask about volume rates through our <a href="/enterprise">Enterprise</a> form or API, we keep your name, email, company and message to reply to you, and email them to our own inbox through Resend.</p>
       <p>We keep order records for up to 2 years for support, refunds and abuse investigations. To delete your data sooner, email ${esc(SUPPORT_EMAIL)}.</p>`,
     ),
   );

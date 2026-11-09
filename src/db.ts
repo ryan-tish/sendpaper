@@ -130,6 +130,22 @@ export async function migrate() {
       sent_at     timestamptz NOT NULL DEFAULT now()
     );
 
+    -- Enterprise / volume inquiries from /enterprise and POST /v1/enterprise-inquiries (2026-11-08, enterprise.ts).
+    CREATE TABLE IF NOT EXISTS inquiries (
+      id          text PRIMARY KEY,
+      name        text NOT NULL,
+      email       text NOT NULL,
+      company     text,
+      volume      text NOT NULL,
+      kinds       text[] NOT NULL DEFAULT '{}',
+      channel     text,
+      message     text,
+      source      text NOT NULL,
+      client      text,
+      handled_at  timestamptz,
+      created_at  timestamptz NOT NULL DEFAULT now()
+    );
+
     -- "Reset stats" on /admin/stats (2026-10-14): the dashboard counts from "since" instead of deleting any rows.
     CREATE TABLE IF NOT EXISTS stats_reset (id int PRIMARY KEY DEFAULT 1 CHECK (id = 1), since timestamptz NOT NULL);
     -- The /send page creates orders through /v1 with X-Client: web; before 2026-10-14 they were saved as source 'api'.

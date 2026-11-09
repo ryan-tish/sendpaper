@@ -9,6 +9,7 @@ import { addressBlock, esc, printSheet } from "./render.ts";
 import { listReviews, setReviewApproved } from "./offer.ts";
 import { resetStats, statsPage } from "./stats.ts";
 import { emailCustomer, emailsFor, sendTestEmail } from "./email.ts";
+import { CHANNELS, KINDS, VOLUMES, listInquiries, setInquiryHandled } from "./enterprise.ts";
 
 // The operator's queue: paid orders get reviewed, printed (or sent to a print partner), then marked mailed.
 export const admin = Router();
@@ -35,6 +36,7 @@ admin.use(express.urlencoded({ extended: false }));
 admin.get("/", async (req, res) => {
   const status = typeof req.query.status === "string" ? req.query.status : "paid";
   const orders = await listOrders(status === "all" ? undefined : status);
+  const newInquiries = (await listInquiries()).filter((i) => !i.handled_at).length;
   const tabs = ["paid", "printing", "mailed", "awaiting_payment", "cancelled", "refunded", "all", "tests"]
     .map((s) => (s === status ? `<b>${s}</b>` : `<a href="?status=${s}">${s}</a>`))
     .join(" · ");
@@ -49,7 +51,7 @@ admin.get("/", async (req, res) => {
   res.send(
     page(
       "Admin",
-      `<section><h1>Orders</h1><p>${tabs}</p><p class="soft"><a href="/admin/stats"><b>Stats</b></a> · <a href="/admin/reviews">Reviews</a></p><div class="scroll"><table>
+      `<section><h1>Orders</h1><p>${tabs}</p><p class="soft"><a href="/admin/stats"><b>Stats</b></a> · <a href="/admin/reviews">Reviews</a> · <a href="/admin/inquiries">Enterprise inquiries${newInquiries ? ` <b>(${newInquiries} new)</b>` : ""}</a></p><div class="scroll"><table>
       <tr><th>Id</th><th>Product</th><th>Status</th><th>To</th><th>Source</th><th>Price</th><th>Created (UTC)</th></tr>
       ${rows || `<tr><td colspan="7" class="soft">No ${esc(status)} orders.</td></tr>`}</table></div></section>`,
       { noindex: true },
@@ -188,6 +190,36 @@ admin.get("/reviews", async (_req, res) => {
       { noindex: true },
     ),
   );
+});
+
+// Enterprise / volume inquiries (2026-11-08): reply from your inbox (the alert email's Reply-To is the inquirer),
+// then mark them handled here.
+admin.get("/inquiries", async (_req, res) => {
+  const list = await listInquiries();
+  const rows = list
+    .map(
+      (i) => `<tr><td>${i.created_at.toISOString().slice(0, 16).replace("T", " ")}</td>
+      <td>${esc(i.name)}<br><a href="mailto:${esc(i.email)}">${esc(i.email)}</a>${i.company ? `<br>${esc(i.company)}` : ""}</td>
+      <td>${esc(VOLUMES[i.volume] ?? i.volume)}</td><td>${esc(i.kinds.map((k) => KINDS[k] ?? k).join(", ") || "Not said")}</td>
+      <td>${esc(i.channel ? (CHANNELS[i.channel] ?? i.channel) : "Not said")}<br><span class="soft">${esc(i.source)}${i.client && i.client !== "web" ? ` / ${esc(i.client)}` : ""}</span></td>
+      <td style="white-space:pre-wrap;max-width:360px">${esc(i.message ?? "")}</td>
+      <td><form method="post" action="/admin/inquiries/${esc(i.id)}"><input type="hidden" name="handled" value="${i.handled_at ? "0" : "1"}"><button class="btn${i.handled_at ? " alt" : ""}">${i.handled_at ? "Reopen" : "Mark handled"}</button></form></td></tr>`,
+    )
+    .join("");
+  res.send(
+    page(
+      "Admin · Enterprise inquiries",
+      `<section><h1>Enterprise inquiries</h1><p class="soft">From the /enterprise form and <code>POST /v1/enterprise-inquiries</code>. Each one is also emailed to NOTIFY_EMAIL with Reply-To set to the sender. <a href="/admin">Orders</a></p>
+      <div class="scroll"><table><tr><th>When (UTC)</th><th>Who</th><th>Volume</th><th>Sends</th><th>How</th><th>Message</th><th></th></tr>
+      ${rows || `<tr><td colspan="7" class="soft">No inquiries yet.</td></tr>`}</table></div></section>`,
+      { noindex: true },
+    ),
+  );
+});
+
+admin.post("/inquiries/:id", async (req, res) => {
+  await setInquiryHandled(String(req.params.id), req.body.handled === "1");
+  res.redirect(303, "/admin/inquiries");
 });
 
 admin.post("/reviews/:id", async (req, res) => {

@@ -324,7 +324,10 @@ ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}`)
 ## Rules
 - Recipients: US addresses only (including territories and APO/FPO/DPO). The return address may be in any country: give \`from.country\` as a two-letter code (e.g. GB); \`state\` and \`zip\` then mean region and postcode and are optional.
 - We print what the user or agent writes and don't give legal or tax advice.
-- Threatening, harassing, fraudulent or obscene mail is refused and refunded; bulk marketing isn't allowed. Policy: ${BASE_URL}/content-policy
+- Threatening, harassing, fraudulent or obscene mail is refused and refunded. Bulk marketing only by agreement through Enterprise. Policy: ${BASE_URL}/content-policy
+
+## Sending in bulk or every month?
+Volume rates, one monthly invoice and marketing campaigns are arranged by a person. Ask at ${BASE_URL}/enterprise, or POST ${BASE_URL}/v1/enterprise-inquiries with {name, email, volume, kinds?, channel?, message?} (volume: few | 10-100 | 100-1000 | 1000+ | one-off). Someone replies by email; nothing is charged.
 
 ## More for agents
 - Overview: ${BASE_URL}/llms.txt
@@ -385,6 +388,9 @@ ${COMPARES.map((c) => `- ${c.title}: ${BASE_URL}/compare/${c.slug}`).join("\n")}
 ## Rules
 - Recipients in the US only; a return address is required and may be in any country (\`from.country\`, e.g. GB).
 - Confirm addresses and wording with the user before creating an order; show them the preview and checkout links.
-- Content policy (no threats, harassment, fraud, obscenity or bulk marketing): ${BASE_URL}/content-policy
+- Content policy (no threats, harassment, fraud or obscenity; bulk marketing only by agreement through Enterprise): ${BASE_URL}/content-policy
+
+## Enterprise
+- Sending in bulk or every month, or marketing campaigns: volume rates and one monthly invoice, arranged by a person. Form: ${BASE_URL}/enterprise · API: POST ${BASE_URL}/v1/enterprise-inquiries
 `);
 });
