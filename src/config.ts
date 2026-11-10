@@ -6,9 +6,12 @@ export const BASE_URL = (process.env.BASE_URL ?? "http://localhost:3000").replac
 export const DOCS_URL = (process.env.DOCS_URL ?? "").replace(/\/$/, "");
 export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "support@sendmypaper.com";
 // Sendpaper's own social profiles: linked in every page footer and listed as the Organization's sameAs (homepage
-// JSON-LD). Semrush (2026-11-09) flags a site with no X or LinkedIn link. Empty until Ryan supplies the profile URLs;
-// only add accounts that are Sendpaper's own (not Ryan's personal one).
-export const SOCIAL: { name: string; url: string }[] = [];
+// JSON-LD). Semrush (2026-11-09) flags a site with no X or LinkedIn link. X and LinkedIn from Ryan 2026-11-09.
+// Only add accounts that are Sendpaper's own (not Ryan's personal one). `name` is the footer link text.
+export const SOCIAL: { name: string; url: string }[] = [
+  { name: "@sendpaperapp on X", url: "https://x.com/sendpaperapp" },
+  { name: "LinkedIn", url: "https://www.linkedin.com/company/143959257" },
+];
 
 export const env = {
   port: Number(process.env.PORT ?? 3000),
