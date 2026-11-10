@@ -5,6 +5,10 @@ export const BASE_URL = (process.env.BASE_URL ?? "http://localhost:3000").replac
 // Mintlify docs site (https://sendpaper.mintlify.site, later docs.sendmypaper.com); unset = built-in /docs page.
 export const DOCS_URL = (process.env.DOCS_URL ?? "").replace(/\/$/, "");
 export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? "support@sendmypaper.com";
+// Sendpaper's own social profiles: linked in every page footer and listed as the Organization's sameAs (homepage
+// JSON-LD). Semrush (2026-11-09) flags a site with no X or LinkedIn link. Empty until Ryan supplies the profile URLs;
+// only add accounts that are Sendpaper's own (not Ryan's personal one).
+export const SOCIAL: { name: string; url: string }[] = [];
 
 export const env = {
   port: Number(process.env.PORT ?? 3000),

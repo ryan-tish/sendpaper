@@ -1,5 +1,5 @@
 import { analyticsSnippet } from "./analytics.ts";
-import { BRAND, DOCS_URL, OFFER_ACTIVE, OFFER_LINE, SUPPORT_EMAIL } from "./config.ts";
+import { BRAND, DOCS_URL, OFFER_ACTIVE, OFFER_LINE, SOCIAL, SUPPORT_EMAIL } from "./config.ts";
 import { readFileSync } from "node:fs";
 import { esc } from "./render.ts";
 
@@ -8,7 +8,7 @@ import { esc } from "./render.ts";
 // green reserved for accents and success, Geist throughout with Geist Mono for anything an agent would type.
 const CSS = `
 :root {
-  --paper: #ffffff; --tint: #f6f9f7; --card: #ffffff; --ink: #0d1512; --soft: #56625c; --faint: #8a958f; --rule: #e6ebe8;
+  --paper: #ffffff; --tint: #f6f9f7; --card: #ffffff; --ink: #0d1512; --soft: #56625c; --faint: #68736d; --rule: #e6ebe8;
   --green: #0f7a52; --green-soft: #edf8f2; --green-line: #d6efe2; --lime: #8fd16a;
   --ok: #0f7a52; --ok-bg: #edf8f2; --warn: #8a5a0e; --warn-bg: #fdf3e1; --bad: #b3261e;
   --btn-bg: #0d1512; --btn-fg: #ffffff;
@@ -16,7 +16,7 @@ const CSS = `
   --f-mono: "Geist Mono", ui-monospace, Menlo, monospace;
 }
 :root[data-theme="dark"] {
-  --paper: #0b100e; --tint: #101714; --card: #121a16; --ink: #e6ede9; --soft: #a1aea7; --faint: #6f7c75; --rule: #222c27;
+  --paper: #0b100e; --tint: #101714; --card: #121a16; --ink: #e6ede9; --soft: #a1aea7; --faint: #808d86; --rule: #222c27;
   --green: #4fd1a1; --green-soft: #12291f; --green-line: #1d3d2f; --lime: #a6e07e;
   --ok: #4fd1a1; --ok-bg: #12291f; --warn: #f0c071; --warn-bg: #33270f; --bad: #f2a097;
   --btn-bg: #e6ede9; --btn-fg: #0b100e; color-scheme: dark }
@@ -114,6 +114,10 @@ export function docsUrl(path = "") {
 // NOTE: no backslashes in here (this is a TS template literal; see the Traps in CLAUDE.md).
 const UTM_SNIPPET = `<script>try{var q=new URLSearchParams(location.search),s=q.get("utm_source");if(s){var o=JSON.parse(localStorage.getItem("sp_utm")||"null");if(!o||Date.now()-o.at>2592000000)localStorage.setItem("sp_utm",JSON.stringify({v:(s+"/"+(q.get("utm_campaign")||"")).toLowerCase().slice(0,81),at:Date.now()}))}}catch(e){}</script>`;
 
+// Geist from Google Fonts, loaded without blocking the first paint (Lighthouse 2026-11-09: the blocking stylesheet
+// cost ~0.8 s on mobile). Text shows in the system font until Geist arrives (display=swap).
+const FONTS_CSS = "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap";
+
 export function page(title: string, body: string, opts: { description?: string; noindex?: boolean } = {}) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -133,7 +137,9 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 <script src="/webmcp.js" defer></script>
 <meta name="ai-agent-instructions" content="Agents: skip the forms. Call the MCP server at /mcp, the REST API at /v1, or open an order link (/quick?...). Details: /llms.txt">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="${FONTS_CSS}" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="${FONTS_CSS}"></noscript>
 <script>try { if (localStorage.getItem("theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch {}</script>
 <style>${CSS}</style>${analyticsSnippet()}${UTM_SNIPPET}</head><body>
 ${OFFER_ACTIVE ? `<a class="promo" href="/send"><b>${esc(OFFER_LINE)}</b><span>Taken off automatically · any postcard or letter</span><i aria-hidden="true">→</i></a>` : ""}
@@ -141,10 +147,10 @@ ${OFFER_ACTIVE ? `<a class="promo" href="/send"><b>${esc(OFFER_LINE)}</b><span>T
   <a class="logo" href="/">${LOGO_FULL}</a>
   <div class="links"><a href="/use-cases">Use cases</a><a href="/guides">Guides</a><a href="${docsUrl()}">Docs</a><a class="mid-hide" href="/#pricing">Pricing</a><button class="theme" type="button" id="theme" aria-label="Toggle dark mode"><svg class="moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg><svg class="sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button><a class="btn green" href="/send">Send mail now</a><a class="btn" href="${docsUrl("/quickstart")}">Connect your agent</a></div>
 </nav></div></header>
-<div class="wrap">
+<main class="wrap">
 <!--md-start-->${body}<!--md-end-->
-<footer class="site"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="/use-cases">Use cases</a><a href="/guides">Guides</a><a href="${docsUrl()}">Docs</a><a href="/enterprise">Enterprise</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a><span>Support: ${esc(SUPPORT_EMAIL)}</span></footer>
-</div>
+</main>
+<div class="wrap"><footer class="site"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="/use-cases">Use cases</a><a href="/guides">Guides</a><a href="${docsUrl()}">Docs</a><a href="/enterprise">Enterprise</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a>${SOCIAL.map((s) => `<a href="${esc(s.url)}" rel="me">${esc(s.name)}</a>`).join("")}<span>Support: ${esc(SUPPORT_EMAIL)}</span></footer></div>
 <script>
 document.getElementById("theme").addEventListener("click", () => {
   const dark = document.documentElement.dataset.theme !== "dark";

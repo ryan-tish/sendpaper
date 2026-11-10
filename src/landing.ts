@@ -1,4 +1,4 @@
-import { BASE_URL, BRAND, EXPRESS_CENTS, FIRST_ORDER_DISCOUNT_PCT, LIMITS, OFFER_ACTIVE, PRODUCTS, SUPPORT_EMAIL } from "./config.ts";
+import { BASE_URL, BRAND, EXPRESS_CENTS, FIRST_ORDER_DISCOUNT_PCT, LIMITS, OFFER_ACTIVE, PRODUCTS, SOCIAL, SUPPORT_EMAIL } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
 import { KIND_INFO, SEND_KINDS, type SendKind } from "./send.ts";
@@ -125,7 +125,7 @@ function structuredData() {
   const ld = {
     "@context": "https://schema.org",
     "@graph": [
-      { "@type": "Organization", "@id": `${BASE_URL}/#org`, name: BRAND, url: BASE_URL, logo: "https://docs.sendmypaper.com/logo/icon-512.png", email: SUPPORT_EMAIL, sameAs: ["https://github.com/ryan-tish/sendpaper-plugin", "https://docs.sendmypaper.com"] },
+      { "@type": "Organization", "@id": `${BASE_URL}/#org`, name: BRAND, url: BASE_URL, logo: "https://docs.sendmypaper.com/logo/icon-512.png", email: SUPPORT_EMAIL, sameAs: [...SOCIAL.map((x) => x.url), "https://github.com/ryan-tish/sendpaper-plugin", "https://docs.sendmypaper.com"] },
       { "@type": "WebSite", "@id": `${BASE_URL}/#site`, name: BRAND, url: BASE_URL, publisher: { "@id": `${BASE_URL}/#org` } },
       {
         "@type": "Service",
@@ -134,7 +134,17 @@ function structuredData() {
         provider: { "@id": `${BASE_URL}/#org` },
         areaServed: { "@type": "Country", name: "United States" },
         description: "Send real postcards and letters, including USPS Certified Mail, from an AI agent (MCP server), a REST API, or the web. You preview exactly what prints; a person reviews every piece; it's mailed via USPS.",
-        offers: (Object.keys(PRODUCTS) as (keyof typeof PRODUCTS)[]).map((id) => ({ "@type": "Offer", name: PRODUCTS[id].name, price: (PRODUCTS[id].cents / 100).toFixed(2), priceCurrency: "USD", description: PRODUCTS[id].blurb })),
+        // url + availability (2026-11-09): Google and schema.org already passed these Offers, but Semrush flagged the
+        // structured data as having errors, and those are the fields stricter checkers expect on an Offer.
+        offers: (Object.keys(PRODUCTS) as (keyof typeof PRODUCTS)[]).map((id) => ({
+          "@type": "Offer",
+          name: PRODUCTS[id].name,
+          price: (PRODUCTS[id].cents / 100).toFixed(2),
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          url: `${BASE_URL}/send/${id.startsWith("postcard") ? "postcard" : id.startsWith("letter_certified") ? "certified" : "letter"}`,
+          description: PRODUCTS[id].blurb,
+        })),
       },
     ],
   };
@@ -145,7 +155,8 @@ function structuredData() {
 export function landing() {
   const docs = docsUrl();
   return page(
-    `${BRAND}: physical mail for AI agents`,
+    // 50–60 characters and 100–130 for the description (Semrush, 2026-11-09; it was 38 and 168).
+    `${BRAND}: physical mail for AI agents | Letters & postcards`,
     `${structuredData()}<style>${CSS}</style>
     <div class="hero-wrap">
       <div class="art" aria-hidden="true"><canvas id="lines"></canvas></div>
@@ -288,7 +299,7 @@ ${SEND_KINDS.map((k) => `<div class="card pcard"><div class="kart" aria-hidden="
     })();
     </script>`,
     {
-      description: `${BRAND} is an MCP server and REST API that lets AI agents (Codex, Muse Code, Claude) send real postcards and letters. You approve and pay; we print and mail via USPS.`,
+      description: "Let Claude, Codex or Muse send real postcards and letters, including USPS Certified Mail. You approve and pay; we print and mail.",
     },
   );
 }

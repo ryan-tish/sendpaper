@@ -1,4 +1,4 @@
-// Search and answer-engine basics (2026-10-04): robots.txt, sitemap.xml, canonical Link headers and IndexNow.
+// Search and answer-engine basics (2026-10-04): robots.txt, sitemap.xml, canonical (Link header + HTML tag) and IndexNow.
 // IndexNow tells Bing (which powers ChatGPT search), Yandex and others about our pages right after a deploy,
 // instead of waiting for a crawl. The key is public by design: it's served at /<key>.txt to prove we own the host.
 import { Router } from "express";
@@ -59,11 +59,19 @@ seo.get(`/${INDEXNOW_KEY}.txt`, (_req, res) => {
   res.type("text/plain").send(INDEXNOW_KEY);
 });
 
-// A canonical URL per public page, sent as a Link header so every page gets one without touching its HTML
-// (and query-string variants like /send?product=… consolidate onto /send).
+// A canonical URL per public page (query-string variants like /send?product=… consolidate onto /send), sent as a
+// Link header AND, since 2026-11-09, as <link rel="canonical"> in the HTML head: Semrush and other checkers only read
+// the tag and flagged the header-only setup. Both come from here so they can't disagree. hreflang: the site has one
+// English version for everyone (senders abroad included), so "en" + x-default both point at the canonical URL.
 seo.use((req, res, next) => {
-  if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_PATHS.includes(req.path))
-    res.set("Link", `<${BASE_URL}${req.path}>; rel="canonical", <${BASE_URL}${req.path === "/" ? "/index" : req.path}.md>; rel="alternate"; type="text/markdown"`);
+  if ((req.method === "GET" || req.method === "HEAD") && PUBLIC_PATHS.includes(req.path)) {
+    const url = `${BASE_URL}${req.path}`;
+    res.set("Link", `<${url}>; rel="canonical", <${BASE_URL}${req.path === "/" ? "/index" : req.path}.md>; rel="alternate"; type="text/markdown"`);
+    const tags = `<link rel="canonical" href="${url}">\n<link rel="alternate" hreflang="en" href="${url}">\n<link rel="alternate" hreflang="x-default" href="${url}">\n`;
+    const send = res.send.bind(res);
+    res.send = ((body: unknown) =>
+      send(typeof body === "string" && body.startsWith("<!doctype html>") ? body.replace("</head>", () => tags + "</head>") : body)) as typeof res.send;
+  }
   next();
 });
 

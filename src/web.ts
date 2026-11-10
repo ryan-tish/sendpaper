@@ -343,15 +343,15 @@ web.get("/llms.txt", (_req, res) => {
 > Physical mail for AI agents. ${BRAND} prints and mails real postcards and letters to US addresses, by USPS First-Class, Certified Mail (tracking + proof of delivery) or express. Agents call an MCP server or REST API with no API key; every order returns a checkout_url that a person pays, plus a preview_url of the exact print. Nothing is printed until paid, and a person reviews every piece.
 
 ## Connect
-- MCP endpoint (Streamable HTTP, no auth): ${MCP_URL}
+- [MCP endpoint](${MCP_URL}): Streamable HTTP, no auth
 - Tools: get_pricing, create_postcard, create_letter, pay_order, get_order, cancel_order
-- Setup for Codex, Muse Code, Claude and other clients: ${DOCS_URL ? `${DOCS_URL}/quickstart` : `${BASE_URL}/docs`}
+- [Setup for Codex, Muse Code, Claude and other clients](${DOCS_URL ? `${DOCS_URL}/quickstart` : `${BASE_URL}/docs`})
 
 ## Docs
-- Documentation: ${docs}${DOCS_URL ? `\n- Full docs for LLMs: ${DOCS_URL}/llms-full.txt` : ""}
-- OpenAPI spec: ${BASE_URL}/openapi.json
+- [Documentation](${docs})${DOCS_URL ? `\n- [Full docs for LLMs](${DOCS_URL}/llms-full.txt)` : ""}
+- [OpenAPI spec](${BASE_URL}/openapi.json)
 - REST base URL: ${BASE_URL}/v1
-- Step-by-step instructions for agents: ${BASE_URL}/agents.md
+- [Step-by-step instructions for agents](${BASE_URL}/agents.md)
 - Markdown of any page: add .md to the path (${BASE_URL}/index.md for the homepage) or send Accept: text/markdown
 
 ## Products
@@ -366,10 +366,10 @@ ${Object.values(PRODUCTS).map((p) => `- ${p.name} (${p.size}): ${usd(p.cents)}, 
 - ${BRAND} prints and mails what the user or agent writes; it doesn't give legal or tax advice.
 
 ## Guides
-${[...ARTICLES.map((a) => `- ${a.title}: ${BASE_URL}/${a.slug}`), ...GUIDES.map((g) => `- ${g.title}: ${BASE_URL}/${g.slug}`)].join("\n")}
+${[...ARTICLES.map((a) => `- [${a.title}](${BASE_URL}/${a.slug})`), ...GUIDES.map((g) => `- [${g.title}](${BASE_URL}/${g.slug})`)].join("\n")}
 
 ## Comparisons
-${COMPARES.map((c) => `- ${c.title}: ${BASE_URL}/compare/${c.slug}`).join("\n")}
+${COMPARES.map((c) => `- [${c.title}](${BASE_URL}/compare/${c.slug})`).join("\n")}
 
 ## Order links (for agents using a web browser)
 - Can't call tools or HTTP APIs? Open one URL with every field: ${BASE_URL}/quick?type=postcard&size=4x6&headline=…&message=…&to_name=…&to_line1=…&to_city=…&to_state=…&to_zip=…&from_name=…&from_line1=…&from_city=…&from_state=…&from_zip=…
@@ -388,7 +388,7 @@ ${COMPARES.map((c) => `- ${c.title}: ${BASE_URL}/compare/${c.slug}`).join("\n")}
 ## Rules
 - Recipients in the US only; a return address is required and may be in any country (\`from.country\`, e.g. GB).
 - Confirm addresses and wording with the user before creating an order; show them the preview and checkout links.
-- Content policy (no threats, harassment, fraud or obscenity; bulk marketing only by agreement through Enterprise): ${BASE_URL}/content-policy
+- [Content policy](${BASE_URL}/content-policy): no threats, harassment, fraud or obscenity; bulk marketing only by agreement through Enterprise
 
 ## Enterprise
 - Sending in bulk or every month, or marketing campaigns: volume rates and one monthly invoice, arranged by a person. Form: ${BASE_URL}/enterprise · API: POST ${BASE_URL}/v1/enterprise-inquiries
