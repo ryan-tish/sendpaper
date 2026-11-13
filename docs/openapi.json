@@ -311,6 +311,7 @@
     "/orders/{id}": {
       "get": {
         "summary": "Retrieve an order",
+        "description": "Look up an order by id: status, price, preview and checkout links, event history, and the USPS tracking number for certified letters once one is assigned.",
         "operationId": "getOrder",
         "parameters": [
           {

@@ -4,7 +4,7 @@ import { writeFileSync } from "node:fs";
 import { GUARDRAIL, TOPICS, USE_CASES, type UseCase } from "../src/usecases.ts";
 
 const LABEL: Record<string, string> = { postcard_4x6: "Postcard 4×6", postcard_6x9: "Postcard 6×9", postcard_6x11: "Postcard 6×11", letter: "Letter", letter_certified: "Certified letter", letter_certified_rr: "Certified letter + return receipt" };
-const section = (u: UseCase) => `## ${u.title}\n\n${u.why}\n\n\`\`\`text\n${u.prompt}\n\`\`\`\n\n*${LABEL[u.product]}*${u.note ? `. ${u.note}` : ""}\n`;
+const section = (u: UseCase) => `### ${u.title}\n\n${u.why}\n\n\`\`\`text\n${u.prompt}\n\`\`\`\n\n*${LABEL[u.product]}*${u.note ? `. ${u.note}` : ""}\n`;
 
 const mdx = `---
 title: "Use cases"
@@ -17,7 +17,7 @@ Each prompt works as-is in Codex, Muse or Claude once Sendpaper is connected.
 
 <Note>${GUARDRAIL}</Note>
 
-${TOPICS.map(([id, name]) => `# ${name}\n\n${USE_CASES.filter((u) => u.topic === id).map(section).join("\n")}`).join("\n")}`;
+${TOPICS.map(([id, name]) => `## ${name}\n\n${USE_CASES.filter((u) => u.topic === id).map(section).join("\n")}`).join("\n")}`;
 
 writeFileSync(new URL("../docs/guides/use-cases.mdx", import.meta.url), mdx);
 console.log(`wrote docs/guides/use-cases.mdx (${USE_CASES.length} use cases)`);
