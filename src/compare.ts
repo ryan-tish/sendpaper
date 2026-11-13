@@ -343,4 +343,4 @@ export function comparePage(slug: string) {
 }
 
 export const compareList = (): IndexCard[] =>
-  COMPARES.map((c) => ({ href: `/compare/${c.slug}`, title: c.title, blurb: c.card.blurb, tag: "Comparison", cat: "compare", date: c.card.date, art: "compare", label: c.card.label }));
+  COMPARES.map((c) => ({ href: `/compare/${c.slug}`, title: c.title, blurb: c.card.blurb, tag: "Comparison", cat: "compare", date: c.card.date, art: "compare", label: c.card.label, vs: c.rival }));

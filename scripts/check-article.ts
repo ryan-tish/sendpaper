@@ -36,6 +36,31 @@ if (entry) {
   if (!Array.isArray(entry.faqs) || entry.faqs.length < 2) problems.push("needs at least 2 FAQs");
 }
 
+// The /guides card (Ryan, 2026-11-13: two comparison cards showed "Lob", and "LetterStream" ran off its thumbnail).
+// The art must depict THIS page, and the label must fit the thumbnail at every width. The CSS sizes the label to the
+// card and fits a 12-letter word; longer words get split mid-word. Words, not characters per line, are what break it.
+const card: any = cards.find((c: any) => c.href === path);
+if (card && entry) {
+  const MAX_WORD = 12;
+  const longWords = (s: string) => s.split(/\s+/).filter((w) => w.length > MAX_WORD);
+  if (longWords(card.label).length) problems.push(`card label word too long for the thumbnail (max ${MAX_WORD} letters): ${longWords(card.label).join(", ")}`);
+  if (card.label.length > 36) problems.push(`card label is ${card.label.length} chars (max 36; it's the big text on the thumbnail)`);
+  if (card.caption !== undefined && (card.caption.length > 24 || longWords(card.caption).length)) problems.push(`card caption "${card.caption}" is too long (max 24 chars, ${MAX_WORD}-letter words)`);
+  const others = [...articleList(), ...compareList()].filter((c) => c.href !== path);
+  if (others.some((c) => c.label.toLowerCase() === card.label.toLowerCase())) problems.push(`card label "${card.label}" is already used by another card`);
+  if (isCompare) {
+    if (card.vs !== entry.rival) problems.push(`comparison card draws "${card.vs}", not its rival "${entry.rival}"`);
+    if (!card.label.includes(entry.rival)) problems.push(`comparison card label should name ${entry.rival}`);
+    if (longWords(entry.rival).length) problems.push(`rival name has a word over ${MAX_WORD} letters; check its card thumbnail by eye`);
+  } else if (card.art === "compare") problems.push("only comparison pages may use the compare art");
+  // No OTHER competitor's name anywhere on this card's thumbnail.
+  const thumbText = `${card.label} ${card.caption ?? ""} ${card.vs ?? ""}`.toLowerCase();
+  for (const r of COMPARES.map((c) => c.rival)) {
+    if (isCompare && r === entry.rival) continue;
+    if (thumbText.includes(r.toLowerCase())) problems.push(`card thumbnail names another competitor: ${r}`);
+  }
+}
+
 for (const bad of ["undefined", "NaN", "[object Object]", "TODO", "TK", "lorem"]) {
   if (new RegExp(`\\b${bad.replace(/[[\]]/g, "\\$&")}\\b`).test(html)) problems.push(`page contains "${bad}"`);
 }
@@ -60,7 +85,11 @@ for (const m of html.matchAll(/href="([^"]+)"/g)) {
 try {
   const md = htmlToMarkdown(html, path);
   if (!md || md.length < 500) problems.push("markdown version is empty or very short");
-  else if (process.argv.includes("--md")) console.log(md);
+  else if (process.argv.includes("--md")) {
+    console.log(md);
+    // So the QA reviewer can check the thumbnail matches the page (it isn't part of the page itself).
+    if (card) console.log(`\n---\n/guides card: art=${card.art} label="${card.label}"${card.caption ? ` caption="${card.caption}"` : ""}${card.vs ? ` vs="${card.vs}"` : ""}`);
+  }
 } catch (e) {
   problems.push(`markdown conversion failed: ${(e as Error).message}`);
 }

@@ -35,10 +35,15 @@ type Guide = {
   sources?: [string, string][]; // [label, url]: primary sources for factual claims, listed at the end
   // The /guides card (Ryan, 2026-10-08: Mintlify-blog style). date = last substantive change (ISO), never bumped
   // without a real rewrite; art picks the thumbnail illustration; label is the big text on the thumbnail.
-  card: { cat: CardCat; date: string; art: CardArt; label: string };
+  card: { cat: CardCat; date: string; art: CardArt; label: string; caption?: string };
 };
 export type CardCat = "proof" | "documents" | "agents" | "compare";
-export type CardArt = "track" | "letter" | "pdf" | "chat" | "compare";
+// The thumbnail must depict what the article is about (Ryan, 2026-11-13: two comparison cards showed "Lob").
+// track = certified mail / tracking / delivery (caption "USPS Certified Mail"); letter = a letter someone writes
+// (caption "Re:"); pdf = uploading or mailing a document file; chat = AI agents; postcard = postcards and cards;
+// compare = comparisons ONLY, and it always draws the card's own rival (compareList passes `vs`).
+// `caption` replaces the small mono line on track/letter/pdf/postcard when the default would be wrong for the topic.
+export type CardArt = "track" | "letter" | "pdf" | "chat" | "postcard" | "compare";
 
 // Every guide ever published. Retired ones (Ryan, 2026-10-08: "remove all articles except the Lob comparison") stay here so
 // they can be restored by deleting `retired`; their URLs 301 to /guides (RETIRED_PATHS, in web.ts) and leave the sitemap.
@@ -372,28 +377,32 @@ export const INDEX_CSS = `
 // /guides index (Ryan, 2026-10-08, modelled on Mintlify's blog): category tabs over a 3-column card grid; each card
 // has a drawn thumbnail (HTML/CSS only, no image files), a tag chip + date, the title and a one-line excerpt.
 // Without JS every card shows and the tabs are inert anchors.
-export type IndexCard = { href: string; title: string; blurb: string; tag: string; cat: CardCat; date: string; art: CardArt; label: string };
+export type IndexCard = { href: string; title: string; blurb: string; tag: string; cat: CardCat; date: string; art: CardArt; label: string; caption?: string; vs?: string };
 const CATS: [CardCat | "all", string][] = [["all", "All guides"], ["proof", "Proof of delivery"], ["documents", "Documents"], ["agents", "AI agents"], ["compare", "Comparisons"]];
 const fmtDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 const bars = (ws: number[], cls = "") => ws.map((w, i) => `<i class="bar ${cls}${i % 3 === 1 ? " b2" : i % 3 === 2 ? " b3" : ""}" style="width:${w}%"></i>`).join("");
 
-function thumbArt(art: CardArt) {
-  switch (art) {
+function thumbArt(c: IndexCard) {
+  const cap = (fallback: string) => esc(c.caption ?? fallback);
+  switch (c.art) {
     case "track":
-      return `<div class="mock"><span class="mk">USPS Certified Mail</span><div class="trk"><span><i class="dot on"></i>Mailed</span><span><i class="dot on"></i>In transit</span><span><i class="dot"></i>Delivered</span></div>${bars([80, 55])}</div>`;
+      return `<div class="mock"><span class="mk">${cap("USPS Certified Mail")}</span><div class="trk"><span><i class="dot on"></i>Mailed</span><span><i class="dot on"></i>In transit</span><span><i class="dot"></i>Delivered</span></div>${bars([80, 55])}</div>`;
     case "letter":
-      return `<div class="mock page"><span class="mk">Re:</span>${bars([90, 70, 84, 46])}<svg class="sig" viewBox="0 0 80 20" aria-hidden="true"><path d="M2 14c6-10 10-10 12 0s6-12 10-2 6 4 10-4 8 10 14 2 10-6 30 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>`;
+      return `<div class="mock page"><span class="mk">${cap("Re:")}</span>${bars([90, 70, 84, 46])}<svg class="sig" viewBox="0 0 80 20" aria-hidden="true"><path d="M2 14c6-10 10-10 12 0s6-12 10-2 6 4 10-4 8 10 14 2 10-6 30 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>`;
     case "pdf":
-      return `<div class="stack"><div class="mock page back"></div><div class="mock page back2"></div><div class="mock page"><span class="pdf">PDF</span>${bars([88, 64, 76])}<span class="mk dim">8.5 × 11</span></div></div>`;
+      return `<div class="stack"><div class="mock page back"></div><div class="mock page back2"></div><div class="mock page"><span class="pdf">PDF</span>${bars([88, 64, 76])}<span class="mk dim">${cap("8.5 × 11")}</span></div></div>`;
     case "chat":
       return `<div class="mock"><span class="bub">Mail a letter to Sam…</span><span class="tool"><i class="dot on"></i>create_letter</span><span class="bub you">Preview and checkout link ready.</span></div>`;
+    case "postcard":
+      return `<div class="mock post"><svg class="ph" viewBox="0 0 60 80" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="60" height="80"/><circle cx="42" cy="20" r="7"/><path d="M0 70 18 44 30 56 42 40 60 62V80H0Z"/></svg><div class="pb"><i class="stp"></i><span class="mk">${cap("Wish you were here")}</span>${bars([92, 70, 80])}</div></div>`;
     case "compare":
-      return `<div class="mock"><div class="cols"><span class="mk">Lob</span><span class="mk">Sendpaper</span></div><div class="cols">${`<div>${bars([86, 60, 74])}</div><div>${bars([70, 82, 52], "g")}</div>`}</div></div>`;
+      // Rows, not side-by-side columns, so a long rival name ("LetterStream", "Certified Mail Labels") has the full width.
+      return `<div class="mock vs"><div><span class="mk">${esc(c.vs ?? "")}</span>${bars([86, 60])}</div><div><span class="mk us">${esc(BRAND)}</span>${bars([94, 74], "g")}</div></div>`;
   }
 }
 
 function indexCard(c: IndexCard) {
-  return `<a class="gcard" href="${esc(c.href)}" data-cat="${c.cat}"><div class="thumb" aria-hidden="true"><span class="tl">${esc(c.label)}</span>${thumbArt(c.art)}</div>
+  return `<a class="gcard" href="${esc(c.href)}" data-cat="${c.cat}"><div class="thumb" aria-hidden="true"><span class="tl">${esc(c.label)}</span>${thumbArt(c)}</div>
     <div class="gmeta"><span class="chip">${esc(c.tag)}</span><time datetime="${c.date}">${fmtDate(c.date)}</time></div><b>${esc(c.title)}</b><span class="gx">${esc(c.blurb)}</span></a>`;
 }
 
@@ -405,8 +414,7 @@ const CARDS_CSS = `
 .gtabs a { flex: none; padding: 0 0 12px; color: var(--soft); text-decoration: none; font: 500 .98rem var(--f-ui); border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .gtabs a:hover { color: var(--ink); } .gtabs a[aria-current="true"] { color: var(--ink); border-bottom-color: var(--green); }
 .ggrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 26px; padding-top: 10px; }
-@media (max-width: 980px) { .ggrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .thumb .tl { font-size: 1.45rem; } }
-@media (max-width: 640px) { .thumb .tl { font-size: 1.6rem; } }
+@media (max-width: 980px) { .ggrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .ggrid { grid-template-columns: minmax(0, 1fr); } .gtabs { gap: 22px; } }
 .gcard { display: grid; gap: 10px; align-content: start; color: var(--ink); text-decoration: none; }
 .gcard b { font: 600 1.18rem/1.3 var(--f-ui); letter-spacing: -0.015em; transition: color .15s; }
@@ -414,9 +422,12 @@ const CARDS_CSS = `
 .gcard .gx { color: var(--soft); font: 400 .98rem/1.55 var(--f-ui); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .gmeta { display: flex; align-items: center; gap: 12px; font-size: .9rem; color: var(--faint); margin-top: 6px; }
 .chip { background: var(--tint); border: 1px solid var(--rule); color: var(--ink); font: 500 .8rem var(--f-ui); padding: 3px 9px; border-radius: 6px; }
-.thumb { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; border: 1px solid var(--rule); background: var(--tint); overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: center; gap: 14px; padding: 0 18px 0 22px; transition: border-color .15s; }
+.thumb { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; border: 1px solid var(--rule); background: var(--tint); overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: center; gap: 14px; padding: 0 18px 0 22px; transition: border-color .15s; container-type: inline-size; }
 .gcard:hover .thumb { border-color: var(--green-line); }
-.thumb .tl { font: 400 clamp(1.25rem, 2.1vw, 1.7rem)/1.12 var(--f-ui); letter-spacing: -0.035em; color: var(--ink); }
+/* The label is sized to the CARD (container units), not the window: cards stop growing at 340px on wide screens while
+   vw kept growing, so "Sendpaper vs. LetterStream" ran under the mock (2026-11-13). 7.2cqi fits a 12-letter word in the
+   label column at every card width; break-word is only a safety net (check-article.ts caps label words at 12 letters). */
+.thumb .tl { font: 400 clamp(1rem, 7.2cqi, 2.1rem)/1.12 var(--f-ui); letter-spacing: -0.035em; color: var(--ink); overflow-wrap: break-word; min-width: 0; }
 .thumb .mock { background: var(--card); border: 1px solid var(--rule); border-radius: 9px; padding: 12px; display: grid; gap: 7px; box-shadow: 0 6px 18px rgba(13, 21, 18, .06); }
 .thumb .mk { font: 500 .62rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; } .thumb .mk.dim { justify-self: end; }
 .thumb .bar { display: block; height: 5px; border-radius: 3px; background: var(--rule); } .thumb .bar.b2 { background: var(--green-line); } .thumb .bar.g { background: var(--green); opacity: .75; } .thumb .bar.g.b2 { background: var(--lime); opacity: 1; }
@@ -431,13 +442,16 @@ const CARDS_CSS = `
 .thumb .bub { font: 400 .66rem/1.35 var(--f-ui); background: var(--tint); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 8px; color: var(--ink); justify-self: end; max-width: 92%; }
 .thumb .bub.you { justify-self: start; background: var(--green-soft); border-color: var(--green-line); }
 .thumb .tool { display: flex; align-items: center; gap: 6px; font: 500 .62rem var(--f-mono); color: var(--soft); }
-.thumb .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .thumb .cols > div { display: grid; gap: 6px; }
+.thumb .vs { gap: 12px; } .thumb .vs > div { display: grid; gap: 6px; min-width: 0; } .thumb .vs .mk { overflow-wrap: anywhere; } .thumb .vs .mk.us { color: var(--green); }
+.thumb .post { grid-template-columns: 1fr 1fr; gap: 9px; padding: 8px; aspect-ratio: 3 / 2; }
+.thumb .post .ph { width: 100%; height: 100%; border-radius: 5px; } .thumb .post .ph rect { fill: var(--green-line); } .thumb .post .ph circle { fill: var(--lime); } .thumb .post .ph path { fill: var(--green); }
+.thumb .post .pb { display: grid; gap: 6px; align-content: start; padding-top: 2px; } .thumb .post .stp { justify-self: end; width: 16px; height: 19px; border: 1.5px dashed var(--green); border-radius: 2px; } .thumb .post .mk { font-family: var(--f-ui); text-transform: none; letter-spacing: 0; font-style: italic; }
 .more-uc { display: grid; gap: 4px; padding: 18px 20px; border: 1px solid var(--rule); border-radius: 12px; background: var(--tint); color: var(--ink); text-decoration: none; margin-top: 18px; } .more-uc b { font-weight: 600; } .more-uc span { color: var(--soft); font-size: .95rem; } .more-uc:hover b { color: var(--green); }
 `;
 
 export function guidesIndexPage(comparisons: IndexCard[] = []) {
   const cards: IndexCard[] = [
-    ...GUIDES.map((g) => ({ href: `/${g.slug}`, title: g.title, blurb: g.blurb, tag: g.kicker, cat: g.card.cat, date: g.card.date, art: g.card.art, label: g.card.label })),
+    ...GUIDES.map((g) => ({ href: `/${g.slug}`, title: g.title, blurb: g.blurb, tag: g.kicker, cat: g.card.cat, date: g.card.date, art: g.card.art, label: g.card.label, caption: g.card.caption })),
     ...comparisons,
   ].sort((a, b) => b.date.localeCompare(a.date));
   const cats = CATS.filter(([id]) => id === "all" || cards.some((c) => c.cat === id));

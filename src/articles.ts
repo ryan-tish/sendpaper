@@ -30,7 +30,7 @@ type Article = {
   faqs: [string, string][];
   sources: [string, string][];
   sourceNote?: string; // replaces the default USPS line under the sources
-  card: { cat: CardCat; date: string; art: CardArt; label: string; blurb: string };
+  card: { cat: CardCat; date: string; art: Exclude<CardArt, "compare">; label: string; blurb: string; caption?: string };
 };
 
 export const ARTICLES: Article[] = [
@@ -796,4 +796,4 @@ export function articlePage(slug: string) {
 }
 
 export const articleList = (): IndexCard[] =>
-  ARTICLES.map((a) => ({ href: `/${a.slug}`, title: a.title, blurb: a.card.blurb, tag: a.kicker, cat: a.card.cat, date: a.card.date, art: a.card.art, label: a.card.label }));
+  ARTICLES.map((a) => ({ href: `/${a.slug}`, title: a.title, blurb: a.card.blurb, tag: a.kicker, cat: a.card.cat, date: a.card.date, art: a.card.art, label: a.card.label, caption: a.card.caption }));
