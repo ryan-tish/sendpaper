@@ -409,7 +409,6 @@ function indexCard(c: IndexCard) {
 const CARDS_CSS = `
 .gidx { padding-block: 52px 8px; display: grid; gap: 26px; }
 .gidx h1 { font: 600 clamp(2.1rem, 4.6vw, 3rem)/1.08 var(--f-ui); letter-spacing: -0.035em; }
-.gidx .dek { font: 400 1.15rem/1.55 var(--f-ui); color: var(--soft); margin: 0; max-width: 64ch; }
 .gtabs { display: flex; gap: 30px; border-bottom: 1px solid var(--rule); overflow-x: auto; scrollbar-width: none; margin-top: 6px; }
 .gtabs a { flex: none; padding: 0 0 12px; color: var(--soft); text-decoration: none; font: 500 .98rem var(--f-ui); border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .gtabs a:hover { color: var(--ink); } .gtabs a[aria-current="true"] { color: var(--ink); border-bottom-color: var(--green); }
@@ -458,8 +457,7 @@ export function guidesIndexPage(comparisons: IndexCard[] = []) {
   return page(
     `Guides — ${BRAND}`,
     `<style>${CARDS_CSS}</style>
-    <section class="gidx"><div style="display:grid;gap:12px"><span class="eyebrow">Guides</span><h1>How to mail what matters</h1>
-      <p class="dek">Plain-English guides to mailing documents and letters that need proof, sending real mail from your AI agent, and choosing a mail service.</p></div>
+    <section class="gidx"><div style="display:grid;gap:12px"><span class="eyebrow">Guides</span><h1>How to mail what matters</h1></div>
       <nav class="gtabs" aria-label="Guide topics">${cats.map(([id, t], i) => `<a href="#${id}" data-tab="${id}" aria-current="${i === 0}">${t}</a>`).join("")}</nav>
       <div class="ggrid" id="ggrid">${cards.map(indexCard).join("")}</div>
       <a class="more-uc" href="/use-cases"><b>Looking for a ready-made prompt?</b><span>Browse use cases: birthday cards, landlord notices, tax replies and more, each with a prompt to copy →</span></a>
