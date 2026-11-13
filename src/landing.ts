@@ -1,7 +1,7 @@
 import { BASE_URL, BRAND, EXPRESS_CENTS, FIRST_ORDER_DISCOUNT_PCT, LIMITS, OFFER_ACTIVE, PRODUCTS, SOCIAL, SUPPORT_EMAIL } from "./config.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
-import { KIND_INFO, SEND_KINDS, type SendKind } from "./send.ts";
+import { KIND_CARDS_CSS, kindCards } from "./send.ts";
 
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 
@@ -17,12 +17,6 @@ const CLIENTS: [string, string][] = [
 ];
 
 
-// Small line drawings for the pricing cards (decorative; colors are CSS classes so dark mode works).
-const KIND_ART: Record<SendKind, string> = {
-  postcard: `<svg viewBox="0 0 160 100" width="168" height="105"><rect class="pp" x="1" y="1" width="158" height="98" rx="6"/><rect class="photo" x="8" y="8" width="72" height="84" rx="3"/><circle class="sun" cx="62" cy="28" r="8"/><path class="hill" d="M8 82 30 56 44 68 58 50 80 76V92H8Z"/><rect class="stamp" x="134" y="9" width="17" height="21" rx="2"/><path class="ln" d="M92 46h40M92 58h52M92 70h34"/></svg>`,
-  letter: `<svg viewBox="0 0 160 100" width="168" height="105"><rect class="pp" x="40" y="4" width="80" height="62" rx="3"/><path class="ln" d="M50 16h44M50 26h60M50 36h52"/><rect class="pp" x="20" y="40" width="120" height="58" rx="5"/><rect class="win" x="32" y="58" width="60" height="22" rx="3"/><path class="wl" d="M39 66h36M39 73h24"/></svg>`,
-  certified: `<svg viewBox="0 0 160 100" width="168" height="105"><rect class="pp" x="20" y="16" width="120" height="72" rx="5"/><path class="ln" d="M32 34h44M32 44h56M32 54h40"/><rect class="seal" x="98" y="24" width="32" height="26" rx="3"/><path class="tick" d="m106 37 5 5 10-10"/><path class="bar" d="M32 68v10M35 68v10M39 68v10M44 68v10M47 68v10M52 68v10M55 68v10M60 68v10M64 68v10M67 68v10M72 68v10M75 68v10M80 68v10"/></svg>`,
-};
 
 const CSS = `
 .hero-wrap { position: relative; margin-inline: -24px; padding-inline: 24px; }
@@ -69,36 +63,6 @@ const CSS = `
 .works a:hover { color: var(--ink); }
 .section-head { display: grid; gap: 12px; max-width: 640px; }
 .section-head .soft { font-size: 1.05rem; }
-/* Pricing (Ryan, 2026-11-08): three product cards = drawing, name, purpose line, "from" price, near-black button.
-   The Format/Included/Delivery spec table was dropped (what's common to all moved into the section subtitle). */
-.prices.three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px; }
-.pcard { display: flex; flex-direction: column; gap: 10px; padding: 12px 12px 24px; border-radius: 18px; }
-.pcard > * { margin: 0 12px; }
-.pcard > .kart { margin: 0 0 10px; }
-.pcard h3 { font-size: 1.15rem; }
-.pcard .purpose { color: var(--soft); font-size: .95rem; }
-.pcard .price { margin-top: 2px; font-size: 2.3rem; line-height: 1.1; }
-.pcard .price small { font: 500 .88rem var(--f-ui); color: var(--soft); margin-right: 6px; letter-spacing: 0; }
-.pcard .btn { margin-top: auto; justify-content: center; padding-block: 12px; border-radius: 10px; }
-/* Each card is a subgrid row-span, so drawing, name, purpose, price and button line up even when a purpose line wraps. */
-@supports (grid-template-rows: subgrid) {
-  .prices.three { row-gap: 0; }
-  .prices.three .pcard { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 10px; margin-bottom: 16px; }
-  .prices.three .pcard .btn { margin-top: 10px; }
-}
-/* Line drawings on the cards: colors come from these classes so dark mode works. */
-.kart { display: grid; place-items: center; height: 150px; border-radius: 12px; background: var(--tint); }
-.kart svg { width: 168px; max-width: 80%; height: auto; }
-.kart .pp { fill: var(--card); stroke: color-mix(in srgb, var(--ink) 20%, transparent); stroke-width: 1.5; }
-.kart .ln { fill: none; stroke: color-mix(in srgb, var(--ink) 13%, transparent); stroke-width: 3; stroke-linecap: round; }
-.kart .photo { fill: var(--green-line); }
-.kart .hill, .kart .seal { fill: var(--green); }
-.kart .sun { fill: var(--lime); }
-.kart .stamp { fill: none; stroke: var(--green); stroke-width: 1.5; stroke-dasharray: 2 2; }
-.kart .win { fill: var(--green-soft); stroke: var(--green); stroke-width: 1.2; }
-.kart .wl { fill: none; stroke: var(--green); stroke-width: 2; stroke-linecap: round; }
-.kart .tick { fill: none; stroke: var(--paper); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.kart .bar { fill: none; stroke: var(--ink); stroke-width: 1.6; }
 /* Enterprise band: near-black in light mode; a card in dark mode so it doesn't vanish into the page. */
 .ent { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 40px; padding: 36px 40px; border-radius: 20px; background: #0d1512; color: #e6ede9; }
 .ent > div { display: grid; gap: 8px; flex: 1 1 420px; min-width: 0; }
@@ -157,7 +121,7 @@ export function landing() {
   return page(
     // 50–60 characters and 100–130 for the description (Semrush, 2026-11-09; it was 38 and 168).
     `${BRAND}: physical mail for AI agents | Letters & postcards`,
-    `${structuredData()}<style>${CSS}</style>
+    `${structuredData()}<style>${CSS}${KIND_CARDS_CSS}</style>
     <div class="hero-wrap">
       <div class="art" aria-hidden="true"><canvas id="lines"></canvas></div>
       <div class="hero">
@@ -192,13 +156,7 @@ export function landing() {
 
     <section id="pricing">
       <div class="section-head"><span class="eyebrow">Pricing</span><h2>Pay per piece. No subscription.</h2><p class="soft">Printing, envelope and USPS postage included. USPS delivers in 1–5 business days, or 2–3 with express. Send from anywhere to any US address.</p></div>
-      <div class="prices three">
-${SEND_KINDS.map((k) => `<div class="card pcard"><div class="kart" aria-hidden="true">${KIND_ART[k]}</div>
-          <h3>${KIND_INFO[k].title}</h3>
-          <p class="purpose">${KIND_INFO[k].purpose}</p>
-          <div class="price"><small>from</small>${usd(KIND_INFO[k].cents)}</div>
-          <a class="btn" href="/send/${k}">${KIND_INFO[k].cta}</a></div>`).join("")}
-      </div>
+      ${kindCards()}
       <div class="ent">
         <div><span class="eyebrow">Enterprise</span><h3>Sending in bulk or every month?</h3><p>We'll set volume rates, send one monthly invoice and help connect your app or agent. Marketing mail and campaigns welcome.</p></div>
         <a class="btn" href="/enterprise">Talk to us</a>

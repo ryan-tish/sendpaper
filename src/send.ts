@@ -130,24 +130,66 @@ export type SendKind = "postcard" | "letter" | "certified";
 export const SEND_KINDS: SendKind[] = ["postcard", "letter", "certified"];
 
 // /send with nothing chosen yet (Ryan, 2026-10-05): pick what you're sending, then get one page with every field.
-// One definition for the /send tiles and the homepage pricing cards, so their wording can't drift apart. Keep each
-// spec value short enough for one line in a 240px card (Ryan dislikes wrapped lines here).
-export const KIND_INFO: Record<SendKind, { title: string; h1: string; cta: string; cents: number; purpose: string; format: string; included: string; delivery: string }> = {
-  postcard: { title: "Postcard", h1: "Send a postcard", cta: "Send a postcard", cents: PRODUCTS.postcard_4x6.cents, purpose: "For photos and quick notes", format: "4×6, 6×9 or 6×11 card", included: "Printing and postage", delivery: "First-Class or express" },
-  letter: { title: "Letter", h1: "Send a letter", cta: "Send a letter", cents: PRODUCTS.letter.cents, purpose: "For documents and correspondence", format: "Up to 3 pages, 8.5×11", included: "Printing, envelope, postage", delivery: "First-Class or express" },
-  certified: { title: "Certified letter", h1: "Send a certified letter", cta: "Send a certified letter", cents: PRODUCTS.letter_certified.cents, purpose: "For mail that needs proof of delivery", format: "Up to 3 pages, 8.5×11", included: "Printing, envelope, postage", delivery: "Tracked, proof of delivery" },
+// One definition for the /send chooser and the homepage pricing cards (they render the SAME cards: kindCards()),
+// so their wording can't drift apart.
+export const KIND_INFO: Record<SendKind, { title: string; h1: string; cta: string; cents: number; purpose: string }> = {
+  postcard: { title: "Postcard", h1: "Send a postcard", cta: "Send a postcard", cents: PRODUCTS.postcard_4x6.cents, purpose: "For photos and quick notes" },
+  letter: { title: "Letter", h1: "Send a letter", cta: "Send a letter", cents: PRODUCTS.letter.cents, purpose: "For documents and correspondence" },
+  certified: { title: "Certified letter", h1: "Send a certified letter", cta: "Send a certified letter", cents: PRODUCTS.letter_certified.cents, purpose: "For mail that needs proof of delivery" },
 };
 
-export const kindSpec = (k: SendKind) => {
-  const i = KIND_INFO[k];
-  return `<dl class="spec"><div><dt>Format</dt><dd>${i.format}</dd></div><div><dt>Included</dt><dd>${i.included}</dd></div><div><dt>Delivery</dt><dd>${i.delivery}</dd></div></dl>`;
+// Small line drawings for the pricing cards (decorative; colors are CSS classes so dark mode works).
+export const KIND_ART: Record<SendKind, string> = {
+  postcard: `<svg viewBox="0 0 160 100" width="168" height="105"><rect class="pp" x="1" y="1" width="158" height="98" rx="6"/><rect class="photo" x="8" y="8" width="72" height="84" rx="3"/><circle class="sun" cx="62" cy="28" r="8"/><path class="hill" d="M8 82 30 56 44 68 58 50 80 76V92H8Z"/><rect class="stamp" x="134" y="9" width="17" height="21" rx="2"/><path class="ln" d="M92 46h40M92 58h52M92 70h34"/></svg>`,
+  letter: `<svg viewBox="0 0 160 100" width="168" height="105"><rect class="pp" x="40" y="4" width="80" height="62" rx="3"/><path class="ln" d="M50 16h44M50 26h60M50 36h52"/><rect class="pp" x="20" y="40" width="120" height="58" rx="5"/><rect class="win" x="32" y="58" width="60" height="22" rx="3"/><path class="wl" d="M39 66h36M39 73h24"/></svg>`,
+  certified: `<svg viewBox="0 0 160 100" width="168" height="105"><rect class="pp" x="20" y="16" width="120" height="72" rx="5"/><path class="ln" d="M32 34h44M32 44h56M32 54h40"/><rect class="seal" x="98" y="24" width="32" height="26" rx="3"/><path class="tick" d="m106 37 5 5 10-10"/><path class="bar" d="M32 68v10M35 68v10M39 68v10M44 68v10M47 68v10M52 68v10M55 68v10M60 68v10M64 68v10M67 68v10M72 68v10M75 68v10M80 68v10"/></svg>`,
 };
 
-export const SPEC_CSS = `
-.spec { margin: 0; font-size: .88rem; border-bottom: 1px solid var(--rule); }
-.spec > div { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: baseline; gap: 10px; padding: 9px 0; border-top: 1px solid var(--rule); }
-.spec dt { font: 500 .7rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
-.spec dd { margin: 0; color: var(--ink); }
+// The three product cards: drawing, name, purpose line, "from" price, near-black button. Used by the homepage
+// #pricing section and the /send chooser (Ryan, 2026-11-13: "/send should match the pricing page, less details,
+// really easy to click"). The button's ::after stretches over the card, so the whole card is one click target.
+export const kindCards = () => `<div class="prices three">
+${SEND_KINDS.map((k) => `<div class="card pcard"><div class="kart" aria-hidden="true">${KIND_ART[k]}</div>
+          <h3>${KIND_INFO[k].title}</h3>
+          <p class="purpose">${KIND_INFO[k].purpose}</p>
+          <div class="price"><small>from</small>${usd(KIND_INFO[k].cents)}</div>
+          <a class="btn" href="/send/${k}">${KIND_INFO[k].cta}</a></div>`).join("")}
+      </div>`;
+
+export const KIND_CARDS_CSS = `
+/* Pricing (Ryan, 2026-11-08): three product cards = drawing, name, purpose line, "from" price, near-black button.
+   The Format/Included/Delivery spec table was dropped (what's common to all moved into the section subtitle). */
+.prices.three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px; }
+.pcard { display: flex; flex-direction: column; gap: 10px; padding: 12px 12px 24px; border-radius: 18px; }
+.pcard > * { margin: 0 12px; }
+.pcard > .kart { margin: 0 0 10px; }
+.pcard h3 { font-size: 1.15rem; }
+.pcard .purpose { color: var(--soft); font-size: .95rem; }
+.pcard .price { margin-top: 2px; font-size: 2.3rem; line-height: 1.1; }
+.pcard .price small { font: 500 .88rem var(--f-ui); color: var(--soft); margin-right: 6px; letter-spacing: 0; }
+.pcard .btn { margin-top: auto; justify-content: center; padding-block: 12px; border-radius: 10px; }
+/* Each card is a subgrid row-span, so drawing, name, purpose, price and button line up even when a purpose line wraps. */
+@supports (grid-template-rows: subgrid) {
+  .prices.three { row-gap: 0; }
+  .prices.three .pcard { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 10px; margin-bottom: 16px; }
+  .prices.three .pcard .btn { margin-top: 10px; }
+}
+/* Line drawings on the cards: colors come from these classes so dark mode works. */
+.kart { display: grid; place-items: center; height: 150px; border-radius: 12px; background: var(--tint); }
+.kart svg { width: 168px; max-width: 80%; height: auto; }
+.kart .pp { fill: var(--card); stroke: color-mix(in srgb, var(--ink) 20%, transparent); stroke-width: 1.5; }
+.kart .ln { fill: none; stroke: color-mix(in srgb, var(--ink) 13%, transparent); stroke-width: 3; stroke-linecap: round; }
+.kart .photo { fill: var(--green-line); }
+.kart .hill, .kart .seal { fill: var(--green); }
+.kart .sun { fill: var(--lime); }
+.kart .stamp { fill: none; stroke: var(--green); stroke-width: 1.5; stroke-dasharray: 2 2; }
+.kart .win { fill: var(--green-soft); stroke: var(--green); stroke-width: 1.2; }
+.kart .wl { fill: none; stroke: var(--green); stroke-width: 2; stroke-linecap: round; }
+.kart .tick { fill: none; stroke: var(--paper); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.kart .bar { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+.pcard { position: relative; transition: border-color .15s, box-shadow .15s; }
+.pcard .btn::after { content: ""; position: absolute; inset: 0; border-radius: 18px; }
+.pcard:hover, .pcard:focus-within { border-color: var(--green-line); box-shadow: 0 0 0 3px var(--green-soft); }
 `;
 
 // Old /send?… links (order links, guides, use cases) name a product; map them to the page for that kind.
@@ -161,26 +203,15 @@ export function kindFromQuery(q: Record<string, unknown>): SendKind | null {
 }
 
 export function sendChooser() {
-  const tiles = SEND_KINDS.map((k) => {
-    const i = KIND_INFO[k];
-    return `<a class="kind" href="/send/${k}"><span class="kt">${i.title}</span><span class="kp"><small>from</small> ${usd(i.cents)}</span><b>${i.purpose}</b>${kindSpec(k)}<span class="go">Start →</span></a>`;
-  }).join("");
   return page(
     `Send a postcard or letter — ${BRAND}`,
-    `<style>${SPEC_CSS}
+    `<style>${KIND_CARDS_CSS}
     .pick { display: grid; gap: 28px; padding-block: 48px 24px; }
     .pick-head { display: grid; gap: 10px; max-width: 640px; } .pick h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
-    .kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; }
-    .kind { display: flex; flex-direction: column; gap: 10px; padding: 24px; border: 1px solid var(--rule); border-radius: 14px; background: var(--card); color: var(--ink); text-decoration: none; transition: border-color .15s, box-shadow .15s, transform .15s; }
-    .kind:hover, .kind:focus-visible { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
-    .kt { font-weight: 600; font-size: 1.15rem; } .kp { font: 600 1.6rem var(--f-ui); letter-spacing: -0.02em; } .kp small { font: 500 .85rem var(--f-ui); color: var(--faint); margin-right: 4px; }
-    .kind b { font-weight: 500; } .kind .go { margin-top: auto; padding-top: 8px; color: var(--green); font-weight: 600; }
-    /* Same row alignment as the pricing cards: each tile is a subgrid, so specs line up even when a purpose line wraps. */
-    @supports (grid-template-rows: subgrid) { .kinds { row-gap: 0; } .kind { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 12px; margin-bottom: 16px; } }
     </style>
     <div class="pick">
-      <div class="pick-head"><span class="eyebrow">Send mail now</span><h1>What are you sending?</h1><p class="soft">We print it and mail it to any US address. You see the exact print before you pay.${OFFER_ACTIVE ? ` <b style="color:var(--green)">${esc(OFFER_LINE)}.</b>` : ""}</p></div>
-      <div class="kinds">${tiles}</div>
+      <div class="pick-head"><span class="eyebrow">Send mail now</span><h1>What are you sending?</h1></div>
+      ${kindCards()}
       <p class="soft" style="font-size:.85rem">AI agent? Skip this form. Build an <a href="${esc(docsUrl("/guides/order-links"))}">order link</a> (one URL with every field) or call the <a href="${esc(docsUrl("/api/introduction"))}">API</a>.</p>
     </div>`,
   );
