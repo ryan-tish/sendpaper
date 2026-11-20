@@ -11,6 +11,7 @@ import express, { Router } from "express";
 import { BASE_URL, BRAND, PRODUCTS, type ProductId, letterProduct, type Certified, isLetter, postcardProduct } from "./config.ts";
 import { page } from "./layout.ts";
 import { CreateLetterSchema, CreatePostcardSchema, createOrder, orderPrice } from "./orders.ts";
+import { AddressCheckError } from "./addresscheck.ts";
 import { addressBlock, esc, letterPages, postcardBack, postcardFront, PRINT_CSS } from "./render.ts";
 
 export const QUICK_PARAMS = {
@@ -113,22 +114,26 @@ ${PRINT_CSS}
 export const quick = Router();
 quick.use("/quick", express.urlencoded({ extended: false, limit: "20kb" }));
 
+// Shown for bad parameters, and (POST) when USPS can't confirm an address. Nothing has been ordered either way.
+function fixPage(q: Q, errors: { param: string; message: string }[]) {
+  const editLink = `/send?${new URLSearchParams(q).toString()}`;
+  return page(
+    `Fix this order link — ${BRAND}`,
+    `<style>${CSS}</style><section style="max-width:720px"><span class="eyebrow">Order link</span><h1>A few details are missing</h1>
+    <p class="soft">Nothing has been ordered. Fix these URL parameters and open the link again, or finish in the form.</p>
+    <ul class="errs">${errors.map((e) => `<li><code>${esc(e.param)}</code>: ${esc(e.message)}</li>`).join("")}</ul>
+    <p><a class="btn alt" href="${esc(editLink)}">Finish in the form</a></p>
+    <p class="soft">Parameters: ${Object.entries(QUICK_PARAMS).map(([k, v]) => `<code>${esc(k)}</code> (${esc(v)})`).join(", ")}.</p></section>`,
+    { noindex: true },
+  );
+}
+
 quick.get("/quick", (req, res) => {
   const q = flatten(req.query as Record<string, unknown>);
   const r = parseQuick(q);
   const editLink = `/send?${new URLSearchParams(q).toString()}`;
   if (!r.ok) {
-    res.status(422).send(
-      page(
-        `Fix this order link — ${BRAND}`,
-        `<style>${CSS}</style><section style="max-width:720px"><span class="eyebrow">Order link</span><h1>A few details are missing</h1>
-        <p class="soft">Nothing has been ordered. Fix these URL parameters and open the link again, or finish in the form.</p>
-        <ul class="errs">${r.errors.map((e) => `<li><code>${esc(e.param)}</code>: ${esc(e.message)}</li>`).join("")}</ul>
-        <p><a class="btn alt" href="${esc(editLink)}">Finish in the form</a></p>
-        <p class="soft">Parameters: ${Object.entries(QUICK_PARAMS).map(([k, v]) => `<code>${esc(k)}</code> (${esc(v)})`).join(", ")}.</p></section>`,
-        { noindex: true },
-      ),
-    );
+    res.status(422).send(fixPage(q, r.errors));
     return;
   }
   const preview = { product: r.product, content: r.data.content as Record<string, any>, to_address: r.data.to, from_address: r.data.from, created_at: new Date() };
@@ -174,14 +179,23 @@ quick.post("/quick", async (req, res) => {
   const r = parseQuick(q);
   if (!r.ok) return res.redirect(303, `/quick?${new URLSearchParams(q).toString()}`);
   const nonce = String((req.body as Record<string, string> | undefined)?.nonce ?? "").slice(0, 40);
-  const { order } = await createOrder({
-    ...r.data,
-    content: r.data.content,
-    product: r.product,
-    source: "web",
-    client: "order-link",
-    idempotency_key: nonce ? `quick-${nonce}` : undefined, // the same rendered page can never create two orders
-  });
+  let order;
+  try {
+    ({ order } = await createOrder({
+      ...r.data,
+      content: r.data.content,
+      product: r.product,
+      source: "web",
+      client: "order-link",
+      idempotency_key: nonce ? `quick-${nonce}` : undefined, // the same rendered page can never create two orders
+    }));
+  } catch (e) {
+    // USPS can't confirm an address (addresscheck.ts): say which one, and keep the link editable.
+    if (e instanceof AddressCheckError) {
+      return res.status(422).send(fixPage(q, e.fields.map((f) => ({ param: f.field === "from" ? "from_line1, from_line2" : "to_line1, to_line2", message: f.message }))));
+    }
+    throw e;
+  }
   res.redirect(303, order.status === "awaiting_payment" ? `/o/${order.id}/pay` : `/o/${order.id}`);
 });
 

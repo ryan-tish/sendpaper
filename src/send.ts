@@ -734,7 +734,7 @@ export function sendPage(initial: string, fixed: SendKind) {
         Object.assign(body, { from: addr("from"), customer_email: $("email").value.trim() || undefined });
         const r = await fetch(url, { method: "POST", headers: Object.assign({ "Content-Type": "application/json", "X-Client": "web" }, window.posthog && posthog.get_distinct_id ? { "X-Analytics-Id": String(posthog.get_distinct_id()) } : {}, spUtm()), body: JSON.stringify(body) });
         const j = await r.json();
-        if (!r.ok) throw new Error(j.error.fields ? j.error.fields.map(f => recipField(f.field || "form").replace(/^to\\./, "Send to: ").replace(/^from\\./, "From: ").replace(/^content\\./, "") + " " + f.message.toLowerCase()).join(" · ") : j.error.message);
+        if (!r.ok) throw new Error(j.error.fields ? j.error.fields.map(errLine).join(" · ") : j.error.message);
         location.href = j.batch ? "/b/" + j.batch.id : "/o/" + j.id;
       } catch (err) { $("err").textContent = err.message; go.disabled = false; go.textContent = "Preview the print and pay"; }
     });
@@ -759,10 +759,18 @@ export function sendPage(initial: string, fixed: SendKind) {
       $("recips").appendChild(wrap); renumber(); render();
       wrap.querySelector("input").focus();
     });
-    // API field paths like recipients.2.zip read as "Recipient 3: zip".
+    // API field paths like recipients.2.zip read as "Recipient 3: zip"; a whole address (to, from, recipients.2) comes
+    // from the USPS address check and reads "Send to:", "From:" or "Recipient 3:".
     function recipField(f) {
       const parts = f.split(".");
-      return parts[0] === "recipients" && parts.length > 2 ? "Recipient " + (Number(parts[1]) + 1) + ": " + parts.slice(2).join(".") : f;
+      return parts[0] === "recipients" && parts.length >= 2 ? "Recipient " + (Number(parts[1]) + 1) + ":" + (parts.length > 2 ? " " + parts.slice(2).join(".") : "") : f;
+    }
+    // Only the first letter is lowered, and never in an acronym, so "USPS" and "Apt 4B" survive. PostGrid's own
+    // wording in brackets "(Address check: …)" is for agents and support, so people on the form don't see it.
+    function errLine(f) {
+      const where = recipField(f.field || "").replace(/^to(\\.|$)/, "Send to: ").replace(/^from(\\.|$)/, "From: ").replace(/^content\\./, "").trim();
+      const msg = f.message.replace(/ \\(Address check: [^)]*\\)$/, "");
+      return (where ? where + " " : "") + (/^[A-Z]{2}/.test(msg) ? msg : msg.charAt(0).toLowerCase() + msg.slice(1));
     }
     // Prefill from order-link style parameters (/send?type=…&to_name=…), e.g. "Edit in the full form" from /quick.
     (function prefill() {

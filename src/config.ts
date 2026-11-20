@@ -35,6 +35,9 @@ export const env = {
   stripeNetworkId: process.env.STRIPE_NETWORK_ID ?? "",
   // PostGrid print & mail. test_sk_… renders proofs but never mails; live_sk_… PRINTS AND MAILS FOR REAL.
   postgridKey: process.env.POSTGRID_API_KEY ?? "",
+  // Live key used ONLY to check addresses before an order is created (addresscheck.ts); prod falls back to
+  // POSTGRID_API_KEY when that one is live. Set it locally to test the check while POSTGRID_API_KEY stays test.
+  postgridVerifyKey: process.env.POSTGRID_VERIFY_KEY ?? "",
   // PostHog project key (public, phc_…). Unset locally so dev traffic never pollutes the numbers.
   posthogKey: process.env.POSTHOG_KEY ?? "",
   // Personal API key with Query: Read, so /admin/stats can show PostHog's website numbers. Never sent to browsers.

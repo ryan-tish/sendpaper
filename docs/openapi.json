@@ -539,7 +539,7 @@
     },
     "responses": {
       "Invalid": {
-        "description": "Validation failed",
+        "description": "Validation failed. Also returned when USPS can't confirm the recipient or return address (checked before the order is created): `field` is then the whole address (`to`, `from` or `recipients.<i>`) and `message` says what to fix, usually a missing apartment or suite number.",
         "content": {
           "application/json": {
             "schema": {

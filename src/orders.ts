@@ -6,6 +6,7 @@ import { postcardLayout, THEME_NAMES } from "./render.ts";
 import { PREVIEW_IMAGES } from "./preview-image.ts";
 import { track } from "./analytics.ts";
 import { emailCustomer } from "./email.ts";
+import { assertDeliverable } from "./addresscheck.ts";
 
 export const STATUSES = ["awaiting_payment", "paid", "printing", "mailed", "cancelled", "refunded"] as const;
 export type Status = (typeof STATUSES)[number];
@@ -317,6 +318,8 @@ export async function createGroupOrders(
   make: (to: Address, key: string | undefined, batchId: string) => Promise<{ order: OrderRow; existing: boolean }>,
   key?: string,
 ): Promise<{ batchId: string; orders: OrderRow[]; existing: boolean }> {
+  // Every recipient is checked before the first order is written, so a bad address never leaves half a group behind.
+  await assertDeliverable(recipients.map((address, i) => ({ field: `recipients.${i}`, address })));
   let batchId = newId("batch"), existing = false;
   const orders: OrderRow[] = [];
   for (const [i, to] of recipients.entries()) {
@@ -347,6 +350,9 @@ export async function createOrder(input: CreateInput): Promise<{ order: OrderRow
     const prior = await pool.query<OrderRow>("SELECT * FROM orders WHERE idempotency_key = $1", [input.idempotency_key]);
     if (prior.rows[0]) return { order: prior.rows[0], existing: true };
   }
+  // USPS check through PostGrid before anything is saved or charged (addresscheck.ts). In a group the recipients
+  // were already checked by createGroupOrders, so this is a cache hit for `to`.
+  await assertDeliverable([{ field: "to", address: input.to }, { field: "from", address: input.from }]);
   const id = newId("ord");
   const list = orderPrice(input.product, input.content as Record<string, any>, input.express);
   const discount = (await senderHasPaid(input.from)) ? 0 : Math.min(firstOrderDiscount(list), list);

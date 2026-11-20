@@ -1,6 +1,7 @@
 import express, { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
 import { PdfError, normalizePdf, prepareLetterContent, storePdf } from "./pdf.ts";
+import { AddressCheckError } from "./addresscheck.ts";
 import { BASE_URL, LIMITS, PRODUCTS, SUPPORT_EMAIL, letterProduct, postcardProduct } from "./config.ts";
 import { InquirySchema, allowInquiry, createInquiry } from "./enterprise.ts";
 import { pool } from "./db.ts";
@@ -35,6 +36,8 @@ const handle = (fn: (req: Request, res: Response) => Promise<unknown>) => async 
   } catch (e) {
     if (e instanceof ZodError) return apiError(res, 422, "invalid_request", "Some fields are invalid.", zodFields(e));
     if (e instanceof PdfError) return apiError(res, 422, "invalid_request", e.message, [{ field: "content.pdf_url", message: e.message }]);
+    // USPS can't confirm an address (PostGrid's check, addresscheck.ts); `field` is the whole address: to, from or recipients.<i>.
+    if (e instanceof AddressCheckError) return apiError(res, 422, "invalid_request", "USPS can't confirm an address. Fix it and send the request again.", e.fields);
     if ((e as { type?: string })?.type === "entity.too.large") return apiError(res, 413, "too_large", "That file is too large.");
     console.error(e);
     apiError(res, 500, "server_error", "Something went wrong on our side. Retry with the same Idempotency-Key.");

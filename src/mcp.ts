@@ -6,6 +6,7 @@ import { BASE_URL, BRAND, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, FIRST_ORDER
 import { PaymentError, payWithSharedToken } from "./payments.ts";
 import { isOwnerRequest, recordApiCall } from "./stats.ts";
 import { PdfError, prepareLetterContent } from "./pdf.ts";
+import { AddressCheckError } from "./addresscheck.ts";
 import { PREVIEW_IMAGES, previewPng } from "./preview-image.ts";
 import {
   AddressSchema,
@@ -110,6 +111,12 @@ async function groupResult(batchId: string, orders: OrderRow[]) {
   return result({ ...first, batch: b, orders: orders.map((o) => ({ id: o.id, to: o.to_address.name, order_url: publicOrder(o).order_url, preview_url: publicOrder(o).preview_url })) }, lead, await previewBlock(orders[0]));
 }
 const needsAddress = { isError: true as const, content: [{ type: "text" as const, text: "Give either to (one recipient) or recipients (2 or more)." }] };
+// USPS can't confirm an address (PostGrid's check, addresscheck.ts): nothing was saved, so the agent can fix it and retry.
+const addressProblem = (e: AddressCheckError) => ({
+  isError: true as const,
+  content: [{ type: "text" as const, text: `${e.message} Nothing was ordered. Ask the user for the corrected address (usually the apartment or suite number), then call this tool again.` }],
+});
+const orAddressProblem = <T,>(work: () => Promise<T>) => work().catch((e) => { if (e instanceof AddressCheckError) return addressProblem(e); throw e; });
 
 function nextStep(o: ReturnType<typeof publicOrder>) {
   const off = o.discount ? ` That includes ${o.discount.display} as their first order.` : "";
@@ -184,7 +191,7 @@ function build(client: string | undefined) {
       outputSchema: OrderOutput,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
-    async (args) => {
+    async (args) => orAddressProblem(async () => {
       if (args.recipients) {
         const { recipients } = RecipientsSchema.parse(args);
         const { size, content, ...rest } = CreatePostcardSchema.parse({ ...args, recipients: undefined, to: recipients[0] });
@@ -196,7 +203,7 @@ function build(client: string | undefined) {
       const { order } = await createOrder({ ...rest, content, product: postcardProduct(size), source: "mcp", client });
       const o = publicOrder(order);
       return result(o, nextStep(o), await previewBlock(order));
-    },
+    }),
   );
 
   server.registerTool(
@@ -209,7 +216,7 @@ function build(client: string | undefined) {
       outputSchema: OrderOutput,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
-    async (args) => {
+    async (args) => orAddressProblem(async () => {
       const recipients = args.recipients ? RecipientsSchema.parse(args).recipients : null;
       if (!recipients && !args.to) return needsAddress;
       const { certified, ...input } = CreateLetterSchema.parse(recipients ? { ...args, recipients: undefined, to: recipients[0] } : args);
@@ -227,7 +234,7 @@ function build(client: string | undefined) {
       const { order } = await createOrder({ ...input, content, product: letterProduct(certified), source: "mcp", client });
       const o = publicOrder(order);
       return result(o, nextStep(o), await previewBlock(order));
-    },
+    }),
   );
 
   server.registerTool(

@@ -5,6 +5,7 @@ import { page } from "./layout.ts";
 import { AddressSchema, getOrder, listOrders, SenderAddressSchema, setAddresses, setStatus, setTest, STATUSES, type OrderRow, type SenderAddress, type Status } from "./orders.ts";
 import { stripe } from "./payments.ts";
 import { postgridMode, printProofUrl, sendToPrint, syncPrint } from "./fulfill.ts";
+import { AddressCheckError, assertDeliverable } from "./addresscheck.ts";
 import { addressBlock, esc, printSheet } from "./render.ts";
 import { listReviews, setReviewApproved } from "./offer.ts";
 import { resetStats, statsPage } from "./stats.ts";
@@ -89,6 +90,15 @@ admin.post("/orders/:id/address", async (req, res) => {
     ...(from.success ? [] : from.error.issues.map((i) => `From ${i.path.join(".")}: ${i.message}`)),
     ...(editable(o) ? [] : [`This order is ${o.status}${o.print_id ? " and already with PostGrid" : ""}; addresses can only change before printing.`]),
   ];
+  // Same USPS check as new orders (addresscheck.ts): a fix that PostGrid would still refuse isn't saved.
+  if (!problems.length && to.success && from.success) {
+    try {
+      await assertDeliverable([{ field: "to", address: to.data }, { field: "from", address: from.data }]);
+    } catch (e) {
+      if (!(e instanceof AddressCheckError)) throw e;
+      problems.push(...e.fields.map((f) => `${f.field === "to" ? "To" : "From"}: ${f.message}`));
+    }
+  }
   const saved = !problems.length && to.success && from.success ? await setAddresses(o.id, to.data, from.data) : null;
   if (!saved) {
     return res.status(422).send(page("Not saved", `<section><h1>Addresses not saved</h1>${(problems.length ? problems : ["The order changed meanwhile; reload it."]).map((p) => `<p class="err">${esc(p)}</p>`).join("")}<p><a href="/admin/orders/${o.id}">Back to order</a></p></section>`, { noindex: true }));

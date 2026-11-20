@@ -32,6 +32,12 @@ Errors share one shape. Validation errors use status `422` and list every bad fi
 }
 ```
 
+Addresses are checked against USPS data before an order is created, so mail is never paid for and then refused. If USPS can't confirm one, you get the same `422`, and `field` names the whole address (`to`, `from` or `recipients.2`):
+
+```json
+{ "field": "to", "message": "This building needs an apartment or suite number. Add it on the second address line, e.g. Apt 4B or Suite 1200. (Address check: line1: Missing Value: Suite identifier)" }
+```
+
 | Status | When |
 | --- | --- |
 | `404` | No such order |
