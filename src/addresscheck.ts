@@ -1,5 +1,6 @@
-// Address check BEFORE an order is created (Ryan, 2026-11-20). Why: a real order was paid, then PostGrid
-// refused the letter when it was approved: "350 Example Street / Harbor Tower, Springfield IL 62701" fails with
+// Address check BEFORE an order is created (Ryan, 2026-11-20). Why: a paid letter (2026-11-19) was refused by PostGrid
+// when it was approved. Its address had this shape (made up here): "350 Example Street / Harbor Tower, Springfield IL
+// 62701", which fails with
 // "generic: Missing Value: Complete Street Information" (without "Harbor Tower": "line1: Missing Value: Suite identifier";
 // the building needs a suite or apartment number and "Harbor Tower" is only its name). Our PostGrid account's address
 // strictness only sends to addresses it can verify or correct, for the recipient AND the return address, so we ask the

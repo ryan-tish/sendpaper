@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { env } from "./config.ts";
 import { AddressCheckError, _resetAddressCache, assertDeliverable, describeField, messageFor, verifyKey } from "./addresscheck.ts";
 
-// The real case (a real order, 2026-11-19), and PostGrid's live answers to it on 2026-11-20.
+// A made-up address shaped like the real case (2026-11-19): a building's name on line 2 and no suite number. The
+// PostGrid answers are what its live check said about the real address on 2026-11-20.
 const harborTower = { line1: "350 Example Street", line2: "Harbor Tower", city: "Springfield", state: "IL", zip: "62701" };
 const good = { line1: "1600 Pennsylvania Ave NW", city: "Washington", state: "DC", zip: "20500" };
 
