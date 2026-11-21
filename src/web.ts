@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import express, { Router } from "express";
 import { readFileSync } from "node:fs";
-import { BASE_URL, BRAND, FIRST_ORDER_DISCOUNT_PCT, OFFER_ACTIVE, OFFER_LINE, COLOR_LETTER_CENTS, DOCS_URL, EXPRESS_CENTS, LIMITS, PRODUCTS, SUPPORT_EMAIL, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
+import { BASE_URL, BRAND, FIRST_ORDER_DISCOUNT_PCT, OFFER_ACTIVE, OFFER_LINE, COLOR_LETTER_CENTS, DOCS_URL, EXPRESS_CENTS, LIMITS, PRODUCTS, SUPPORT_EMAIL, env, EXTRA_SERVICE, isLetter, postcardSpec, POSTCARD_SIZES } from "./config.ts";
 import { pool } from "./db.ts";
 import { landing } from "./landing.ts";
 import { SEND_KINDS, type SendKind, kindFromQuery, sendChooser, sendPage } from "./send.ts";
@@ -94,6 +94,49 @@ web.get("/send/:kind", async (req, res, next) => {
   res.send(sendPage(String(req.query.product ?? ""), kind));
 });
 
+// "Go back and edit" on an unpaid order (2026-11-21, the Back-button fix): the order's form page, prefilled from the
+// order. The page's script first tries the browser's Back (when the form is the previous page) and then this tab's
+// saved draft, both of which also keep photos or extra recipients; this link is the fallback for another tab or device.
+// A long letter is left out of the link (Node refuses request lines over ~16 KB), and photos and PDFs can't travel in it.
+function editHref(o: OrderRow) {
+  const letter = isLetter(o.product);
+  const kind = letter ? (EXTRA_SERVICE[o.product] ? "certified" : "letter") : "postcard";
+  const q = new URLSearchParams();
+  const c = o.content ?? {};
+  if (letter) {
+    const cert = EXTRA_SERVICE[o.product];
+    if (cert) q.set("certified", cert);
+    if (c.pdf_url) q.set("source", "pdf");
+    else if (c.body && encodeURIComponent(c.body).length <= 6000) q.set("body", c.body);
+    if (c.font) q.set("font", c.font);
+  } else {
+    const size = Object.entries(POSTCARD_SIZES).find(([, s]) => s.product === o.product)?.[0];
+    if (size) q.set("size", size);
+    if (c.front_headline) q.set("headline", c.front_headline);
+    if (c.front_theme) q.set("theme", c.front_theme);
+    if (c.message) q.set("message", c.message);
+  }
+  if (o.express) q.set("express", "1");
+  for (const [p, a] of [["to", o.to_address], ["from", o.from_address]] as const)
+    for (const k of ["name", "line1", "line2", "city", "state", "zip"] as const) if (a[k]) q.set(`${p}_${k}`, String(a[k]));
+  const country = (o.from_address as { country?: string }).country;
+  if (country) q.set("from_country", country);
+  if (o.customer_email) q.set("email", o.customer_email);
+  return `/send/${kind}?${q}`;
+}
+
+// Same tab as the form: Back returns to it (restored from memory or from the saved draft); otherwise the draft, if this
+// tab has one, beats the link. Once an order is paid, this tab's drafts are cleared so the next order starts empty.
+const EDIT_JS = `<script>(function () {
+  var a = document.getElementById("editOrder");
+  if (!a) { try { Object.keys(sessionStorage).forEach(function (k) { if (k.indexOf("sp_draft:") === 0) sessionStorage.removeItem(k); }); } catch (e) {} return; }
+  a.addEventListener("click", function (e) {
+    var path = new URL(a.href).pathname;
+    try { var r = new URL(document.referrer); if (r.origin === location.origin && r.pathname === path && history.length > 1) { e.preventDefault(); history.back(); return; } } catch (x) {}
+    try { if (sessionStorage.getItem("sp_draft:" + path)) { e.preventDefault(); location.href = path; } } catch (x) {}
+  });
+})();</script>`;
+
 web.get("/o/:id", async (req, res) => {
   const id = String(req.params.id);
   if (req.query.session_id) await confirmFromRedirect(id, String(req.query.session_id)).catch(console.error);
@@ -142,7 +185,8 @@ web.get("/o/:id", async (req, res) => {
         </div>
         <h2>Print preview</h2>
         <iframe src="/o/${esc(o.id)}/preview" title="Print preview" style="width:100%;height:${isLetter(o.product) ? 1150 : postcardSpec(o.product).h >= 6 ? 1250 : 900}px;border:1px solid var(--rule);border-radius:10px;background:#e9e7e2"></iframe>
-        <p class="soft">Something wrong? ${o.status === "awaiting_payment" ? `<a href="/send">Start a new order</a> — unpaid orders are never mailed.` : `Email ${esc(SUPPORT_EMAIL)} with your order id before it's printed.`}</p>
+        <p class="soft">Something wrong? ${o.status === "awaiting_payment" ? (o.batch_id ? `<a href="/send">Start a new order</a>. Unpaid orders are never mailed.` : `<a id="editOrder" href="${esc(editHref(o))}">Go back and edit</a>. Unpaid orders are never mailed.`) : `Email ${esc(SUPPORT_EMAIL)} with your order id before it's printed.`}</p>
+        ${o.batch_id ? "" : EDIT_JS}
       </section>`,
       { noindex: true },
     ),
@@ -185,6 +229,7 @@ function batchPage(id: string, orders: OrderRow[]) {
         ${unpaid.length ? `<a class="btn" href="/b/${esc(id)}/pay" style="justify-content:center">Pay ${money(due)} for ${unpaid.length === n ? `all ${n}` : `${unpaid.length} of ${n}`}</a><span class="soft" style="font-size:.85rem;text-align:center">Printing and postage included. Nothing is printed until you pay. Secure checkout by Stripe.</span>` : ""}
       </div>
       <h2 style="margin-top:28px">Recipients</h2>
+      ${unpaid.length ? "" : EDIT_JS}
       <div class="who">${orders.map((o) => `<a href="/o/${esc(o.id)}"><span><b>${esc(o.to_address.name)}</b><br><small>${esc([o.to_address.city, o.to_address.state].filter(Boolean).join(", "))}</small></span><span class="st">${STATUS_WORD[o.status] ?? esc(o.status)} · see preview →</span></a>`).join("")}</div>
     </section>`,
     { noindex: true },

@@ -735,6 +735,7 @@ export function sendPage(initial: string, fixed: SendKind) {
         const r = await fetch(url, { method: "POST", headers: Object.assign({ "Content-Type": "application/json", "X-Client": "web" }, window.posthog && posthog.get_distinct_id ? { "X-Analytics-Id": String(posthog.get_distinct_id()) } : {}, spUtm()), body: JSON.stringify(body) });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error.fields ? j.error.fields.map(errLine).join(" · ") : j.error.message);
+        saveDraft();
         location.href = j.batch ? "/b/" + j.batch.id : "/o/" + j.id;
       } catch (err) { $("err").textContent = err.message; go.disabled = false; go.textContent = "Preview the print and pay"; }
     });
@@ -748,17 +749,20 @@ export function sendPage(initial: string, fixed: SendKind) {
       rs.forEach((r, i) => { const b = r.querySelector(".recip-h b"); if (b) b.textContent = "Recipient " + (i + 1); });
       $("addRecip").hidden = rs.length >= MAXR;
     }
-    $("addRecip").addEventListener("click", () => {
-      if (prefixes().length >= MAXR) return;
+    // Adds an address block and returns its prefix. A restored draft adds blocks without moving focus (no scroll jump).
+    function addRecipient(focus) {
+      if (prefixes().length >= MAXR) return "";
       const p = "to" + nextR++;
       const wrap = document.createElement("div"); wrap.className = "recip"; wrap.dataset.p = p;
       const fields = document.querySelector('.recip[data-p="to"] fieldset').outerHTML.split('id="to_').join('id="' + p + "_");
       wrap.innerHTML = '<div class="recip-h"><b></b><button type="button" class="linkbtn">Remove</button></div>' + fields;
       wrap.querySelectorAll("input").forEach((el) => (el.value = ""));
-      wrap.querySelector(".recip-h button").addEventListener("click", () => { wrap.remove(); renumber(); render(); });
+      wrap.querySelector(".recip-h button").addEventListener("click", () => { wrap.remove(); renumber(); render(); saveDraft(); });
       $("recips").appendChild(wrap); renumber(); render();
-      wrap.querySelector("input").focus();
-    });
+      if (focus) wrap.querySelector("input").focus();
+      return p;
+    }
+    $("addRecip").addEventListener("click", () => { addRecipient(true); saveDraft(); });
     // API field paths like recipients.2.zip read as "Recipient 3: zip"; a whole address (to, from, recipients.2) comes
     // from the USPS address check and reads "Send to:", "From:" or "Recipient 3:".
     function recipField(f) {
@@ -793,6 +797,51 @@ export function sendPage(initial: string, fixed: SendKind) {
       if (fc && [...$("from_country").options].some((o) => o.value === fc)) { $("from_country").value = fc; applyCountry(); }
       applyKind(); reveal(4, false);
     })();
+    // The Back button (2026-11-21: a tester pressed Back from the order page and couldn't carry on). A browser either
+    // restores this page from memory, where the button was still "Working…" and disabled, or reloads it, which lost
+    // the recipient's name (fields with autocomplete="off" aren't restored), extra recipients and the preview. So the
+    // typed fields are kept as a draft in this tab's sessionStorage (gone when the tab closes; the order page clears
+    // it once the order is paid), and the button resets whenever the page is shown. Photos and PDFs are files, so
+    // they aren't kept. A draft comes back on the plain form page, or on the exact link it was typed on; a different
+    // prefill link (?to_name=…) starts from that link instead.
+    const DRAFT = "sp_draft:" + location.pathname;
+    function saveDraft() {
+      try {
+        const v = {};
+        document.querySelectorAll("#f input, #f textarea, #f select").forEach((el) => {
+          if (el.type === "file") return;
+          if (el.type === "radio") { if (el.checked) v["radio:" + el.name] = el.value; }
+          else if (el.id) v[el.id] = el.type === "checkbox" ? el.checked : el.value;
+        });
+        sessionStorage.setItem(DRAFT, JSON.stringify({ search: location.search, recips: prefixes(), v: v }));
+      } catch (e) {}
+    }
+    (function restoreDraft() {
+      let d = null;
+      try { d = JSON.parse(sessionStorage.getItem(DRAFT) || "null"); } catch (e) { return; }
+      if (!d || !d.v || (location.search && d.search !== location.search)) return;
+      const ids = {};
+      (d.recips || []).forEach((old, i) => { ids[old] = i === 0 ? "to" : addRecipient(false); });
+      Object.keys(d.v).forEach((k) => {
+        if (k.indexOf("radio:") === 0) {
+          const r = [...document.querySelectorAll('input[type="radio"]')].find((el) => el.name === k.slice(6) && el.value === d.v[k]);
+          if (r) r.checked = true;
+          return;
+        }
+        const m = /^(to[0-9]*)_(.+)$/.exec(k);
+        const el = $(m && ids[m[1]] ? ids[m[1]] + "_" + m[2] : k);
+        if (!el) return;
+        if (el.type === "checkbox") el.checked = !!d.v[k]; else el.value = d.v[k];
+      });
+      applyCountry(); applyKind(); reveal(4, false);
+    })();
+    let draftTimer = 0;
+    $("f").addEventListener("input", () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
+    $("f").addEventListener("change", saveDraft);
+    window.addEventListener("pageshow", () => {
+      const go = $("go"); go.disabled = false; go.textContent = "Preview the print and pay";
+      render();
+    });
     render();
     </script>`,
   );
