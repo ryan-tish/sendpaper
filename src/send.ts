@@ -1,4 +1,4 @@
-import { BRAND, COUNTRIES, OFFER_ACTIVE, OFFER_LINE, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, POSTCARD_SIZES, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
+import { BRAND, COUNTRIES, COLOR_LETTER_CENTS, EXPRESS_CENTS, LIMITS, POSTCARD_SIZES, PRODUCTS, type ProductId, EXTRA_SERVICE, isLetter, letterProduct } from "./config.ts";
 import { MAX_RECIPIENTS } from "./orders.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc, THEMES } from "./render.ts";
@@ -254,7 +254,7 @@ export function sendPage(initial: string, fixed: SendKind) {
     `<style>${CSS}</style>
     <div class="send" id="sendWrap">
       <form id="f" class="form" novalidate>
-        <div style="display:grid;gap:10px"><a class="back-link" href="/send">← Send something else</a><h1>${info.h1}</h1><p class="soft">${info.purpose}. We print it and mail it to any US address, and you see the exact print before you pay.</p></div>
+        <div style="display:grid;gap:10px"><a class="back-link" id="backLink" href="/send">← Send something else</a><button type="button" class="back-link linkbtn" id="backToContent" hidden>← Back to your ${fixed === "postcard" ? "postcard" : "letter"}</button><h1>${info.h1}</h1></div>
         <input type="radio" name="kind" value="${fixed}" checked hidden>
         <input type="radio" name="product" value="letter" tabindex="-1" aria-hidden="true" class="sr"${isLetter(asked) ? " checked" : ""}>
 
@@ -317,9 +317,8 @@ export function sendPage(initial: string, fixed: SendKind) {
           <div class="line"><span id="postageLine">Printing, envelope, First-Class postage</span><span>Included</span></div>
           <div class="total"><span>Total</span><b id="total">${usd(PRODUCTS[start].cents)}</b></div>
           <p id="err" class="err" role="alert" style="margin:0"></p>
-          <button class="btn" id="go" type="submit" form="f">Preview the print and pay</button>
-          ${OFFER_ACTIVE ? `<p class="note" id="offerNote"><b style="color:var(--green)">${esc(OFFER_LINE)}.</b> Taken off on the next page if it's your first one from this return address.</p>` : ""}
-          <p class="note">Nothing is mailed until you pay. Checkout by Stripe.</p>
+          <button class="btn" id="next" type="button">Next: addresses</button>
+          <button class="btn" id="go" type="submit" form="f" hidden>Preview the print and pay</button>
         </div>
       </aside>
     </div>
@@ -351,11 +350,12 @@ export function sendPage(initial: string, fixed: SendKind) {
     const isExpress = () => (val("product") === "letter" ? val("mailing") === "express" : val("pdeliv") === "express");
     // Every section is visible from the start (2026-10-05, Ryan: the one-step-at-a-time form felt like it hid the fields).
     let shown = 4;
+    let screen = 1; // 1 = the letter or postcard, 2 = the addresses (see showScreen)
     const kind = () => { const k = document.querySelector('input[name="kind"]:checked'); return k ? k.value : ""; };
     const motion = !matchMedia("(prefers-reduced-motion: reduce)").matches;
     function reveal(n, scroll) {
       const before = shown; shown = Math.max(shown, n);
-      document.querySelectorAll("[data-step]").forEach((el) => { el.hidden = Number(el.dataset.step) > shown; });
+      document.querySelectorAll("[data-step]").forEach((el) => { el.hidden = Number(el.dataset.step) > shown || screen !== 2; });
       render();
       if (scroll && shown > before) {
         const target = shown === 2 ? (val("product") === "letter" ? $("lt") : $("pc")) : document.querySelector('[data-step="' + shown + '"]');
@@ -430,7 +430,7 @@ export function sendPage(initial: string, fixed: SendKind) {
     $("from_country").addEventListener("change", () => { applyCountry(); render(); });
     function render() {
       const product = effectiveProduct(), letter = val("product") === "letter", front = val("front"), photo = front === "photo" || front === "caption";
-      $("pc").hidden = letter || shown < 2; $("lt").hidden = !letter || shown < 2;
+      $("pc").hidden = letter || shown < 2 || screen !== 1; $("lt").hidden = !letter || shown < 2 || screen !== 1;
       $("drop").hidden = !photo; $("textFront").hidden = front !== "text"; $("recrop").hidden = !photo || !photoFile;
       $("captionBox").hidden = front !== "caption"; $("cdrop").hidden = front !== "collage"; $("cclear").hidden = front !== "collage" || !collage.length;
       $("fontBox").hidden = !(front === "text" || front === "caption");
@@ -690,6 +690,10 @@ export function sendPage(initial: string, fixed: SendKind) {
 
     $("f").addEventListener("submit", async (e) => {
       e.preventDefault(); $("err").textContent = "";
+      // Enter in a field on screen 1 means Next; content that went missing (a photo after a reload) sends you back to it.
+      if (screen === 1) { toAddresses(); return; }
+      const missing = stepProblem(2);
+      if (missing) { showScreen(1, false); history.replaceState(null, "", location.pathname + location.search); $("err").textContent = missing; return; }
       const problem = stepProblem(2) || stepProblem(3) || (!$("ok").checked ? "Please confirm the content policy (section 03)." : "");
       if (problem) { $("err").textContent = problem; if (matchMedia("(max-width: 920px)").matches) $("err").scrollIntoView({ block: "center" }); return; }
       const go = $("go"); go.disabled = true; go.textContent = "Working…";
@@ -836,12 +840,38 @@ export function sendPage(initial: string, fixed: SendKind) {
       applyCountry(); applyKind(); reveal(4, false);
     })();
     let draftTimer = 0;
-    $("f").addEventListener("input", () => { clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
+    $("f").addEventListener("input", () => { $("err").textContent = ""; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
     $("f").addEventListener("change", saveDraft);
     window.addEventListener("pageshow", () => {
       const go = $("go"); go.disabled = false; go.textContent = "Preview the print and pay";
       render();
     });
+    // Two screens (Ryan, 2026-11-22: "radically simplify"): 1 = the letter or postcard, 2 = the addresses, with the
+    // preview and total beside both. Moving to screen 2 adds a history entry (#addresses), so the browser's Back
+    // returns to screen 1 instead of leaving the page, and Back from the order page lands on the addresses again.
+    function showScreen(n, push) {
+      screen = n;
+      $("backLink").hidden = n !== 1; $("backToContent").hidden = n !== 2;
+      $("next").hidden = n !== 1; $("go").hidden = n !== 2;
+      $("err").textContent = "";
+      reveal(4, false);
+      if (push) history.pushState({ screen: n }, "", n === 2 ? "#addresses" : location.pathname + location.search);
+      window.scrollTo(0, 0);
+    }
+    function toAddresses() {
+      const p = stepProblem(2);
+      if (p) { $("err").textContent = p; if (matchMedia("(max-width: 920px)").matches) $("err").scrollIntoView({ block: "center" }); return; }
+      showScreen(2, true);
+    }
+    function toContent() {
+      if (history.state && history.state.screen === 2) history.back();
+      else { showScreen(1, false); history.replaceState(null, "", location.pathname + location.search); }
+    }
+    $("next").addEventListener("click", toAddresses);
+    $("backToContent").addEventListener("click", toContent);
+    window.addEventListener("popstate", () => showScreen(location.hash === "#addresses" && !stepProblem(2) ? 2 : 1, false));
+    if (location.hash === "#addresses" && !stepProblem(2)) showScreen(2, false);
+    else { showScreen(1, false); if (location.hash === "#addresses") history.replaceState(null, "", location.pathname + location.search); }
     render();
     </script>`,
   );
