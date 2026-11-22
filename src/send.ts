@@ -38,7 +38,7 @@ h2.sub { font-size: 1rem; letter-spacing: -0.01em; margin: 0; }
 @media (max-width: 520px) { .bar-in { gap: 10px; } .bar .btn { padding-inline: 16px; } }
 .bar-sum b { font: 600 1.3rem var(--f-ui); letter-spacing: -0.02em; }
 .bar .btn { padding-block: 13px; padding-inline: 22px; }
-.bar #barBack { padding: 12px 2px; white-space: nowrap; flex-shrink: 0; }
+.list .opt-price { margin-left: auto; padding-left: 12px; font: 600 .95rem var(--f-ui); color: var(--ink); white-space: nowrap; }
 .step { display: grid; gap: 14px; }
 .step > .note { font-size: .84rem; color: var(--faint); line-height: 1.5; }
 .recip-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; padding-top: 14px; border-top: 1px solid var(--rule); }
@@ -256,24 +256,24 @@ export function sendPage(initial: string, fixed: SendKind) {
   const start: ProductId = isLetter(asked) ? "letter" : asked;
   const startMailing = EXTRA_SERVICE[asked] ?? "none";
   // Mailing for letters: the Letter page offers First-Class and Express (USPS Priority); the Certified page offers
-  // Certified Mail with or without a return receipt (Ryan, 2026-11-22: keep the two pages separate). No prices on
-  // screen 1: the price shows next to "Preview and pay" on the Addresses screen (Ryan, 2026-11-22).
+  // Certified Mail with or without a return receipt (Ryan, 2026-11-22: keep the two pages separate). Each option shows
+  // its price (Ryan, 2026-11-22, round 2: prices back on the first screen).
   const mailing = (fixed === "certified" ? (["certified", "certified_return_receipt"] as const) : (["none", "express"] as const))
     .map((m) => {
-      const [name, sub] =
-        m === "none" ? ["First-Class", "1–5 days"]
-        : m === "express" ? ["Express", "2–3 days, tracked"]
-        : m === "certified" ? ["Certified", "tracking and proof of delivery"]
-        : ["Certified + return receipt", "the recipient's signature"];
-      return `<label><input type="radio" name="mailing" value="${m}"${m === startMailing ? " checked" : ""}><b>${name}</b><span>· ${sub}</span></label>`;
+      const [name, sub, cents] =
+        m === "none" ? ["First-Class", "1–5 days", PRODUCTS.letter.cents]
+        : m === "express" ? ["Express", "2–3 days, tracked", PRODUCTS.letter.cents + EXPRESS_CENTS]
+        : m === "certified" ? ["Certified", "tracking and proof of delivery", PRODUCTS.letter_certified.cents]
+        : ["Certified + return receipt", "the recipient's signature", PRODUCTS.letter_certified_rr.cents];
+      return `<label><input type="radio" name="mailing" value="${m}"${m === startMailing ? " checked" : ""}><b>${name}</b><span>· ${sub}</span><em class="opt-price">${usd(cents)}</em></label>`;
     })
     .join("");
   const info = KIND_INFO[fixed];
   const sizes = (["postcard_4x6", "postcard_6x9", "postcard_6x11"] as const)
     .map((id) => {
-      // A to-scale outline of the card (6×11 is the widest), then the size. No price here (see mailing above).
+      // A to-scale outline of the card (6×11 is the widest), then the size, then the price on its own line.
       const sz = Object.values(POSTCARD_SIZES).find((x) => x.product === id)!;
-      return `<label><input type="radio" name="product" value="${id}"${!isLetter(asked) && id === asked ? " checked" : ""}><i class="shape" style="width:${Math.round((sz.w / 11) * 44)}px;height:${Math.round((sz.h / 11) * 44)}px" aria-hidden="true"></i><b>${sz.h}×${sz.w} in</b></label>`;
+      return `<label><input type="radio" name="product" value="${id}"${!isLetter(asked) && id === asked ? " checked" : ""}><i class="shape" style="width:${Math.round((sz.w / 11) * 44)}px;height:${Math.round((sz.h / 11) * 44)}px" aria-hidden="true"></i><b>${sz.h}×${sz.w} in</b><small>${usd(PRODUCTS[id].cents)}</small></label>`;
     })
     .join("");
   const swatches = Object.entries(THEMES)
@@ -283,23 +283,24 @@ export function sendPage(initial: string, fixed: SendKind) {
   return page(
     `${info.h1} — ${BRAND}`,
     `<style>${CSS}</style>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&amp;family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&amp;family=Inter:wght@400;600&amp;display=swap">
     <div class="send" id="sendWrap">
       <form id="f" class="form" novalidate>
-        <div class="toprow"><a class="back-link" id="backLink" href="/send">← Send something else</a>
+        <div class="toprow"><a class="back-link" id="backLink" href="/send">← Send something else</a><button type="button" class="back-link linkbtn" id="backToContent" hidden>← Back to your ${fixed === "postcard" ? "postcard" : "letter"}</button>
           <nav class="stepper" aria-label="Steps"><span id="st1" class="on" aria-current="step"><span class="n">1</span>${fixed === "postcard" ? "Postcard" : "Letter"}</span><i aria-hidden="true"></i><span id="st2"><span class="n">2</span>Addresses</span></nav></div>
         <h1 id="h1">${info.h1}</h1>
         <input type="radio" name="kind" value="${fixed}" checked hidden>
         <input type="radio" name="product" value="letter" tabindex="-1" aria-hidden="true" class="sr"${isLetter(asked) ? " checked" : ""}>
 
         <div class="step" id="pc"${fixed === "postcard" ? "" : " hidden"}><h2 class="sr">Design your postcard</h2>
+          <div class="field"><div class="top">Size</div><div class="opts sizes" role="radiogroup" aria-label="Postcard size">${sizes}</div></div>
+          <div class="field"><div class="top">Front</div><div class="seg seg-wrap" role="radiogroup" aria-label="Front style"><label><input type="radio" name="front" value="text" checked>Text</label><label><input type="radio" name="front" value="photo">Photo</label><label><input type="radio" name="front" value="caption">Photo + caption</label><label><input type="radio" name="front" value="collage">Collage</label></div></div>
           <div class="stage">
             <div class="label"><span id="pvName">Postcard 4×6</span><span>Live preview</span></div>
             <div id="pvCard" class="card-pv"><div class="front" id="pvFront"></div></div>
             <div id="pvLetter" class="letter-pv" hidden><div class="to" id="pvLetterTo"></div><img id="pvLetterPhoto" class="lphoto-pv" alt="" hidden><div id="pvLetterBody"></div></div>
             <div class="flip" id="flip"><button type="button" data-side="front" aria-pressed="true">Front</button><button type="button" data-side="back" aria-pressed="false">Back</button></div>
           </div>
-          <div class="field"><div class="top">Size</div><div class="opts sizes" role="radiogroup" aria-label="Postcard size">${sizes}</div></div>
-          <div class="field"><div class="top">Front</div><div class="seg seg-wrap" role="radiogroup" aria-label="Front style"><label><input type="radio" name="front" value="text" checked>Text</label><label><input type="radio" name="front" value="photo">Photo</label><label><input type="radio" name="front" value="caption">Photo + caption</label><label><input type="radio" name="front" value="collage">Collage</label></div></div>
           <label class="drop" id="drop" hidden><input id="photo" type="file" accept="image/jpeg,image/png,image/webp"><span id="dropText"><b>Drop a photo</b> or click to choose<br><small>JPG, PNG or WebP, up to 25 MB. You can crop it next.</small></span></label>
           <button type="button" class="linkbtn" id="recrop" hidden>Adjust crop</button>
           <div class="field" id="captionBox" hidden><div class="top"><label for="caption">Caption</label><span class="count" id="cc">0/${LIMITS.postcardCaption}</span></div><input id="caption" maxlength="${LIMITS.postcardCaption}" placeholder="Greetings from Lisbon"></div>
@@ -313,19 +314,19 @@ export function sendPage(initial: string, fixed: SendKind) {
           <div class="field"><div class="top"><label for="message">Message on the back</label><span class="count" id="mc">0/${LIMITS.postcardMessage}</span></div><textarea id="message" maxlength="${LIMITS.postcardMessage}" placeholder="Wish you were here…"></textarea></div>
           <div class="field"><div class="top">Message font</div><div class="seg" role="radiogroup" aria-label="Message font"><label><input type="radio" name="mfont" value="handwriting" checked>Handwriting</label><label><input type="radio" name="mfont" value="serif">Serif</label><label><input type="radio" name="mfont" value="sans">Sans</label></div></div>
           <div class="field"><div class="top">Delivery</div>
-            <div class="list" role="radiogroup" aria-label="Postcard delivery"><label><input type="radio" name="pdeliv" value="first" checked><b>First-Class</b><span>· 1–5 days</span></label><label><input type="radio" name="pdeliv" value="express"><b>Express</b><span>· 2–3 days, tracked</span></label></div></div>
+            <div class="list" role="radiogroup" aria-label="Postcard delivery"><label><input type="radio" name="pdeliv" value="first" checked><b>First-Class</b><span>· 1–5 days</span><em class="opt-price">Included</em></label><label><input type="radio" name="pdeliv" value="express"><b>Express</b><span>· 2–3 days, tracked</span><em class="opt-price">+${usd(EXPRESS_CENTS)}</em></label></div></div>
         </div>
 
         <div class="step" id="lt"${fixed === "postcard" ? " hidden" : ""}><h2 id="ltH" class="sr">Your letter</h2>
           <div class="seg" role="radiogroup" aria-label="Letter source"><label><input type="radio" name="lsrc" value="write" checked>Write it</label><label><input type="radio" name="lsrc" value="pdf">Upload a PDF</label></div>
           <div id="pdfBox" hidden style="display:grid;gap:10px">
             <label class="drop" id="pdrop"><input id="pdfFile" type="file" accept="application/pdf"><span id="pdropText"><b>Drop a PDF</b> or click to choose<br><small>Up to ${LIMITS.pdfPages} pages and ${LIMITS.pdfBytes / 1024 / 1024} MB. Any page size: we fit it to 8.5×11 and add an address page in front.</small></span></label>
-            <label class="consent" style="margin:0"><input id="pdfColor" type="checkbox"><span>Print in color</span></label>
+            <label class="consent" style="margin:0"><input id="pdfColor" type="checkbox"><span>Print in color (+${usd(COLOR_LETTER_CENTS)})</span></label>
           </div>
           <div id="writeBox" style="display:grid;gap:12px">
             <div class="top sr"><label for="body">Letter</label><span class="count" id="bc">0/${LIMITS.letterBody}</span></div>
             <textarea id="body" maxlength="${LIMITS.letterBody}" style="min-height:300px" placeholder="Dear …"></textarea>
-            <div class="row"><span class="row-l"><label class="addphoto" id="ldrop"><input id="lphoto" type="file" accept="image/jpeg,image/png,image/webp"><span id="ldropText">+ Add a photo</span></label><button type="button" class="linkbtn" id="lphotoRemove" hidden>Remove</button></span>
+            <div class="row"><span class="row-l"><label class="addphoto" id="ldrop"><input id="lphoto" type="file" accept="image/jpeg,image/png,image/webp"><span id="ldropText">+ Add a photo (+${usd(COLOR_LETTER_CENTS)})</span></label><button type="button" class="linkbtn" id="lphotoRemove" hidden>Remove</button></span>
               <div class="seg" role="radiogroup" aria-label="Typeface"><label><input type="radio" name="font" value="serif" checked>Serif</label><label><input type="radio" name="font" value="sans">Sans-serif</label></div></div>
           </div>
           <div class="field"><div class="top">Mailing</div>
@@ -342,8 +343,7 @@ export function sendPage(initial: string, fixed: SendKind) {
       </form>
 
       <div class="bar" id="bar"><p id="err" class="err" role="alert"></p><div class="bar-in">
-        <button type="button" class="linkbtn" id="barBack" hidden>← Back</button>
-        <span class="bar-sum" id="barSum" hidden><small id="postageLine">Letter · First-Class</small><b id="total">${usd(PRODUCTS[start].cents)}</b></span>
+        <span class="bar-sum" id="barSum"><small id="postageLine">Letter · First-Class</small><b id="total">${usd(PRODUCTS[start].cents)}</b></span>
         <button class="btn" id="next" type="button">Next: Addresses</button>
         <button class="btn" id="go" type="submit" form="f" hidden>Preview and pay</button>
       </div></div>
@@ -484,9 +484,15 @@ export function sendPage(initial: string, fixed: SendKind) {
         $("pvLetter").style.fontFamily = val("font") === "sans" ? "Helvetica, Arial, sans-serif" : "Georgia, serif";
         $("pvLetterPhoto").hidden = !letterPhotoUrl; if (letterPhotoUrl) $("pvLetterPhoto").src = letterPhotoUrl;
         $("lphotoRemove").hidden = !letterPhoto;
+        $("body").style.fontFamily = val("font") === "sans" ? "Helvetica, Arial, sans-serif" : "Georgia, 'Times New Roman', serif";
         return;
       }
       const card = $("pvCard");
+      // The boxes you type in use the fonts you picked, as printed (Ryan, 2026-11-22). Caveat runs small, so it's bumped up.
+      $("headline").style.fontFamily = $("caption").style.fontFamily = HFONT[val("hfont")];
+      $("headline").style.fontSize = $("caption").style.fontSize = val("hfont") === "script" ? "1.3rem" : "";
+      $("message").style.fontFamily = MFONT[val("mfont")];
+      $("message").style.fontSize = val("mfont") === "handwriting" ? "1.3rem" : "";
       if (side === "front") {
         const hf = HFONT[val("hfont")];
         if (front === "collage") {
@@ -645,7 +651,7 @@ export function sendPage(initial: string, fixed: SendKind) {
     ldrop.addEventListener("drop", (e) => { e.preventDefault(); takeLetterPhoto(e.dataTransfer.files[0]); });
     $("lphotoRemove").addEventListener("click", () => {
       letterPhoto = null; if (letterPhotoUrl) URL.revokeObjectURL(letterPhotoUrl); letterPhotoUrl = null;
-      $("ldropText").textContent = "+ Add a photo"; render();
+      $("ldropText").textContent = "+ Add a photo (+${usd(COLOR_LETTER_CENTS)})"; render();
     });
     // Fonts for the preview (the print uses the same families via Google Fonts).
     const HFONT = { serif: "'Source Serif 4', Georgia, serif", sans: "Inter, Helvetica, Arial, sans-serif", script: "Caveat, 'Bradley Hand', cursive" };
@@ -880,7 +886,7 @@ export function sendPage(initial: string, fixed: SendKind) {
     // returns to screen 1 instead of leaving the page, and Back from the order page lands on the addresses again.
     function showScreen(n, push) {
       screen = n;
-      $("backLink").hidden = n !== 1; $("barBack").hidden = n !== 2; $("barSum").hidden = n !== 2;
+      $("backLink").hidden = n !== 1; $("backToContent").hidden = n !== 2;
       $("next").hidden = n !== 1; $("go").hidden = n !== 2;
       $("h1").textContent = n === 2 ? "Addresses" : H1;
       [["st1", 1], ["st2", 2]].forEach(([id, k]) => { $(id).classList.toggle("on", n === k); if (n === k) $(id).setAttribute("aria-current", "step"); else $(id).removeAttribute("aria-current"); });
@@ -899,7 +905,7 @@ export function sendPage(initial: string, fixed: SendKind) {
       else { showScreen(1, false); history.replaceState(null, "", location.pathname + location.search); }
     }
     $("next").addEventListener("click", toAddresses);
-    $("barBack").addEventListener("click", toContent);
+    $("backToContent").addEventListener("click", toContent);
     window.addEventListener("popstate", () => showScreen(location.hash === "#addresses" && !stepProblem(2) ? 2 : 1, false));
     if (location.hash === "#addresses" && !stepProblem(2)) showScreen(2, false);
     else { showScreen(1, false); if (location.hash === "#addresses") history.replaceState(null, "", location.pathname + location.search); }
