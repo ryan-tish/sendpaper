@@ -10,7 +10,7 @@ import satori from "satori";
 import { isLetter, postcardSpec } from "./config.ts";
 import { pool } from "./db.ts";
 import type { OrderRow } from "./orders.ts";
-import { addressLines, postcardLayout, THEMES } from "./render.ts";
+import { addressLines, postcardLayout, THEMES, stripInline } from "./render.ts";
 
 // OFF since 2026-10-10: Ryan didn't like how the pictures look ("skip this for now"). Flip to true to bring back
 // preview_image_url, /o/:id/preview.png and the MCP image block; nothing else needs to change.
@@ -104,7 +104,7 @@ function letter(o: OrderRow): Node {
   ]);
   const body = c.pdf_url
     ? [div({ color: "#666", fontFamily: "Inter", fontSize: 13 }, `Address page, added automatically. Your document follows (${Number(c.pdf_pages ?? 1)} page${Number(c.pdf_pages ?? 1) === 1 ? "" : "s"}${c.color ? ", in color" : ", black and white"}).`)]
-    : [div({ marginBottom: 0.3 * PX }, date), paras(String(c.body ?? ""), {}, 16)];
+    : [div({ marginBottom: 0.3 * PX }, date), paras(stripInline(String(c.body ?? "")), {}, 16)];
   return div({ flexDirection: "column", width: 8.5 * PX, height: 11 * PX, overflow: "hidden", background: "#fff", color: "#1b1b1b", padding: `${0.75 * PX}px ${1 * PX}px`, fontFamily: serif ? "Source Serif 4" : "Inter", fontSize: 16, lineHeight: 1.5 }, [window, ...body]);
 }
 

@@ -87,6 +87,32 @@ const paragraphs = (text: string) =>
     .map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`)
     .join("");
 
+// Letter text may carry three inline styles from the web form's B / I / U buttons (Ryan, 2026-11-22): exactly <b>,
+// <i> and <u>, no attributes. Everything else is escaped as always, a stray closing tag is dropped, overlapping tags are
+// re-nested, and every paragraph closes what it opened, so a letter can never carry other markup or leave a style open.
+const INLINE = /&lt;(\/?)(b|i|u)&gt;/g;
+export function formatInline(text: string) {
+  const open: string[] = [];
+  const html = esc(text).replace(INLINE, (_m, slash: string, tag: string) => {
+    if (!slash) { open.push(tag); return `<${tag}>`; }
+    const at = open.lastIndexOf(tag);
+    if (at < 0) return "";
+    const inner = open.slice(at + 1);
+    open.length = at;
+    open.push(...inner);
+    return [...inner].reverse().map((t) => `</${t}>`).join("") + `</${tag}>` + inner.map((t) => `<${t}>`).join("");
+  });
+  return html + [...open].reverse().map((t) => `</${t}>`).join("");
+}
+// Letter paragraphs: blank lines split paragraphs, single newlines are line breaks, B / I / U kept (formatInline).
+export const letterParagraphs = (text: string, pStyle = "") =>
+  text
+    .split(/\n{2,}/)
+    .map((p) => `<p${pStyle ? ` style="${pStyle}"` : ""}>${formatInline(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+// Plain text of a letter, for places that can't show formatting.
+export const stripInline = (text: string) => text.replace(/<\/?[biu]>/g, "");
+
 export function postcardFront(o: Pick<OrderRow, "product" | "content">) {
   const { w, h } = postcardSpec(o.product);
   return `<div class="piece" style="width:${w}in;height:${h}in">${frontMarkup(o.content, w, h)}</div>`;
@@ -106,7 +132,8 @@ export function postcardBack(o: Pick<OrderRow, "product" | "content" | "to_addre
 
 export function letterPages(o: Pick<OrderRow, "content" | "to_address" | "from_address" | "created_at">) {
   const date = new Date(o.created_at ?? Date.now()).toLocaleDateString("en-US", { dateStyle: "long" });
-  const font = o.content.font === "sans" ? "Helvetica,Arial,sans-serif" : "Georgia,'Times New Roman',serif";
+  // The same families as the print (fulfill.ts letterHtml); PRINT page loads them from Google Fonts.
+  const font = o.content.font === "sans" ? "Inter,Helvetica,Arial,sans-serif" : "'Source Serif 4',Georgia,serif";
   // A PDF letter: PostGrid's blank address page first, then the customer's own document (already 8.5×11).
   if (o.content.pdf_url) {
     const pages = Number(o.content.pdf_pages ?? 1);
@@ -121,7 +148,7 @@ export function letterPages(o: Pick<OrderRow, "content" | "to_address" | "from_a
     <div class="window">${addressBlock(o.from_address)}<br><br>${addressBlock(o.to_address)}</div>
     <div class="date">${esc(date)}</div>
     ${o.content.image_url ? `<img class="photo" alt="" src="${esc(o.content.image_url)}">` : ""}
-    ${paragraphs(o.content.body ?? "")}
+    ${letterParagraphs(o.content.body ?? "")}
   </div>`;
 }
 

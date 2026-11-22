@@ -28,6 +28,14 @@ h2.sub { font-size: 1rem; letter-spacing: -0.01em; margin: 0; }
 .addphoto:focus-within { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 4px; }
 .addphoto .thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; }
 .fine { font-size: .84rem; color: var(--soft); margin: 0; line-height: 1.5; }
+.editor { display: grid; }
+.fmt { display: flex; gap: 2px; padding: 4px; background: var(--tint); border: 1px solid var(--rule); border-bottom: 0; border-radius: 8px 8px 0 0; }
+.fmt button { width: 38px; height: 34px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font: 1rem Georgia, serif; cursor: pointer; }
+.fmt button:hover { background: var(--card); }
+.fmt button[aria-pressed="true"] { background: var(--card); box-shadow: inset 0 0 0 1px var(--rule); color: var(--green); }
+.ed { min-height: 300px; padding: 12px 14px; background: var(--card); color: var(--ink); border: 1px solid var(--rule); border-radius: 0 0 8px 8px; font-size: 1.02rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; cursor: text; }
+.ed:focus { border-color: var(--green); }
+.ed:empty::before { content: attr(data-placeholder); color: var(--faint); pointer-events: none; }
 .bar { position: sticky; bottom: 0; z-index: 5; margin-top: 28px; padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--paper); border-top: 1px solid var(--rule); }
 .bar-in { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
 .bar .err { margin: 0 0 10px; }
@@ -325,7 +333,9 @@ export function sendPage(initial: string, fixed: SendKind) {
           </div>
           <div id="writeBox" style="display:grid;gap:12px">
             <div class="top sr"><label for="body">Letter</label><span class="count" id="bc">0/${LIMITS.letterBody}</span></div>
-            <textarea id="body" maxlength="${LIMITS.letterBody}" style="min-height:300px" placeholder="Dear …"></textarea>
+            <div class="editor"><div class="fmt" role="toolbar" aria-label="Formatting"><button type="button" data-cmd="bold" aria-label="Bold" aria-pressed="false" title="Bold"><b>B</b></button><button type="button" data-cmd="italic" aria-label="Italic" aria-pressed="false" title="Italic"><i>I</i></button><button type="button" data-cmd="underline" aria-label="Underline" aria-pressed="false" title="Underline"><u>U</u></button></div>
+              <div id="bodyEd" class="ed" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Your letter" data-placeholder="Dear …"></div></div>
+            <textarea id="body" maxlength="${LIMITS.letterBody}" hidden></textarea>
             <div class="row"><span class="row-l"><label class="addphoto" id="ldrop"><input id="lphoto" type="file" accept="image/jpeg,image/png,image/webp"><span id="ldropText">+ Add a photo (+${usd(COLOR_LETTER_CENTS)})</span></label><button type="button" class="linkbtn" id="lphotoRemove" hidden>Remove</button></span>
               <div class="seg" role="radiogroup" aria-label="Typeface"><label><input type="radio" name="font" value="serif" checked>Serif</label><label><input type="radio" name="font" value="sans">Sans-serif</label></div></div>
           </div>
@@ -413,7 +423,8 @@ export function sendPage(initial: string, fixed: SendKind) {
       if (n === 2) {
         if (val("product") === "letter") {
           if (isPdf()) return pdfUploaded ? "" : "Upload a PDF, or switch to Write it.";
-          return $("body").value.trim() ? "" : "Write your letter first.";
+          if ($("body").value.length > ${LIMITS.letterBody}) return "Your letter is too long: ${LIMITS.letterBody.toLocaleString("en-US")} characters at most.";
+          return plainBody().trim() ? "" : "Write your letter first.";
         }
         const f = val("front");
         if (f === "text" && !$("headline").value.trim()) return "Add the big text for the front.";
@@ -484,7 +495,7 @@ export function sendPage(initial: string, fixed: SendKind) {
         $("pvLetter").style.fontFamily = val("font") === "sans" ? "Helvetica, Arial, sans-serif" : "Georgia, serif";
         $("pvLetterPhoto").hidden = !letterPhotoUrl; if (letterPhotoUrl) $("pvLetterPhoto").src = letterPhotoUrl;
         $("lphotoRemove").hidden = !letterPhoto;
-        $("body").style.fontFamily = val("font") === "sans" ? "Helvetica, Arial, sans-serif" : "Georgia, 'Times New Roman', serif";
+        $("bodyEd").style.fontFamily = val("font") === "sans" ? "Inter, Helvetica, Arial, sans-serif" : "'Source Serif 4', Georgia, serif";
         return;
       }
       const card = $("pvCard");
@@ -874,6 +885,62 @@ export function sendPage(initial: string, fixed: SendKind) {
       });
       applyCountry(); applyKind(); reveal(4, false);
     })();
+    // Letter text with B / I / U (Ryan, 2026-11-22). The editable box is what people type in; the hidden #body holds
+    // what is sent: plain text plus exactly <b>, <i> and <u> (the server escapes everything else, render.ts
+    // formatInline). Pasted text arrives plain. No backslash escapes here: this script lives in a TS template literal.
+    const ed = $("bodyEd"), NL = String.fromCharCode(10), ZWJ = String.fromCharCode(8205), TAGS = ["b", "i", "u"];
+    function plainBody() { let t = $("body").value; TAGS.forEach((x) => { t = t.split("<" + x + ">").join("").split("</" + x + ">").join(""); }); return t; }
+    function edText(root) {
+      let out = "";
+      const walk = (node) => {
+        node.childNodes.forEach((n) => {
+          if (n.nodeType === 3) {
+            // Text that literally reads "<b>" (typed or pasted) must print as typed, not turn bold: an invisible
+            // zero-width joiner after "<" keeps the server from reading it as formatting.
+            let v = n.nodeValue.split(String.fromCharCode(160)).join(" ");
+            TAGS.forEach((x) => { v = v.split("<" + x + ">").join("<" + ZWJ + x + ">").split("</" + x + ">").join("<" + ZWJ + "/" + x + ">"); });
+            out += v; return;
+          }
+          if (n.nodeType !== 1) return;
+          const t = n.nodeName;
+          if (t === "BR") { out += NL; return; }
+          const block = t === "DIV" || t === "P";
+          if (block && out && !out.endsWith(NL)) out += NL;
+          const w = t === "B" || t === "STRONG" ? "b" : t === "I" || t === "EM" ? "i" : t === "U" ? "u" : "";
+          if (w) out += "<" + w + ">";
+          walk(n);
+          if (w) out += "</" + w + ">";
+          if (block && !out.endsWith(NL)) out += NL;
+        });
+      };
+      walk(root);
+      if (out.endsWith(NL)) out = out.slice(0, -1);
+      TAGS.forEach((x) => { out = out.split("<" + x + "></" + x + ">").join(""); });
+      return out;
+    }
+    function edFromText(t) {
+      let h = t.split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;");
+      TAGS.forEach((x) => { h = h.split("&lt;" + x + "&gt;").join("<" + x + ">").split("&lt;/" + x + "&gt;").join("</" + x + ">"); });
+      ed.innerHTML = h.split(NL).join("<br>") + (t.endsWith(NL) ? "<br>" : "");
+    }
+    function fmtState() {
+      document.querySelectorAll(".fmt button").forEach((b) => b.setAttribute("aria-pressed", String(document.activeElement === ed && document.queryCommandState(b.dataset.cmd))));
+    }
+    // Runs before the page-wide input listeners (preview, draft), so they see the new text.
+    ed.addEventListener("input", () => { const t = edText(ed); $("body").value = t; if (!t && ed.innerHTML) ed.innerHTML = ""; fmtState(); });
+    ed.addEventListener("paste", (e) => { e.preventDefault(); document.execCommand("insertText", false, (e.clipboardData || window.clipboardData).getData("text/plain")); });
+    ed.addEventListener("drop", (e) => e.preventDefault());
+    document.addEventListener("selectionchange", fmtState);
+    document.querySelectorAll(".fmt button").forEach((b) => {
+      b.addEventListener("mousedown", (e) => e.preventDefault());
+      b.addEventListener("click", () => {
+        if (document.activeElement !== ed) ed.focus();
+        document.execCommand("styleWithCSS", false, false);
+        document.execCommand(b.dataset.cmd);
+        ed.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    });
+    edFromText($("body").value);
     let draftTimer = 0;
     $("f").addEventListener("input", () => { $("err").textContent = ""; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
     $("f").addEventListener("change", saveDraft);

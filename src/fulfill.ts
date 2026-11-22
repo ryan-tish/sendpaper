@@ -11,7 +11,7 @@
 import { BASE_URL, BRAND, env, EXTRA_SERVICE, isLetter, postcardSpec } from "./config.ts";
 import { pool } from "./db.ts";
 import { getOrder, printsInColor, setStatus, type OrderRow, type SenderAddress } from "./orders.ts";
-import { esc, frontMarkup, MESSAGE_FONTS } from "./render.ts";
+import { esc, frontMarkup, letterParagraphs, MESSAGE_FONTS } from "./render.ts";
 
 const API = "https://api.postgrid.com/print-mail/v1";
 export const postgridMode = () => (env.postgridKey.startsWith("live_") ? "live" : env.postgridKey ? "test" : "off");
@@ -53,10 +53,7 @@ export function postcardHtml(o: OrderRow) {
 export function letterHtml(o: OrderRow) {
   const family = o.content.font === "sans" ? "Inter, Helvetica, Arial, sans-serif" : "'Source Serif 4', Georgia, serif";
   const date = new Date(o.created_at ?? Date.now()).toLocaleDateString("en-US", { dateStyle: "long" });
-  const paras = String(o.content.body ?? "")
-    .split(/\n{2,}/)
-    .map((p) => `<p style="margin:0 0 1em">${esc(p).replace(/\n/g, "<br>")}</p>`)
-    .join("");
+  const paras = letterParagraphs(String(o.content.body ?? ""), "margin:0 0 1em");
   // An optional photo sits under the date, at most 3in tall, inside the 6.5in text column (it prints in color).
   const photo = o.content.image_url
     ? `<img src="${esc(absolute(o.content.image_url))}" style="display:block;max-width:6.5in;max-height:3in;margin:0 auto 1.4em;object-fit:contain">`
