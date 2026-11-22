@@ -186,7 +186,7 @@ web.get("/o/:id", async (req, res) => {
         <h2>Print preview</h2>
         <iframe src="/o/${esc(o.id)}/preview" title="Print preview" style="width:100%;height:${isLetter(o.product) ? 1150 : postcardSpec(o.product).h >= 6 ? 1250 : 900}px;border:1px solid var(--rule);border-radius:10px;background:#e9e7e2"></iframe>
         <p class="soft">Something wrong? ${o.status === "awaiting_payment" ? (o.batch_id ? `<a href="/send">Start a new order</a>. Unpaid orders are never mailed.` : `<a id="editOrder" href="${esc(editHref(o))}">Go back and edit</a>. Unpaid orders are never mailed.`) : `Email ${esc(SUPPORT_EMAIL)} with your order id before it's printed.`}</p>
-        ${o.batch_id ? "" : EDIT_JS}
+        ${o.batch_id && o.status === "awaiting_payment" ? "" : EDIT_JS}
       </section>`,
       { noindex: true },
     ),

@@ -6,9 +6,39 @@ import { esc, THEMES } from "./render.ts";
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 
 const CSS = `
-.send { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 48px; align-items: start; padding-block: 40px 24px; }
-.send h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
-.form { display: grid; gap: 28px; min-width: 0; }
+.send { max-width: 680px; margin-inline: auto; padding-top: 28px; display: grid; }
+.send h1 { font-size: clamp(1.75rem, 3.6vw, 2.2rem); letter-spacing: -0.025em; }
+.form { display: grid; gap: 24px; min-width: 0; }
+.toprow { display: flex; align-items: center; gap: 12px; }
+.stepper { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: .88rem; color: var(--soft); }
+.stepper > span.on { color: var(--ink); font-weight: 600; }
+.stepper .n { font: 500 .74rem var(--f-mono); margin-right: 6px; }
+.stepper i { width: 24px; height: 1px; background: var(--rule); }
+h2.sub { font-size: 1rem; letter-spacing: -0.01em; margin: 0; }
+.list { display: grid; border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
+.list label { display: flex; align-items: center; gap: 10px; padding: 13px 16px; min-height: 52px; box-sizing: border-box; cursor: pointer; background: var(--card); font-weight: 600; }
+.list label + label { border-top: 1px solid var(--rule); }
+.list label:has(input:checked) { background: var(--green-soft); }
+.list input { accent-color: var(--green); width: 18px; height: 18px; margin: 0 4px 0 0; flex-shrink: 0; }
+.list label span { font-weight: 400; color: var(--soft); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.row-l { display: flex; align-items: center; gap: 14px; }
+.addphoto { position: relative; display: inline-flex; align-items: center; gap: 8px; color: var(--green); font: 500 .92rem var(--f-ui); cursor: pointer; }
+.addphoto input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+.addphoto:focus-within { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 4px; }
+.addphoto .thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; }
+.fine { font-size: .84rem; color: var(--soft); margin: 0; line-height: 1.5; }
+.bar { position: sticky; bottom: 0; z-index: 5; margin-top: 28px; padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--paper); border-top: 1px solid var(--rule); }
+.bar-in { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
+.bar .err { margin: 0 0 10px; }
+.bar .err:empty { display: none; }
+.bar-sum { display: grid; gap: 1px; margin-right: auto; min-width: 0; }
+.bar-sum small { font-size: .82rem; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .btn { white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 520px) { .bar-in { gap: 10px; } .bar .btn { padding-inline: 16px; } }
+.bar-sum b { font: 600 1.3rem var(--f-ui); letter-spacing: -0.02em; }
+.bar .btn { padding-block: 13px; padding-inline: 22px; }
+.bar #barBack { padding: 12px 2px; white-space: nowrap; flex-shrink: 0; }
 .step { display: grid; gap: 14px; }
 .step > .note { font-size: .84rem; color: var(--faint); line-height: 1.5; }
 .recip-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; padding-top: 14px; border-top: 1px solid var(--rule); }
@@ -106,7 +136,6 @@ dialog.cropper::backdrop { background: rgba(10, 16, 14, .55); }
 .summary .btn { justify-content: center; width: 100%; padding-block: 13px; }
 .field .note { font-size: .84rem; color: var(--faint); line-height: 1.5; }
 .summary .note { font-size: .8rem; color: var(--faint); text-align: center; }
-@media (max-width: 920px) { .send { grid-template-columns: minmax(0, 1fr); gap: 28px; } .aside { position: static; } }
 @media (max-width: 380px) { .choices { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 520px) { .choice { padding: 12px 10px; } .addr .w4, .addr .w3, .addr .w2 { grid-column: span 6; } .addr .w1, .addr.abroad .st, .addr.abroad .zp { grid-column: span 3; } .addr.abroad .ct { grid-column: span 6; } }
 `;
@@ -226,23 +255,25 @@ export function sendPage(initial: string, fixed: SendKind) {
   // Certified letters are a mailing option on the Letter tile, not tiles of their own.
   const start: ProductId = isLetter(asked) ? "letter" : asked;
   const startMailing = EXTRA_SERVICE[asked] ?? "none";
-  // Mailing for letters: First-Class, Express (USPS Priority, extra charge) or Certified (with or without receipt).
-  const mailing = (["none", "express", "certified", "certified_return_receipt"] as const)
+  // Mailing for letters: the Letter page offers First-Class and Express (USPS Priority); the Certified page offers
+  // Certified Mail with or without a return receipt (Ryan, 2026-11-22: keep the two pages separate). No prices on
+  // screen 1: the price shows next to "Preview and pay" on the Addresses screen (Ryan, 2026-11-22).
+  const mailing = (fixed === "certified" ? (["certified", "certified_return_receipt"] as const) : (["none", "express"] as const))
     .map((m) => {
-      const [name, price] =
-        m === "none" ? ["First-Class", `${usd(PRODUCTS.letter.cents)} · 1–5 days`]
-        : m === "express" ? ["Express", `${usd(PRODUCTS.letter.cents + EXPRESS_CENTS)} · 2–3 days`]
-        : m === "certified" ? ["Certified", `${usd(PRODUCTS.letter_certified.cents)} · tracked`]
-        : ["Certified + receipt", `${usd(PRODUCTS.letter_certified_rr.cents)} · signature`];
-      return `<label><input type="radio" name="mailing" value="${m}"${m === startMailing ? " checked" : ""}><b>${name}</b><small>${price}</small></label>`;
+      const [name, sub] =
+        m === "none" ? ["First-Class", "1–5 days"]
+        : m === "express" ? ["Express", "2–3 days, tracked"]
+        : m === "certified" ? ["Certified", "tracking and proof of delivery"]
+        : ["Certified + return receipt", "the recipient's signature"];
+      return `<label><input type="radio" name="mailing" value="${m}"${m === startMailing ? " checked" : ""}><b>${name}</b><span>· ${sub}</span></label>`;
     })
     .join("");
   const info = KIND_INFO[fixed];
   const sizes = (["postcard_4x6", "postcard_6x9", "postcard_6x11"] as const)
     .map((id) => {
-      // A to-scale outline of the card (6×11 is the widest), then the size, then the price on its own line.
+      // A to-scale outline of the card (6×11 is the widest), then the size. No price here (see mailing above).
       const sz = Object.values(POSTCARD_SIZES).find((x) => x.product === id)!;
-      return `<label><input type="radio" name="product" value="${id}"${!isLetter(asked) && id === asked ? " checked" : ""}><i class="shape" style="width:${Math.round((sz.w / 11) * 44)}px;height:${Math.round((sz.h / 11) * 44)}px" aria-hidden="true"></i><b>${sz.h}×${sz.w} in</b><small>${usd(PRODUCTS[id].cents)}</small></label>`;
+      return `<label><input type="radio" name="product" value="${id}"${!isLetter(asked) && id === asked ? " checked" : ""}><i class="shape" style="width:${Math.round((sz.w / 11) * 44)}px;height:${Math.round((sz.h / 11) * 44)}px" aria-hidden="true"></i><b>${sz.h}×${sz.w} in</b></label>`;
     })
     .join("");
   const swatches = Object.entries(THEMES)
@@ -254,11 +285,19 @@ export function sendPage(initial: string, fixed: SendKind) {
     `<style>${CSS}</style>
     <div class="send" id="sendWrap">
       <form id="f" class="form" novalidate>
-        <div style="display:grid;gap:10px"><a class="back-link" id="backLink" href="/send">← Send something else</a><button type="button" class="back-link linkbtn" id="backToContent" hidden>← Back to your ${fixed === "postcard" ? "postcard" : "letter"}</button><h1>${info.h1}</h1></div>
+        <div class="toprow"><a class="back-link" id="backLink" href="/send">← Send something else</a>
+          <nav class="stepper" aria-label="Steps"><span id="st1" class="on" aria-current="step"><span class="n">1</span>${fixed === "postcard" ? "Postcard" : "Letter"}</span><i aria-hidden="true"></i><span id="st2"><span class="n">2</span>Addresses</span></nav></div>
+        <h1 id="h1">${info.h1}</h1>
         <input type="radio" name="kind" value="${fixed}" checked hidden>
         <input type="radio" name="product" value="letter" tabindex="-1" aria-hidden="true" class="sr"${isLetter(asked) ? " checked" : ""}>
 
-        <div class="step" id="pc"${fixed === "postcard" ? "" : " hidden"}><div class="step-h"><span>01</span><h2>Design your postcard</h2></div>
+        <div class="step" id="pc"${fixed === "postcard" ? "" : " hidden"}><h2 class="sr">Design your postcard</h2>
+          <div class="stage">
+            <div class="label"><span id="pvName">Postcard 4×6</span><span>Live preview</span></div>
+            <div id="pvCard" class="card-pv"><div class="front" id="pvFront"></div></div>
+            <div id="pvLetter" class="letter-pv" hidden><div class="to" id="pvLetterTo"></div><img id="pvLetterPhoto" class="lphoto-pv" alt="" hidden><div id="pvLetterBody"></div></div>
+            <div class="flip" id="flip"><button type="button" data-side="front" aria-pressed="true">Front</button><button type="button" data-side="back" aria-pressed="false">Back</button></div>
+          </div>
           <div class="field"><div class="top">Size</div><div class="opts sizes" role="radiogroup" aria-label="Postcard size">${sizes}</div></div>
           <div class="field"><div class="top">Front</div><div class="seg seg-wrap" role="radiogroup" aria-label="Front style"><label><input type="radio" name="front" value="text" checked>Text</label><label><input type="radio" name="front" value="photo">Photo</label><label><input type="radio" name="front" value="caption">Photo + caption</label><label><input type="radio" name="front" value="collage">Collage</label></div></div>
           <label class="drop" id="drop" hidden><input id="photo" type="file" accept="image/jpeg,image/png,image/webp"><span id="dropText"><b>Drop a photo</b> or click to choose<br><small>JPG, PNG or WebP, up to 25 MB. You can crop it next.</small></span></label>
@@ -274,53 +313,40 @@ export function sendPage(initial: string, fixed: SendKind) {
           <div class="field"><div class="top"><label for="message">Message on the back</label><span class="count" id="mc">0/${LIMITS.postcardMessage}</span></div><textarea id="message" maxlength="${LIMITS.postcardMessage}" placeholder="Wish you were here…"></textarea></div>
           <div class="field"><div class="top">Message font</div><div class="seg" role="radiogroup" aria-label="Message font"><label><input type="radio" name="mfont" value="handwriting" checked>Handwriting</label><label><input type="radio" name="mfont" value="serif">Serif</label><label><input type="radio" name="mfont" value="sans">Sans</label></div></div>
           <div class="field"><div class="top">Delivery</div>
-            <div class="opts" role="radiogroup" aria-label="Postcard delivery"><label><input type="radio" name="pdeliv" value="first" checked><b>First-Class</b><small>Included · 1–5 days</small></label><label><input type="radio" name="pdeliv" value="express"><b>Express</b><small>+${usd(EXPRESS_CENTS)} · 2–3 days</small></label></div>
-            <p class="note" style="margin:0">Express goes by USPS Priority Mail, usually 2–3 days, with tracking.</p></div>
+            <div class="list" role="radiogroup" aria-label="Postcard delivery"><label><input type="radio" name="pdeliv" value="first" checked><b>First-Class</b><span>· 1–5 days</span></label><label><input type="radio" name="pdeliv" value="express"><b>Express</b><span>· 2–3 days, tracked</span></label></div></div>
         </div>
 
-        <div class="step" id="lt"${fixed === "postcard" ? " hidden" : ""}><div class="step-h"><span>01</span><h2 id="ltH">Your letter</h2></div>
+        <div class="step" id="lt"${fixed === "postcard" ? " hidden" : ""}><h2 id="ltH" class="sr">Your letter</h2>
           <div class="seg" role="radiogroup" aria-label="Letter source"><label><input type="radio" name="lsrc" value="write" checked>Write it</label><label><input type="radio" name="lsrc" value="pdf">Upload a PDF</label></div>
           <div id="pdfBox" hidden style="display:grid;gap:10px">
             <label class="drop" id="pdrop"><input id="pdfFile" type="file" accept="application/pdf"><span id="pdropText"><b>Drop a PDF</b> or click to choose<br><small>Up to ${LIMITS.pdfPages} pages and ${LIMITS.pdfBytes / 1024 / 1024} MB. Any page size: we fit it to 8.5×11 and add an address page in front.</small></span></label>
-            <label class="consent" style="margin:0"><input id="pdfColor" type="checkbox"><span>Print in color (+${usd(COLOR_LETTER_CENTS)})</span></label>
+            <label class="consent" style="margin:0"><input id="pdfColor" type="checkbox"><span>Print in color</span></label>
           </div>
           <div id="writeBox" style="display:grid;gap:12px">
-          <div class="field"><div class="top"><label for="body">Letter</label><span class="count" id="bc">0/${LIMITS.letterBody}</span></div><textarea id="body" maxlength="${LIMITS.letterBody}" style="min-height:280px" placeholder="Dear …"></textarea></div>
-          <label class="drop" id="ldrop"><input id="lphoto" type="file" accept="image/jpeg,image/png,image/webp"><span id="ldropText"><b>Add a photo</b> (optional)<br><small>Printed at the top of the letter, in color, for ${usd(COLOR_LETTER_CENTS)} more.</small></span></label>
-          <button type="button" class="linkbtn" id="lphotoRemove" hidden>Remove photo</button>
-          <div class="seg" role="radiogroup" aria-label="Typeface"><label><input type="radio" name="font" value="serif" checked>Serif</label><label><input type="radio" name="font" value="sans">Sans-serif</label></div>
+            <div class="top sr"><label for="body">Letter</label><span class="count" id="bc">0/${LIMITS.letterBody}</span></div>
+            <textarea id="body" maxlength="${LIMITS.letterBody}" style="min-height:300px" placeholder="Dear …"></textarea>
+            <div class="row"><span class="row-l"><label class="addphoto" id="ldrop"><input id="lphoto" type="file" accept="image/jpeg,image/png,image/webp"><span id="ldropText">+ Add a photo</span></label><button type="button" class="linkbtn" id="lphotoRemove" hidden>Remove</button></span>
+              <div class="seg" role="radiogroup" aria-label="Typeface"><label><input type="radio" name="font" value="serif" checked>Serif</label><label><input type="radio" name="font" value="sans">Sans-serif</label></div></div>
           </div>
           <div class="field"><div class="top">Mailing</div>
-            <div class="opts" role="radiogroup" aria-label="Mailing">${mailing}</div>
-            <p class="note" style="margin:0">${fixed === "certified" ? "Certified Mail gets a USPS tracking number and proof of delivery; the return receipt adds the recipient's signature, which landlords, courts and agencies often ask for." : "Express goes by USPS Priority Mail, usually 2–3 days, with tracking. Need proof of delivery? <a href=\"/send/certified\">Send a certified letter</a>."}</p></div>
+            <div class="list" role="radiogroup" aria-label="Mailing">${mailing}</div></div>
         </div>
 
-        <div class="step" data-step="3"><div class="step-h"><span>02</span><h2>Who's it going to?</h2></div>
+        <div class="step" data-step="3"><h2 class="sub">To</h2>
           <div id="recips" style="display:grid;gap:18px"><div class="recip" data-p="to">${addressFields("to", "Recipient address")}</div></div>
-          <button type="button" class="linkbtn" id="addRecip" style="justify-self:start">+ Add another recipient</button>
-          <p class="note" style="margin:0">Sending the same ${fixed === "postcard" ? "card" : "letter"} to several people? Add up to ${MAX_RECIPIENTS}; each is mailed separately and you pay once.</p></div>
-        <div class="step" data-step="4"><div class="step-h"><span>03</span><h2>Who's it from?</h2></div>${addressFields("from", "Return address")}
+          <button type="button" class="linkbtn" id="addRecip" style="justify-self:start">+ Send it to more people</button></div>
+        <div class="step" data-step="4"><h2 class="sub">From</h2>${addressFields("from", "Return address")}
           <label class="field"><span class="sr">Your email</span><input id="email" type="email" required autocomplete="email" placeholder="Your email, for the receipt and updates"></label>
-          <label class="consent"><input id="ok" type="checkbox"><span>This mail isn't threatening, harassing, fraudulent or obscene, and a person at ${esc(BRAND)} may review it before printing. <a href="/content-policy" target="_blank">Content policy</a></span></label>
+          <p class="fine">By paying you agree to our <a href="/content-policy" target="_blank">content policy</a>. A person checks every piece before it prints.</p>
         </div>
-        <p class="soft" style="font-size:.85rem">AI agent? Skip this form. Build an <a href="${esc(docsUrl("/guides/order-links"))}">order link</a> (one URL with every field) or call the <a href="${esc(docsUrl("/api/introduction"))}">API</a>.</p>
       </form>
 
-      <aside class="aside" id="aside" aria-label="Preview and payment">
-        <div class="stage">
-          <div class="label"><span id="pvName">Postcard 4×6</span><span>Live preview</span></div>
-          <div id="pvCard" class="card-pv"><div class="front" id="pvFront"></div></div>
-          <div id="pvLetter" class="letter-pv" hidden><div class="to" id="pvLetterTo"></div><img id="pvLetterPhoto" class="lphoto-pv" alt="" hidden><div id="pvLetterBody"></div></div>
-          <div class="flip" id="flip"><button type="button" data-side="front" aria-pressed="true">Front</button><button type="button" data-side="back" aria-pressed="false">Back</button></div>
-        </div>
-        <div class="summary">
-          <div class="line"><span id="postageLine">Printing, envelope, First-Class postage</span><span>Included</span></div>
-          <div class="total"><span>Total</span><b id="total">${usd(PRODUCTS[start].cents)}</b></div>
-          <p id="err" class="err" role="alert" style="margin:0"></p>
-          <button class="btn" id="next" type="button">Next: addresses</button>
-          <button class="btn" id="go" type="submit" form="f" hidden>Preview the print and pay</button>
-        </div>
-      </aside>
+      <div class="bar" id="bar"><p id="err" class="err" role="alert"></p><div class="bar-in">
+        <button type="button" class="linkbtn" id="barBack" hidden>← Back</button>
+        <span class="bar-sum" id="barSum" hidden><small id="postageLine">Letter · First-Class</small><b id="total">${usd(PRODUCTS[start].cents)}</b></span>
+        <button class="btn" id="next" type="button">Next: Addresses</button>
+        <button class="btn" id="go" type="submit" form="f" hidden>Preview and pay</button>
+      </div></div>
     </div>
 
     <dialog class="cropper" id="cropDlg" aria-labelledby="cropTitle">
@@ -345,6 +371,8 @@ export function sendPage(initial: string, fixed: SendKind) {
     // A letter's product depends on its mailing option (regular, certified, certified + return receipt).
     const LETTER_PRODUCT = { none: "letter", express: "letter", certified: "letter_certified", certified_return_receipt: "letter_certified_rr" };
     const EXPRESS = ${EXPRESS_CENTS};
+    const EXTRA_SERVICE_IDS = ${JSON.stringify(Object.keys(EXTRA_SERVICE))};
+    const H1 = ${JSON.stringify(info.h1)};
     let pdfUploaded = null;
     const isPdf = () => val("lsrc") === "pdf";
     const isExpress = () => (val("product") === "letter" ? val("mailing") === "express" : val("pdeliv") === "express");
@@ -438,9 +466,10 @@ export function sendPage(initial: string, fixed: SendKind) {
       // The preview card takes the chosen size's shape (6×11 is wider than 4×6 and 6×9).
       if (!letter && SHEET[product]) $("pvCard").style.aspectRatio = (SHEET[product][0] - 0.25) + " / " + (SHEET[product][1] - 0.25);
       $("pvName").textContent = PRODUCTS[product].name;
-      $("postageLine").textContent = product === "letter_certified" ? "Printing, envelope, Certified Mail" : product === "letter_certified_rr" ? "Printing, envelope, Certified Mail + return receipt" : isExpress() ? (letter ? "Printing, envelope, Express (USPS Priority)" : "Printing, Express (USPS Priority)") : (letter ? "Printing, envelope, First-Class postage" : "Printing, First-Class postage");
       const color = letter && (isPdf() ? $("pdfColor").checked : Boolean(letterPhoto));
       const count = prefixes().length;
+      // The bar on the Addresses screen: "Letter · First-Class", "Postcard 6×9 × 3 · Express", "Certified letter".
+      $("postageLine").textContent = PRODUCTS[product].name + (count > 1 ? " × " + count : "") + (EXTRA_SERVICE_IDS.includes(product) ? "" : " · " + (isExpress() ? "Express" : "First-Class")) + (color ? " · color" : "");
       $("total").textContent = "$" + (count * (PRODUCTS[product].cents + (color ? COLOR_LETTER : 0) + (isExpress() ? EXPRESS : 0)) / 100).toFixed(2);
       if (count > 1) $("pvName").textContent = PRODUCTS[product].name + " × " + count;
       $("pdfBox").hidden = !isPdf(); $("writeBox").hidden = isPdf();
@@ -602,7 +631,7 @@ export function sendPage(initial: string, fixed: SendKind) {
           letterPhoto = new File([blob], "letter.jpg", { type: "image/jpeg" });
           if (letterPhotoUrl) URL.revokeObjectURL(letterPhotoUrl);
           letterPhotoUrl = URL.createObjectURL(letterPhoto);
-          $("ldropText").innerHTML = '<img class="thumb" alt="" src="' + letterPhotoUrl + '"><br><b>Change photo</b>';
+          $("ldropText").innerHTML = '<img class="thumb" alt="" src="' + letterPhotoUrl + '"> Change photo';
           $("lphoto").value = ""; $("err").textContent = ""; render();
         }, "image/jpeg", 0.9);
       };
@@ -616,7 +645,7 @@ export function sendPage(initial: string, fixed: SendKind) {
     ldrop.addEventListener("drop", (e) => { e.preventDefault(); takeLetterPhoto(e.dataTransfer.files[0]); });
     $("lphotoRemove").addEventListener("click", () => {
       letterPhoto = null; if (letterPhotoUrl) URL.revokeObjectURL(letterPhotoUrl); letterPhotoUrl = null;
-      $("ldropText").innerHTML = '<b>Add a photo</b> (optional)<br><small>Printed at the top of the letter, in color.</small>'; render();
+      $("ldropText").textContent = "+ Add a photo"; render();
     });
     // Fonts for the preview (the print uses the same families via Google Fonts).
     const HFONT = { serif: "'Source Serif 4', Georgia, serif", sans: "Inter, Helvetica, Arial, sans-serif", script: "Caveat, 'Bradley Hand', cursive" };
@@ -694,7 +723,7 @@ export function sendPage(initial: string, fixed: SendKind) {
       if (screen === 1) { toAddresses(); return; }
       const missing = stepProblem(2);
       if (missing) { showScreen(1, false); history.replaceState(null, "", location.pathname + location.search); $("err").textContent = missing; return; }
-      const problem = stepProblem(2) || stepProblem(3) || (!$("ok").checked ? "Please confirm the content policy (section 03)." : "");
+      const problem = stepProblem(2) || stepProblem(3);
       if (problem) { $("err").textContent = problem; if (matchMedia("(max-width: 920px)").matches) $("err").scrollIntoView({ block: "center" }); return; }
       const go = $("go"); go.disabled = true; go.textContent = "Working…";
       try {
@@ -741,7 +770,7 @@ export function sendPage(initial: string, fixed: SendKind) {
         if (!r.ok) throw new Error(j.error.fields ? j.error.fields.map(errLine).join(" · ") : j.error.message);
         saveDraft();
         location.href = j.batch ? "/b/" + j.batch.id : "/o/" + j.id;
-      } catch (err) { $("err").textContent = err.message; go.disabled = false; go.textContent = "Preview the print and pay"; }
+      } catch (err) { $("err").textContent = err.message; go.disabled = false; go.textContent = "Preview and pay"; }
     });
     // Several recipients (one design to many people): each extra address block copies the first one's fields with a
     // new id prefix (to2_, to3_…); addr(prefix) reads any of them.
@@ -843,16 +872,18 @@ export function sendPage(initial: string, fixed: SendKind) {
     $("f").addEventListener("input", () => { $("err").textContent = ""; clearTimeout(draftTimer); draftTimer = setTimeout(saveDraft, 300); });
     $("f").addEventListener("change", saveDraft);
     window.addEventListener("pageshow", () => {
-      const go = $("go"); go.disabled = false; go.textContent = "Preview the print and pay";
+      const go = $("go"); go.disabled = false; go.textContent = "Preview and pay";
       render();
     });
-    // Two screens (Ryan, 2026-11-22: "radically simplify"): 1 = the letter or postcard, 2 = the addresses, with the
-    // preview and total beside both. Moving to screen 2 adds a history entry (#addresses), so the browser's Back
+    // Two screens (Ryan, 2026-11-22: "radically simplify", layout C from the concepts canvas): 1 = the letter or
+    // postcard (postcards keep their live preview at the top), 2 = the addresses, with the price only there, in the bar. Moving to screen 2 adds a history entry (#addresses), so the browser's Back
     // returns to screen 1 instead of leaving the page, and Back from the order page lands on the addresses again.
     function showScreen(n, push) {
       screen = n;
-      $("backLink").hidden = n !== 1; $("backToContent").hidden = n !== 2;
+      $("backLink").hidden = n !== 1; $("barBack").hidden = n !== 2; $("barSum").hidden = n !== 2;
       $("next").hidden = n !== 1; $("go").hidden = n !== 2;
+      $("h1").textContent = n === 2 ? "Addresses" : H1;
+      [["st1", 1], ["st2", 2]].forEach(([id, k]) => { $(id).classList.toggle("on", n === k); if (n === k) $(id).setAttribute("aria-current", "step"); else $(id).removeAttribute("aria-current"); });
       $("err").textContent = "";
       reveal(4, false);
       if (push) history.pushState({ screen: n }, "", n === 2 ? "#addresses" : location.pathname + location.search);
@@ -868,7 +899,7 @@ export function sendPage(initial: string, fixed: SendKind) {
       else { showScreen(1, false); history.replaceState(null, "", location.pathname + location.search); }
     }
     $("next").addEventListener("click", toAddresses);
-    $("backToContent").addEventListener("click", toContent);
+    $("barBack").addEventListener("click", toContent);
     window.addEventListener("popstate", () => showScreen(location.hash === "#addresses" && !stepProblem(2) ? 2 : 1, false));
     if (location.hash === "#addresses" && !stepProblem(2)) showScreen(2, false);
     else { showScreen(1, false); if (location.hash === "#addresses") history.replaceState(null, "", location.pathname + location.search); }
