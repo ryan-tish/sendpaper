@@ -17,6 +17,7 @@ import { getBatch, getOrder, groupLines, MAX_RECIPIENTS, priceLines, publicOrder
 import { checkoutFor, checkoutUrlFor, confirmBatchFromRedirect, confirmFromRedirect } from "./payments.ts";
 import { addReview, listReviews, reviewFor } from "./offer.ts";
 import { addressBlock, esc, printSheet, THEMES } from "./render.ts";
+import { adConversionFrame, adConversionPage } from "./analytics.ts";
 
 export const web = Router();
 const MCP_URL = `${BASE_URL}/mcp`;
@@ -145,6 +146,8 @@ web.get("/o/:id", async (req, res) => {
   const p = publicOrder(o);
   const paid = o.status !== "awaiting_payment";
   const review = o.status === "mailed" ? await reviewFor(o.id) : null;
+  // Back from Stripe Checkout and paid: report it to OpenAI ads if this visitor came from one (analytics.ts).
+  const adFrame = req.query.session_id && PAID_STATES.has(o.status) ? adConversionFrame(req.headers.cookie, o.id, o.price_cents) : "";
   const stars = [5, 4, 3, 2, 1].map((n) => `<label class="star"><input type="radio" name="rating" value="${n}" required> ${"★".repeat(n)}</label>`).join("");
   res.send(
     page(
@@ -186,7 +189,7 @@ web.get("/o/:id", async (req, res) => {
         <h2>Print preview</h2>
         <iframe src="/o/${esc(o.id)}/preview" title="Print preview" style="width:100%;height:${isLetter(o.product) ? 1150 : postcardSpec(o.product).h >= 6 ? 1250 : 900}px;border:1px solid var(--rule);border-radius:10px;background:#e9e7e2"></iframe>
         <p class="soft">Something wrong? ${o.status === "awaiting_payment" ? (o.batch_id ? `<a href="/send">Start a new order</a>. Unpaid orders are never mailed.` : `<a id="editOrder" href="${esc(editHref(o))}">Go back and edit</a>. Unpaid orders are never mailed.`) : `Email ${esc(SUPPORT_EMAIL)} with your order id before it's printed.`}</p>
-        ${o.batch_id && o.status === "awaiting_payment" ? "" : EDIT_JS}
+        ${o.batch_id && o.status === "awaiting_payment" ? "" : EDIT_JS}${adFrame}
       </section>`,
       { noindex: true },
     ),
@@ -211,7 +214,9 @@ const RECEIPT_CSS = `.receipt { display: grid; gap: 10px; max-width: 460px; padd
 const money = (c: number) => `${c < 0 ? "−" : ""}$${(Math.abs(c) / 100).toFixed(2)}`;
 const STATUS_WORD: Record<string, string> = { awaiting_payment: "Not paid", paid: "Paid", printing: "Printing", mailed: "Mailed", cancelled: "Cancelled", refunded: "Refunded" };
 
-function batchPage(id: string, orders: OrderRow[]) {
+const PAID_STATES = new Set(["paid", "printing", "mailed"]);
+
+function batchPage(id: string, orders: OrderRow[], adFrame = "") {
   const first = orders[0], n = orders.length, unpaid = orders.filter((o) => o.status === "awaiting_payment");
   const name = PRODUCTS[first.product].name;
   const due = unpaid.reduce((t, o) => t + o.price_cents, 0);
@@ -230,7 +235,7 @@ function batchPage(id: string, orders: OrderRow[]) {
       </div>
       <h2 style="margin-top:28px">Recipients</h2>
       ${unpaid.length ? "" : EDIT_JS}
-      <div class="who">${orders.map((o) => `<a href="/o/${esc(o.id)}"><span><b>${esc(o.to_address.name)}</b><br><small>${esc([o.to_address.city, o.to_address.state].filter(Boolean).join(", "))}</small></span><span class="st">${STATUS_WORD[o.status] ?? esc(o.status)} · see preview →</span></a>`).join("")}</div>
+      <div class="who">${orders.map((o) => `<a href="/o/${esc(o.id)}"><span><b>${esc(o.to_address.name)}</b><br><small>${esc([o.to_address.city, o.to_address.state].filter(Boolean).join(", "))}</small></span><span class="st">${STATUS_WORD[o.status] ?? esc(o.status)} · see preview →</span></a>`).join("")}</div>${adFrame}
     </section>`,
     { noindex: true },
   );
@@ -241,7 +246,8 @@ web.get("/b/:id", async (req, res) => {
   if (req.query.session_id) await confirmBatchFromRedirect(id, String(req.query.session_id)).catch(console.error);
   const orders = await getBatch(id);
   if (!orders.length) return res.status(404).send(page("Not found", `<section><h1>No such group</h1></section>`, { noindex: true }));
-  res.send(batchPage(id, orders));
+  const paidCents = orders.filter((o) => PAID_STATES.has(o.status)).reduce((t, o) => t + o.price_cents, 0);
+  res.send(batchPage(id, orders, req.query.session_id && paidCents > 0 ? adConversionFrame(req.headers.cookie, `batch:${id}`, paidCents) : ""));
 });
 
 web.get("/b/:id/pay", async (req, res) => {
@@ -328,6 +334,11 @@ web.get("/guides/img/:name", (req, res) => {
   res.set("Cache-Control", "public, max-age=86400").sendFile(fileURLToPath(new URL(`../assets/guides/${req.params.name}`, import.meta.url)), (err) => {
     if (err && !res.headersSent) res.status(404).send("Not found");
   });
+});
+
+// Hidden iframe target for the OpenAI ads purchase event (analytics.ts adConversionFrame). Never indexed.
+web.get("/ad-conversion", (_req, res) => {
+  res.set({ "Cache-Control": "public, max-age=3600", "X-Robots-Tag": "noindex", "Referrer-Policy": "no-referrer" }).type("html").send(adConversionPage());
 });
 
 web.get("/webmcp.js", (_req, res) => {

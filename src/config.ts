@@ -44,6 +44,9 @@ export const env = {
   posthogPersonalKey: process.env.POSTHOG_PERSONAL_API_KEY ?? "",
   // Optional; looked up from the key when unset.
   posthogProjectId: process.env.POSTHOG_PROJECT_ID ?? "",
+  // OpenAI (ChatGPT) ads measurement pixel, public by design (Ryan's Ads Manager, 2026-11-22). Only on the live
+  // domain by default so local testing never sends events to the real pixel; set OPENAI_PIXEL_ID to override.
+  openaiPixelId: process.env.OPENAI_PIXEL_ID ?? (BASE_URL === "https://sendmypaper.com" ? "7Si9qE3hxPE7iMjevdmcHa" : ""),
 };
 
 export type ProductId = "postcard_4x6" | "postcard_6x9" | "postcard_6x11" | "letter" | "letter_certified" | "letter_certified_rr";

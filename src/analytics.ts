@@ -1,5 +1,6 @@
 // Product analytics in PostHog (US Cloud). The browser script covers the website; these server-side events cover
 // what the website can't see, chiefly agent traffic over /mcp and order milestones. No-op unless POSTHOG_KEY is set.
+import { createHash } from "node:crypto";
 import type { Request, Response } from "express";
 import { env } from "./config.ts";
 
@@ -53,4 +54,36 @@ if (!location.pathname.startsWith("/admin") && !/(^|; *)sp_owner=1/.test(documen
   posthog.init(${JSON.stringify(env.posthogKey)}, { api_host: "/ingest", ui_host: "https://us.posthog.com", person_profiles: "identified_only", persistence: "localStorage", disable_session_recording: true, disable_surveys: true });
 }
 </script>`;
+}
+
+// OpenAI (ChatGPT) ads measurement pixel (2026-11-22). Only visitors who clicked one of our ChatGPT ads ever load
+// OpenAI's script. The click lands with ?oppref=<click code> (ChatGPT adds it); that page view loads the pixel,
+// which keeps the code in a first-party cookie (__oppref, 30 days) and reports a page_viewed. Organic visitors never
+// load it, so the privacy policy's "no ad tracking unless you came from an ad" holds.
+// The purchase is reported from a hidden same-origin iframe at /ad-conversion, NOT from the order page: the SDK sends
+// origin+pathname with every event, and an order path (/o/<id>) opens that order's names and addresses. The iframe's
+// path has no id, its amount and event id ride in the #fragment (never sent anywhere), and the event id is a hash.
+// Keep "automatic advanced matching" OFF in Ads Manager: it hashes form fields (names, ZIPs) and the privacy policy
+// says no names or addresses go to OpenAI. NOTE: no backslashes in these strings (TS template literals, see Traps).
+const OAIQ_LOADER = `(function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var js=d.createElement(s);js.async=true;js.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(js,f)})(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");`;
+
+export function adLandingSnippet() {
+  if (!env.openaiPixelId) return "";
+  return `<script>try{if(new URLSearchParams(location.search).get("oppref")){${OAIQ_LOADER}oaiq("init",{pixelId:${JSON.stringify(env.openaiPixelId)}});oaiq("measure","page_viewed",{type:"contents"})}}catch(e){}</script>`;
+}
+
+// For the order/group page reached back from Stripe Checkout: a hidden iframe that reports the purchase, only when
+// the browser carries the __oppref cookie (it came from an ad). `key` is the order or group id, hashed here.
+export function adConversionFrame(cookieHeader: string | undefined, key: string, cents: number) {
+  if (!env.openaiPixelId || !/(?:^|;\s*)__oppref=[^;]/.test(cookieHeader ?? "")) return "";
+  const e = createHash("sha256").update(key).digest("hex").slice(0, 32);
+  return `<iframe src="/ad-conversion#e=${e}&amp;a=${Math.round(cents)}" hidden title="" referrerpolicy="no-referrer" style="display:none"></iframe>`;
+}
+
+// GET /ad-conversion: static (the fragment carries the data), so it can be cached.
+export function adConversionPage() {
+  const run = env.openaiPixelId
+    ? `try{var h=new URLSearchParams(location.hash.slice(1)),e=h.get("e")||"",a=Number(h.get("a"));if(/^[a-f0-9]{32}$/.test(e)&&Number.isInteger(a)&&a>0&&a<10000000&&document.cookie.indexOf("__oppref=")>=0){${OAIQ_LOADER}oaiq("init",{pixelId:${JSON.stringify(env.openaiPixelId)}});oaiq("measure","order_created",{type:"contents",amount:a,currency:"USD"},{event_id:"sp_"+e})}}catch(x){}`
+    : "";
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Sendpaper</title><script>${run}</script></head><body></body></html>`;
 }

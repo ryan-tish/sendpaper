@@ -1,4 +1,4 @@
-import { analyticsSnippet } from "./analytics.ts";
+import { adLandingSnippet, analyticsSnippet } from "./analytics.ts";
 import { BRAND, DOCS_URL, OFFER_ACTIVE, OFFER_LINE, SOCIAL, SUPPORT_EMAIL } from "./config.ts";
 import { readFileSync } from "node:fs";
 import { esc } from "./render.ts";
@@ -141,7 +141,7 @@ ${opts.noindex ? '<meta name="robots" content="noindex">' : ""}
 <link rel="stylesheet" href="${FONTS_CSS}" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="${FONTS_CSS}"></noscript>
 <script>try { if (localStorage.getItem("theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch {}</script>
-<style>${CSS}</style>${analyticsSnippet()}${UTM_SNIPPET}</head><body>
+<style>${CSS}</style>${analyticsSnippet()}${UTM_SNIPPET}${adLandingSnippet()}</head><body>
 ${OFFER_ACTIVE ? `<a class="promo" href="/send"><b>${esc(OFFER_LINE)}</b><span>Taken off automatically · any postcard or letter</span><i aria-hidden="true">→</i></a>` : ""}
 <header class="site"><div class="wrap"><nav>
   <a class="logo" href="/">${LOGO_FULL}</a>
