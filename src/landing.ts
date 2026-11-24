@@ -8,7 +8,7 @@ import { ARTICLES } from "./articles.ts";
 // most of them sat "discovered, not indexed" or unknown to Google. The certified-mail hub and its spokes are pinned
 // (the SEO focus, see content-ops/seo/), then the newest other articles fill the row, so a new article shows up here
 // the day it publishes. Add new certified-mail spokes to PINNED_GUIDES.
-const PINNED_GUIDES = ["what-is-certified-mail", "certified-mail-vs-return-receipt"];
+const PINNED_GUIDES = ["what-is-certified-mail", "certified-mail-labels", "certified-mail-vs-return-receipt"];
 const HOME_GUIDES_MAX = 6;
 function homeGuides() {
   const pinned = PINNED_GUIDES.map((s) => ARTICLES.find((a) => a.slug === s)).filter((a) => !!a);
