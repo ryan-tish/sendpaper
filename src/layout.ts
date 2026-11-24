@@ -83,7 +83,7 @@ legend { font: 600 .98rem var(--f-ui); padding: 0 6px; }
 footer.site { border-top: 1px solid var(--rule); margin-top: 112px; padding-block: 44px 40px; font-size: .88rem; color: var(--soft); display: grid; gap: 36px; }
 footer.site .fcols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
 footer.site nav { display: grid; gap: 10px; align-content: start; min-width: 0; }
-footer.site .fh { font: 500 .74rem var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+footer.site .fh { font: 500 .74rem var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--green); } /* same look as the section eyebrows (Ryan, 2026-11-24) */
 footer.site .fbase { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding-top: 22px; border-top: 1px solid var(--rule); }
 @media (max-width: 860px) { footer.site .fcols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; } }
 footer.site a { color: var(--soft); text-decoration: none; }
