@@ -8,6 +8,14 @@ import { track } from "./analytics.ts";
 
 export { senderKey } from "./orders.ts";
 
+// /reviews stays out of search (noindex, and out of the sitemap) until it has this many approved reviews: with none it
+// was a 54-word page that site audits flag as thin content (OpenSEO, 2026-11-23). Never pad it with made-up reviews.
+export const REVIEWS_INDEX_MIN = 3;
+export async function approvedReviewCount() {
+  const { rows } = await pool.query<{ n: number }>("SELECT count(*)::int AS n FROM reviews WHERE approved");
+  return rows[0]?.n ?? 0;
+}
+
 // Reviews: one per order, only after it's mailed, shown publicly only once Ryan approves it.
 export type Review = {
   id: number;

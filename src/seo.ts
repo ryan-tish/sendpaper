@@ -6,6 +6,7 @@ import { BASE_URL, DOCS_URL } from "./config.ts";
 import { GUIDE_PATHS } from "./guides.ts";
 import { ARTICLE_PATHS, ARTICLES } from "./articles.ts";
 import { COMPARE_PATHS, COMPARES } from "./compare.ts";
+import { approvedReviewCount, REVIEWS_INDEX_MIN } from "./offer.ts";
 
 // Pages we want indexed. Order pages, admin, order links and the API stay out (they're private or per-order).
 export const PUBLIC_PATHS = ["/", "/send", "/send/postcard", "/send/letter", "/send/certified", "/use-cases", "/guides", ...ARTICLE_PATHS, ...GUIDE_PATHS, ...COMPARE_PATHS, "/enterprise", "/reviews", "/privacy", "/terms", "/content-policy"];
@@ -44,8 +45,10 @@ const LASTMOD = new Map<string, string>([
 ]);
 LASTMOD.set("/guides", [...LASTMOD.values()].sort().at(-1) ?? "");
 
-seo.get("/sitemap.xml", (_req, res) => {
-  const urls = PUBLIC_PATHS.map((p) => {
+seo.get("/sitemap.xml", async (_req, res) => {
+  // /reviews is noindex until it has enough reviews (offer.ts); a noindex page doesn't belong in the sitemap.
+  const reviewsListed = (await approvedReviewCount().catch(() => 0)) >= REVIEWS_INDEX_MIN;
+  const urls = PUBLIC_PATHS.filter((p) => p !== "/reviews" || reviewsListed).map((p) => {
     const mod = LASTMOD.get(p);
     return `  <url><loc>${BASE_URL}${p === "/" ? "/" : p}</loc>${mod ? `<lastmod>${mod}</lastmod>` : ""}</url>`;
   }).join("\n");

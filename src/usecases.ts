@@ -307,6 +307,6 @@ export function useCasesPage() {
     })();
     </script>
     <p class="soft" style="padding-block:24px 0">New to Sendpaper? <a href="${esc(docsUrl("/quickstart"))}">Connect your agent in two minutes →</a></p>`,
-    { description: `Send certified letters with proof of delivery (IRS replies, lease notices, disputes, demand letters) and personal cards with ${BRAND}, from your AI agent or the web.` },
+    { description: `Certified letters with proof of delivery (IRS replies, lease notices, disputes, demand letters) and personal cards, sent from your AI agent or the web.` },
   );
 }

@@ -61,7 +61,13 @@ docs.get("/docs", (_req, res) => {
   );
 });
 
-const policy = (title: string, body: string) => page(`${title} — ${BRAND}`, `<section style="max-width:720px">${body}</section>`);
+// Each page's own meta description (OpenSEO audit 2026-11-23: these shared the site default). 70–160 chars; meta.test.ts.
+export const POLICY_DESCRIPTIONS = {
+  contentPolicy: `What ${BRAND} won't mail: threats, harassment, fraud, impersonation, obscene content and unsolicited ads. A person reviews every piece before printing.`,
+  terms: `${BRAND}'s terms: you pay before anything is printed, mail goes to USPS usually within a business day, and paid orders can be cancelled until printed.`,
+  privacy: `What ${BRAND} collects to mail your order, who receives it (Stripe, PostGrid, Resend, USPS), how we count visits and measure ads, and how long we keep it.`,
+};
+const policy = (title: string, body: string, description: string) => page(`${title} — ${BRAND}`, `<section style="max-width:720px">${body}</section>`, { description });
 
 docs.get("/content-policy", (_req, res) => {
   res.send(
@@ -74,6 +80,7 @@ docs.get("/content-policy", (_req, res) => {
       <li>is obscene, sexually explicit, or puts offensive text on the outside of a postcard;</li>
       <li>advertises to people who did not agree to hear from you. Bulk marketing and campaigns are accepted only from <a href="/enterprise">Enterprise</a> customers, by agreement.</li></ul>
       <p>The sender's name and return address are printed on every piece. We keep order records and cooperate with law enforcement on valid legal requests.</p>`,
+      POLICY_DESCRIPTIONS.contentPolicy,
     ),
   );
 });
@@ -89,6 +96,7 @@ docs.get("/terms", (_req, res) => {
       <p><b>Cancellations and refunds.</b> Unpaid orders are never mailed. Paid orders can be cancelled for a full refund until they are printed; email ${esc(SUPPORT_EMAIL)} with your order id.</p>
       <p><b>Agents.</b> Orders placed by AI agents on your behalf are your orders once you pay for them.</p>
       <p>Questions: ${esc(SUPPORT_EMAIL)}.</p>`,
+      POLICY_DESCRIPTIONS.terms,
     ),
   );
 });
@@ -105,6 +113,7 @@ docs.get("/privacy", (_req, res) => {
       <p>Ads: we advertise in ChatGPT. If you reach us by clicking one of those ads, the link carries a click code from OpenAI, and only then does OpenAI's measurement pixel load. It keeps that code in a cookie on our site (<code>__oppref</code>, 30 days) along with a random browser code (<code>__obref</code>, up to a year), and tells OpenAI the page was viewed. If you then pay for an order, it tells OpenAI that an order was paid and the total, so we can see which ads lead to orders. OpenAI doesn't receive your name, addresses, message, email or order number, and OpenAI handles what it receives under its own privacy policy. If you didn't arrive from one of our ads, the pixel never loads.</p>
       <p>If you ask about volume rates through our <a href="/enterprise">Enterprise</a> form or API, we keep your name, email, company and message to reply to you, and email them to our own inbox through Resend.</p>
       <p>We keep order records for up to 2 years for support, refunds and abuse investigations. To delete your data sooner, email ${esc(SUPPORT_EMAIL)}.</p>`,
+      POLICY_DESCRIPTIONS.privacy,
     ),
   );
 });

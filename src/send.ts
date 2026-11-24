@@ -169,10 +169,11 @@ export const SEND_KINDS: SendKind[] = ["postcard", "letter", "certified"];
 // /send with nothing chosen yet (Ryan, 2026-10-05): pick what you're sending, then get one page with every field.
 // One definition for the /send chooser and the homepage pricing cards (they render the SAME cards: kindCards()),
 // so their wording can't drift apart.
-export const KIND_INFO: Record<SendKind, { title: string; h1: string; cta: string; cents: number; purpose: string }> = {
-  postcard: { title: "Postcard", h1: "Send a postcard", cta: "Send a postcard", cents: PRODUCTS.postcard_4x6.cents, purpose: "For photos and quick notes" },
-  letter: { title: "Letter", h1: "Send a letter", cta: "Send a letter", cents: PRODUCTS.letter.cents, purpose: "For documents and correspondence" },
-  certified: { title: "Certified letter", h1: "Send a certified letter", cta: "Send a certified letter", cents: PRODUCTS.letter_certified.cents, purpose: "For mail that needs proof of delivery" },
+// `description` is the meta description of /send/<kind> (each page needs its own; OpenSEO audit 2026-11-23).
+export const KIND_INFO: Record<SendKind, { title: string; h1: string; cta: string; cents: number; purpose: string; description: string }> = {
+  postcard: { title: "Postcard", h1: "Send a postcard", cta: "Send a postcard", cents: PRODUCTS.postcard_4x6.cents, purpose: "For photos and quick notes", description: `Send a real postcard online from ${usd(PRODUCTS.postcard_4x6.cents)}: add a photo and a note, and we print it and mail it by USPS. Sizes 4×6, 6×9 and 6×11. No account needed.` },
+  letter: { title: "Letter", h1: "Send a letter", cta: "Send a letter", cents: PRODUCTS.letter.cents, purpose: "For documents and correspondence", description: `Send a letter online from ${usd(PRODUCTS.letter.cents)}: type it or upload a PDF, and we print it, put it in an envelope and mail it by USPS. Express available. No account needed.` },
+  certified: { title: "Certified letter", h1: "Send a certified letter", cta: "Send a certified letter", cents: PRODUCTS.letter_certified.cents, purpose: "For mail that needs proof of delivery", description: `Send USPS Certified Mail online from ${usd(PRODUCTS.letter_certified.cents)}: we print and mail your letter and give you tracking and proof of delivery. Return receipt optional.` },
 };
 
 // Small line drawings for the pricing cards (decorative; colors are CSS classes so dark mode works).
@@ -185,9 +186,10 @@ export const KIND_ART: Record<SendKind, string> = {
 // The three product cards: drawing, name, purpose line, "from" price, near-black button. Used by the homepage
 // #pricing section and the /send chooser (Ryan, 2026-11-13: "/send should match the pricing page, less details,
 // really easy to click"). The button's ::after stretches over the card, so the whole card is one click target.
-export const kindCards = () => `<div class="prices three">
+// `h` is the card title's heading level: h3 under the homepage's Pricing h2, h2 on /send (straight under the h1).
+export const kindCards = (h: "h2" | "h3" = "h3") => `<div class="prices three">
 ${SEND_KINDS.map((k) => `<div class="card pcard"><div class="kart" aria-hidden="true">${KIND_ART[k]}</div>
-          <h3>${KIND_INFO[k].title}</h3>
+          <${h}>${KIND_INFO[k].title}</${h}>
           <p class="purpose">${KIND_INFO[k].purpose}</p>
           <div class="price"><small>from</small>${usd(KIND_INFO[k].cents)}</div>
           <a class="btn" href="/send/${k}">${KIND_INFO[k].cta}</a></div>`).join("")}
@@ -200,7 +202,7 @@ export const KIND_CARDS_CSS = `
 .pcard { display: flex; flex-direction: column; gap: 10px; padding: 12px 12px 24px; border-radius: 18px; }
 .pcard > * { margin: 0 12px; }
 .pcard > .kart { margin: 0 0 10px; }
-.pcard h3 { font-size: 1.15rem; }
+.pcard :is(h2, h3) { font-size: 1.15rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
 .pcard .purpose { color: var(--soft); font-size: .95rem; }
 .pcard .price { margin-top: 2px; font-size: 2.3rem; line-height: 1.1; }
 .pcard .price small { font: 500 .88rem var(--f-ui); color: var(--soft); margin-right: 6px; letter-spacing: 0; }
@@ -248,9 +250,10 @@ export function sendChooser() {
     </style>
     <div class="pick">
       <div class="pick-head"><span class="eyebrow">Send mail now</span><h1>What are you sending?</h1></div>
-      ${kindCards()}
+      ${kindCards("h2")}
       <p class="soft" style="font-size:.85rem">AI agent? Skip this form. Build an <a href="${esc(docsUrl("/guides/order-links"))}">order link</a> (one URL with every field) or call the <a href="${esc(docsUrl("/api/introduction"))}">API</a>.</p>
     </div>`,
+    { description: `Mail a postcard (${usd(PRODUCTS.postcard_4x6.cents)}), letter (${usd(PRODUCTS.letter.cents)}) or certified letter (${usd(PRODUCTS.letter_certified.cents)}) from your browser. No account needed: we print it and mail it by USPS.` },
   );
 }
 
@@ -978,5 +981,6 @@ export function sendPage(initial: string, fixed: SendKind) {
     else { showScreen(1, false); if (location.hash === "#addresses") history.replaceState(null, "", location.pathname + location.search); }
     render();
     </script>`,
+    { description: info.description },
   );
 }

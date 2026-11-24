@@ -15,7 +15,7 @@ import { WEBMCP_JS } from "./webmcp.ts";
 import { PREVIEW_IMAGES, previewPng } from "./preview-image.ts";
 import { getBatch, getOrder, groupLines, MAX_RECIPIENTS, priceLines, publicOrder, type OrderRow } from "./orders.ts";
 import { checkoutFor, checkoutUrlFor, confirmBatchFromRedirect, confirmFromRedirect } from "./payments.ts";
-import { addReview, listReviews, reviewFor } from "./offer.ts";
+import { addReview, listReviews, reviewFor, REVIEWS_INDEX_MIN } from "./offer.ts";
 import { addressBlock, esc, printSheet, THEMES } from "./render.ts";
 import { adConversionFrame, adConversionPage } from "./analytics.ts";
 
@@ -284,7 +284,7 @@ web.get("/reviews", async (_req, res) => {
       ${reviews.length
         ? `<div class="grid">${reviews.map((r) => `<div class="card"><b aria-label="${r.rating} out of 5">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</b><p>${esc(r.body)}</p><p class="soft">${esc(r.name)}${r.free_offer ? " · received a free postcard" : ""}</p></div>`).join("")}</div>`
         : `<p>No reviews yet. The first ones are on their way.</p>`}</section>`,
-      { description: `Reviews of ${BRAND} from people who mailed real postcards and letters.` },
+      { description: `Reviews of ${BRAND} from people who mailed real postcards and letters.`, noindex: reviews.length < REVIEWS_INDEX_MIN },
     ),
   );
 });
