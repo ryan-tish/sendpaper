@@ -10,7 +10,7 @@ import { GUIDES, guidePage, guidesIndexPage, RETIRED_PATHS } from "./guides.ts";
 import { ARTICLES, articleList, articlePage } from "./articles.ts";
 import { COMPARES, compareList, comparePage } from "./compare.ts";
 import { QUICK_EXAMPLE, QUICK_PARAMS } from "./quick.ts";
-import { page } from "./layout.ts";
+import { page, setFooterLinks } from "./layout.ts";
 import { WEBMCP_JS } from "./webmcp.ts";
 import { PREVIEW_IMAGES, previewPng } from "./preview-image.ts";
 import { getBatch, getOrder, groupLines, MAX_RECIPIENTS, priceLines, publicOrder, type OrderRow } from "./orders.ts";
@@ -20,6 +20,12 @@ import { addressBlock, esc, printSheet, THEMES } from "./render.ts";
 import { adConversionFrame, adConversionPage } from "./analytics.ts";
 
 export const web = Router();
+
+// Every guide and comparison in the site footer (layout.ts), so Google can reach them from any page it crawls.
+setFooterLinks(
+  ARTICLES.map((a) => ({ href: `/${a.slug}`, label: a.navLabel })),
+  COMPARES.map((c) => ({ href: `/compare/${c.slug}`, label: c.title })),
+);
 const MCP_URL = `${BASE_URL}/mcp`;
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 

@@ -2,6 +2,19 @@ import { BASE_URL, BRAND, EXPRESS_CENTS, FIRST_ORDER_DISCOUNT_PCT, LIMITS, OFFER
 import { docsUrl, page } from "./layout.ts";
 import { esc } from "./render.ts";
 import { KIND_CARDS_CSS, kindCards } from "./send.ts";
+import { ARTICLES } from "./articles.ts";
+
+// Homepage Guides row (2026-11-24): the homepage is the page Google crawls most, and it linked to no article, so
+// most of them sat "discovered, not indexed" or unknown to Google. The certified-mail hub and its spokes are pinned
+// (the SEO focus, see content-ops/seo/), then the newest other articles fill the row, so a new article shows up here
+// the day it publishes. Add new certified-mail spokes to PINNED_GUIDES.
+const PINNED_GUIDES = ["what-is-certified-mail", "certified-mail-vs-return-receipt"];
+const HOME_GUIDES_MAX = 6;
+function homeGuides() {
+  const pinned = PINNED_GUIDES.map((s) => ARTICLES.find((a) => a.slug === s)).filter((a) => !!a);
+  const rest = ARTICLES.filter((a) => !PINNED_GUIDES.includes(a.slug)).sort((a, b) => b.published.localeCompare(a.published));
+  return [...pinned, ...rest].slice(0, HOME_GUIDES_MAX);
+}
 
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 
@@ -73,6 +86,14 @@ const CSS = `
 :root[data-theme="dark"] .ent { background: var(--card); border: 1px solid var(--rule); }
 @media (max-width: 720px) { .ent { padding: 28px 24px; } }
 .faq { max-width: 760px; gap: 20px; }
+.guides-home .glist { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.guides-home .glist a { color: var(--ink); text-decoration: none; transition: border-color .15s; }
+.guides-home .glist a:hover { border-color: var(--green); }
+.guides-home .glist b { font-weight: 600; font-size: 1.02rem; letter-spacing: -0.01em; line-height: 1.3; }
+.guides-home .glist span { color: var(--soft); font-size: .92rem; line-height: 1.45; }
+.guides-home .all { font-weight: 500; text-decoration: none; }
+@media (max-width: 900px) { .guides-home .glist { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .guides-home .glist { grid-template-columns: minmax(0, 1fr); } }
 details.q { border-bottom: 1px solid var(--rule); padding-block: 16px; }
 details.q summary { font-weight: 500; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
 details.q summary::-webkit-details-marker { display: none; }
@@ -163,11 +184,17 @@ export function landing() {
       </div>
     </section>
 
+    <section class="guides-home">
+      <div class="section-head"><span class="eyebrow">Guides</span><h2>Mail that counts, explained</h2></div>
+      <div class="glist">${homeGuides().map((a) => `<a class="card" href="/${esc(a.slug)}"><b>${esc(a.navLabel)}</b> <span>${esc(a.card.blurb)}</span></a>`).join("")}</div>
+      <a class="all" href="/guides">All guides and comparisons →</a>
+    </section>
+
     <section class="faq">
       <div class="section-head"><span class="eyebrow">FAQ</span><h2>Questions</h2></div>
       <div>
         <details class="q"><summary>Is there a first-order discount?</summary><p>${OFFER_ACTIVE ? `Right now, yes: ${FIRST_ORDER_DISCOUNT_PCT}% off your first order, any postcard or letter, one per return address.` : "Not at the moment."} It's taken off the price automatically when the order is created, so the checkout total already includes it. <a href="/reviews">See what senders say</a>.</p></details>
-        <details class="q"><summary>Can you send certified mail?</summary><p>Yes. Letters can go by USPS Certified Mail ($14.99) with a tracking number and proof of delivery, or with a return receipt ($19.99) that adds the recipient's signature. Ask your agent to "send it certified", or choose it under Mailing on the <a href="/send?product=letter_certified">web form</a>.</p></details>
+        <details class="q"><summary>Can you send certified mail?</summary><p>Yes. Letters can go by USPS Certified Mail ($14.99) with a tracking number and proof of delivery, or with a return receipt ($19.99) that adds the recipient's signature (<a href="/what-is-certified-mail">what certified mail proves</a>, and <a href="/certified-mail-vs-return-receipt">when a return receipt is worth it</a>). Ask your agent to "send it certified", or choose it under Mailing on the <a href="/send?product=letter_certified">web form</a>.</p></details>
         <details class="q"><summary>Can I mail my own PDF?</summary><p>Yes. Upload a PDF of up to ${LIMITS.pdfPages} pages (any page size is fitted to 8.5×11) and we print and mail it as a letter, by First-Class, Certified Mail or express. We add an address page in front, so your document needs no room for addresses.</p></details>
         <details class="q"><summary>Can it get there faster?</summary><p>Yes. Express sends postcards and letters by USPS Priority Mail, usually 2 to 3 days with tracking, for ${usd(EXPRESS_CENTS)} more. It can't be combined with Certified Mail, which already includes tracking.</p></details>
         <details class="q"><summary>Do you give legal or tax advice?</summary><p>No. We print and mail what you or your agent writes. For deadlines and the right address, check the notice itself, the agency, or a professional.</p></details>

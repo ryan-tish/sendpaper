@@ -80,7 +80,12 @@ legend { font: 600 .98rem var(--f-ui); padding: 0 6px; }
 .promo b { font-weight: 600; color: var(--lime); }
 .promo span, .promo i { color: #f4f7f5; opacity: .85; font-style: normal; }
 .promo:hover span, .promo:hover i { opacity: 1; }
-footer.site { border-top: 1px solid var(--rule); margin-top: 112px; padding-block: 28px 44px; font-size: .88rem; color: var(--soft); display: flex; gap: 10px 22px; flex-wrap: wrap; align-items: center; }
+footer.site { border-top: 1px solid var(--rule); margin-top: 112px; padding-block: 44px 40px; font-size: .88rem; color: var(--soft); display: grid; gap: 36px; }
+footer.site .fcols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
+footer.site nav { display: grid; gap: 10px; align-content: start; min-width: 0; }
+footer.site .fh { font: 500 .74rem var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+footer.site .fbase { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding-top: 22px; border-top: 1px solid var(--rule); }
+@media (max-width: 860px) { footer.site .fcols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; } }
 footer.site a { color: var(--soft); text-decoration: none; }
 footer.site a:hover { color: var(--ink); }
 .err { color: var(--bad); font-weight: 600; }
@@ -118,6 +123,28 @@ const UTM_SNIPPET = `<script>try{var q=new URLSearchParams(location.search),s=q.
 // cost ~0.8 s on mobile). Text shows in the system font until Geist arrives (display=swap).
 const FONTS_CSS = "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap";
 
+// Footer link columns (2026-11-24). Google had found almost none of the articles: the homepage linked to none and
+// the old one-line footer only to /guides. Every page now links every guide and comparison, so a crawl of any indexed
+// page discovers them. web.ts fills these from ARTICLES and COMPARES at startup (they import this file, so it can't
+// import them), which means a new article or comparison appears in the footer with no extra step.
+export type NavLink = { href: string; label: string };
+let footerGuides: NavLink[] = [];
+let footerCompares: NavLink[] = [];
+export function setFooterLinks(guides: NavLink[], compares: NavLink[]) {
+  footerGuides = guides;
+  footerCompares = compares;
+}
+const navCol = (name: string, links: NavLink[]) =>
+  `<nav aria-label="${esc(name)}"><span class="fh">${esc(name)}</span>${links.map((l) => `<a href="${esc(l.href)}">${esc(l.label)}</a>`).join("")}</nav>`;
+function footer() {
+  return `<div class="wrap"><footer class="site"><div class="fcols">
+${navCol("Send", [{ href: "/send/postcard", label: "Send a postcard" }, { href: "/send/letter", label: "Send a letter" }, { href: "/send/certified", label: "Send certified mail" }, { href: "/#pricing", label: "Pricing" }, { href: "/use-cases", label: "Use cases" }])}
+${navCol("Guides", [...footerGuides, { href: "/guides", label: "All guides" }])}
+${navCol("Compare", footerCompares)}
+${navCol("Company", [{ href: "/enterprise", label: "Enterprise" }, { href: docsUrl(), label: "Docs" }, { href: "/terms", label: "Terms" }, { href: "/privacy", label: "Privacy" }, { href: "/content-policy", label: "Content policy" }])}
+</div><div class="fbase"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span>${SOCIAL.map((s) => `<a href="${esc(s.url)}" rel="me">${esc(s.name)}</a>`).join("")}<span>Support: ${esc(SUPPORT_EMAIL)}</span></div></footer></div>`;
+}
+
 export function page(title: string, body: string, opts: { description?: string; noindex?: boolean } = {}) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -150,7 +177,7 @@ ${OFFER_ACTIVE ? `<a class="promo" href="/send"><b>${esc(OFFER_LINE)}</b><span>T
 <main class="wrap">
 <!--md-start-->${body}<!--md-end-->
 </main>
-<div class="wrap"><footer class="site"><span>© ${new Date().getFullYear()} ${esc(BRAND)}</span><a href="/use-cases">Use cases</a><a href="/guides">Guides</a><a href="${docsUrl()}">Docs</a><a href="/enterprise">Enterprise</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/content-policy">Content policy</a>${SOCIAL.map((s) => `<a href="${esc(s.url)}" rel="me">${esc(s.name)}</a>`).join("")}<span>Support: ${esc(SUPPORT_EMAIL)}</span></footer></div>
+${footer()}
 <script>
 document.getElementById("theme").addEventListener("click", () => {
   const dark = document.documentElement.dataset.theme !== "dark";

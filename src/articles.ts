@@ -18,6 +18,7 @@ type Article = {
   slug: string; // served at /<slug>, like the guides
   kicker: string;
   title: string; // visible h1
+  navLabel: string; // short sentence-case link text for the site footer and the homepage Guides row
   metaTitle: string; // <title> / og:title, aim for 50–65 chars
   description: string; // meta description, aim for 140–160 chars
   lede: string; // one-line deck
@@ -36,6 +37,7 @@ type Article = {
 export const ARTICLES: Article[] = [
   {
     slug: "what-is-certified-mail",
+    navLabel: "What is certified mail?",
     kicker: "Certified mail",
     title: "What is certified mail?",
     metaTitle: "What Is Certified Mail? Uses, Receipts and When to Send It",
@@ -128,6 +130,7 @@ export const ARTICLES: Article[] = [
   },
   {
     slug: "certified-mail-vs-return-receipt",
+    navLabel: "Certified mail vs. return receipt",
     kicker: "Certified mail",
     title: "Certified mail vs. return receipt: what's the difference?",
     metaTitle: "Certified Mail vs. Return Receipt: What's the Difference?",
@@ -211,6 +214,7 @@ export const ARTICLES: Article[] = [
   },
   {
     slug: "small-claims-evidence-packet",
+    navLabel: "Small claims evidence packet",
     kicker: "Small claims",
     title: "What is an evidence packet for small claims court?",
     metaTitle: "Small Claims Evidence Packet: What to Include and Bring",
@@ -311,6 +315,7 @@ export const ARTICLES: Article[] = [
     sourceNote: "Court rules differ by state and county, and USPS rules change; check your court and USPS before relying on a detail.",
   },  {
     slug: "send-a-letter-to-the-us-from-abroad",
+    navLabel: "Send a letter to the US from abroad",
     kicker: "Mail from abroad",
     title: "How to send a letter to the US from another country",
     metaTitle: "How to Send a Letter to the US From Another Country",
@@ -396,6 +401,7 @@ export const ARTICLES: Article[] = [
   },
   {
     slug: "cancellation-letter-by-mail",
+    navLabel: "Cancellation letter by mail",
     kicker: "Cancellation letters",
     title: "How to cancel a membership or contract by mail",
     metaTitle: "Cancel a Gym Membership or Contract by Mail: Letter Template",
@@ -535,6 +541,7 @@ Sincerely,
   },
   {
     slug: "gym-cancellation-laws-by-state",
+    navLabel: "Gym cancellation laws by state",
     kicker: "Research",
     title: "How you're allowed to cancel a gym membership, state by state",
     metaTitle: "Gym Cancellation Laws by State: How You Can Cancel (2026)",
@@ -637,6 +644,7 @@ Sincerely,
   },
   {
     slug: "can-ai-send-mail",
+    navLabel: "Can AI send physical mail?",
     kicker: "AI agents",
     title: "Can AI send physical mail? ChatGPT, Claude and Codex",
     metaTitle: "Can AI Send Physical Mail? ChatGPT, Claude and Codex",
