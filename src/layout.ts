@@ -8,7 +8,7 @@ import { esc } from "./render.ts";
 // green reserved for accents and success, Geist throughout with Geist Mono for anything an agent would type.
 const CSS = `
 :root {
-  --paper: #ffffff; --tint: #f6f9f7; --card: #ffffff; --ink: #0d1512; --soft: #56625c; --faint: #68736d; --rule: #e6ebe8;
+  --paper: #ffffff; --tint: #f6f9f7; --card: #ffffff; --ink: #0d1512; --soft: #56625c; --faint: #68736d; --rule: #e6ebe8; --grey: #f1f2f0;
   --green: #0f7a52; --green-soft: #edf8f2; --green-line: #d6efe2; --lime: #8fd16a;
   --ok: #0f7a52; --ok-bg: #edf8f2; --warn: #8a5a0e; --warn-bg: #fdf3e1; --bad: #b3261e;
   --btn-bg: #0d1512; --btn-fg: #ffffff;
@@ -16,7 +16,7 @@ const CSS = `
   --f-mono: "Geist Mono", ui-monospace, Menlo, monospace;
 }
 :root[data-theme="dark"] {
-  --paper: #0b100e; --tint: #101714; --card: #121a16; --ink: #e6ede9; --soft: #a1aea7; --faint: #808d86; --rule: #222c27;
+  --paper: #0b100e; --tint: #101714; --card: #121a16; --ink: #e6ede9; --soft: #a1aea7; --faint: #808d86; --rule: #222c27; --grey: #1b231f;
   --green: #4fd1a1; --green-soft: #12291f; --green-line: #1d3d2f; --lime: #a6e07e;
   --ok: #4fd1a1; --ok-bg: #12291f; --warn: #f0c071; --warn-bg: #33270f; --bad: #f2a097;
   --btn-bg: #e6ede9; --btn-fg: #0b100e; color-scheme: dark }

@@ -293,9 +293,19 @@ export const ARTICLE_CSS = `
 .prose ul.check li::before { content: "✓"; position: absolute; left: 4px; color: var(--green); font: 600 1rem var(--f-ui); }
 .prose .prompt { font: .9rem/1.6 var(--f-mono); background: var(--tint); border-left: 3px solid var(--green); border-radius: 0 10px 10px 0; padding: 14px 18px; margin: 4px 0 14px; }
 .prose .prompt::before { content: "› "; color: var(--green); }
-.cta-box { font-family: var(--f-ui); margin: 36px 0 8px; padding: 22px 24px; border: 1px solid var(--rule); border-radius: 14px; background: var(--card); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; }
+.cta-box { font-family: var(--f-ui); margin: 36px 0 8px; padding: 22px 24px; border: 0; border-radius: 14px; background: var(--grey); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; }
 .cta-box b { display: block; font-size: 1.05rem; } .cta-box span { color: var(--soft); font-size: .92rem; }
 .cta-box .ctas { display: flex; flex-wrap: wrap; gap: 10px; }
+/* FAQs as dropdowns (Ryan, 2026-11-24). The answer stays in the HTML (crawlable, and Chrome's find-in-page opens it). */
+.prose details.faq { border-bottom: 1px solid var(--rule); }
+.prose h2 + details.faq { border-top: 1px solid var(--rule); }
+.prose details.faq summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 14px; padding: 15px 2px; }
+.prose details.faq summary::-webkit-details-marker { display: none; }
+.prose details.faq summary h3 { margin: 0 !important; flex: 1; }
+.prose details.faq summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--soft); border-bottom: 2px solid var(--soft); transform: rotate(45deg); margin: -4px 4px 0 0; transition: transform .2s; }
+.prose details.faq[open] summary::after { transform: rotate(-135deg); margin-top: 4px; }
+.prose details.faq summary:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 6px; }
+.prose details.faq > p { margin: 0 0 16px; }
 .prose .guard { font: 400 .9rem/1.6 var(--f-ui); color: var(--faint); border-top: 1px solid var(--rule); padding-top: 18px; margin-top: 36px; }
 .toc { position: sticky; top: 96px; align-self: start; display: grid; gap: 8px; font-size: .88rem; padding-top: 6px; }
 .toc span { font: 500 .72rem var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }

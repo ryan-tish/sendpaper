@@ -462,10 +462,10 @@ export function comparePage(slug: string) {
           <h2 id="fit">Which fits</h2>
           <h3>When to choose ${esc(c.rival)}</h3>${c.rivalFits.map((p) => `<p>${rich(p)}</p>`).join("")}
           <h3>When to choose ${esc(BRAND)}</h3>${c.usFits.map((p) => `<p>${rich(p)}</p>`).join("")}
-          <div class="cta-box"><div><b>Need to send one now?</b><span>Letters, certified letters and postcards. No account.</span></div>
+          <div class="cta-box"><div><b>Need to send one now?</b></div>
             <div class="ctas"><a class="btn green" href="/send">Send from the web</a><a class="btn alt" href="${esc(docsUrl("/quickstart"))}">Connect your AI agent</a></div></div>
           <h2 id="questions">Common questions</h2>
-          ${c.faqs.map(([q, a]) => `<h3>${esc(q)}</h3><p>${rich(a)}</p>`).join("")}
+          ${c.faqs.map(([q, a]) => `<details class="faq"><summary><h3>${esc(q)}</h3></summary><p>${rich(a)}</p></details>`).join("")}
           <details class="srcbox" id="sources"><summary><h2>Sources</h2><span class="note">${c.sources.length} links</span></summary>
           <ul class="srcs">${c.sources.map(([t, u]) => `<li><a href="${esc(u)}" rel="noopener">${esc(t)}</a></li>`).join("")}</ul>
           <p class="note">${esc(c.rival)} sources accessed ${esc(c.checked)}. We're not affiliated with ${esc(c.rival)}; our printing partner is PostGrid.</p></details>

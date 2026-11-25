@@ -7,13 +7,18 @@ import { BASE_URL, BRAND, LIMITS, PRODUCTS } from "./config.ts";
 import { ARTICLE_CSS, INDEX_CSS, type CardArt, type CardCat, type IndexCard } from "./guides.ts";
 import { docsUrl, page } from "./layout.ts";
 import { esc, plain, rich } from "./render.ts";
+import { ENVELOPE_SVG, PS3800_SVG } from "./article-figures.ts";
 import { GYM_SOURCES, GYM_STATE_ROWS } from "./gym-laws.ts";
 
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 const LETTER = usd(PRODUCTS.letter.cents), CERT = usd(PRODUCTS.letter_certified.cents), RR = usd(PRODUCTS.letter_certified_rr.cents);
 
 // template: a plain-text letter shown as a preformatted block under the paragraphs (escaped, no markup).
-type Section = { id: string; h: string; ps: string[]; template?: string; table?: { head: string[]; rows: string[][] }; after?: string[] };
+// figure: an inline SVG drawing (src/article-figures.ts) shown after the paragraphs; `alt` also becomes a line of
+// text in the page's markdown, since the converter drops SVGs. endFigure: the same, at the end of the section.
+// numbered: render `after` as a numbered list whose numbers match a figure's callouts (2026-11-24).
+type Figure = { svg: string; alt: string; caption: string };
+type Section = { id: string; h: string; ps: string[]; template?: string; table?: { head: string[]; rows: string[][] }; after?: string[]; numbered?: boolean; figure?: Figure; endFigure?: Figure };
 type Article = {
   slug: string; // served at /<slug>, like the guides
   kicker: string;
@@ -27,7 +32,7 @@ type Article = {
   modified: string; // ISO, bump only on substantive change
   answer: string[]; // short answer, 2–3 self-contained sentences
   sections: Section[];
-  cta: { title: string; body: string; primary: [string, string]; secondary?: [string, string] };
+  cta: { title: string; primary: [string, string]; secondary?: [string, string] }; // one bold line + buttons in a grey box (Ryan, 2026-11-24: no subtext)
   faqs: [string, string][];
   sources: [string, string][];
   sourceNote?: string; // replaces the default USPS line under the sources
@@ -39,17 +44,17 @@ export const ARTICLES: Article[] = [
     slug: "what-is-certified-mail",
     navLabel: "What is certified mail?",
     kicker: "Certified mail",
-    title: "What is certified mail?",
-    metaTitle: "What Is Certified Mail? Uses, Receipts and When to Send It",
-    description: "Certified mail gives you proof you sent a letter and a record of its delivery. Learn when to use it instead of regular mail, and when a return receipt matters.",
-    lede: "Proof you sent it, and a record of when it arrived.",
-    checked: "October 8, 2026",
+    title: "What is certified mail? Proof your letter was delivered",
+    metaTitle: "What Is Certified Mail? Proof Your Letter Was Delivered",
+    description: "Certified mail gives you USPS's record that your letter was delivered, plus proof you sent it. When to use it, with examples, and when to add a return receipt.",
+    lede: "The one thing it's for: knowing your letter got there.",
+    checked: "November 24, 2026",
     published: "2026-10-08",
-    modified: "2026-10-08",
-    card: { cat: "proof", date: "2026-10-08", art: "track", label: "Certified Mail", blurb: "What it proves, when to use it, and when you need a return receipt." },
+    modified: "2026-11-24",
+    card: { cat: "proof", date: "2026-11-24", art: "track", label: "Certified Mail", blurb: "Proof your letter was delivered: what it shows, when to use it, and when to add a return receipt." },
     answer: [
-      "Certified Mail is a USPS add-on for letters that gives you **proof you mailed it and a record of when it was delivered,** or when delivery was attempted. Add a **return receipt** if you also need the recipient's signature sent to you.",
-      "Use it for mail you may later need to prove you sent: notices, disputes, demands and replies to agencies. For everyday letters, regular First-Class Mail is enough.",
+      "**Certified Mail is how you know whether your letter was delivered.** It's a USPS add-on that gives you a tracking record of when the letter was delivered, or when delivery was attempted, plus proof that you mailed it. Add a **return receipt** to get the signature of whoever accepted it.",
+      "Use it for letters you may later need to show arrived: notices, disputes, demands and replies to agencies. For everyday letters, regular First-Class Mail is enough.",
     ],
     sections: [
       {
@@ -64,26 +69,14 @@ export const ARTICLES: Article[] = [
         id: "proves",
         h: "What it proves, and what it doesn't",
         ps: [
-          "Certified Mail shows that you sent something, when USPS accepted it, and when it was delivered or attempted. That's why rules, contracts and agencies often ask for it.",
+          "Certified Mail's main job is **confirming delivery:** it shows that you sent something, when USPS accepted it, and when it was delivered or delivery was attempted. That's why rules, contracts and agencies often ask for it.",
           "It doesn't prove what was inside the envelope, so keep a copy of exactly what you sent. It doesn't guarantee the named person read it: anyone at the address can usually sign. An attempted delivery isn't a completed one. Certified Mail adds no insurance, and it's a domestic service only (US addresses, including territories and APO/FPO).",
         ],
       },
       {
-        id: "uses",
-        h: "Common uses",
-        ps: ["People usually send certified mail when a letter starts a clock, settles a dispute or answers an official request:"],
-        after: [
-          "**Tax notices:** replies to the IRS or a state tax agency.",
-          "**Landlord and tenant notices:** repair requests, move-out notices, security deposit requests.",
-          "**Disputes:** credit report errors, billing errors, debt validation requests.",
-          "**Demands and cancellations:** an unpaid invoice, ending a contract or a subscription in writing.",
-          "**Required notices:** anything a contract, lease or rule says must go by certified mail.",
-        ],
-      },
-      {
         id: "vs-regular",
-        h: "Certified mail vs. regular mail",
-        ps: ["The difference is the paper trail. Regular First-Class Mail is cheaper and needs no signature, but it gives you no proof it was sent or delivered."],
+        h: "Certified mail vs. regular mail, with examples",
+        ps: ["The difference is the paper trail. Regular First-Class Mail is cheaper and needs no signature, but it gives you no record that it was sent or delivered."],
         table: {
           head: ["", "Regular First-Class", "Certified", "Certified + return receipt"],
           rows: [
@@ -91,19 +84,20 @@ export const ARTICLES: Article[] = [
             ["Tracking number", "No", "Yes", "Yes"],
             ["Delivery or attempt date and time", "No", "Yes", "Yes"],
             ["Recipient's signature sent to you", "No", "No (USPS keeps it)", "Yes"],
+            ["Common uses", "Personal letters, thank-you notes, routine updates", "Payment demands, records requests, complaints, signed documents to an office", "Landlord notices, security deposit and debt validation letters, cancellations, replies to the IRS"],
             [`Price with ${BRAND}`, LETTER, CERT, RR],
           ],
         },
         after: [
-          "**Use regular mail** for thank-you notes, cards, routine updates and anything where proof doesn't matter.",
-          "**Use certified mail** when you might need to show you sent it on time: a deadline, a dispute, a formal notice. It does ask more of the recipient. If no one is there to sign, USPS leaves a notice; if the letter isn't picked up or redelivered within 15 days, it comes back to the sender.",
+          "These are common choices, not rules: if a lease, contract or notice says how to send it, do that. Browse [ready-made certified letters by situation](/use-cases), from tax replies to landlord notices.",
+          "**From our research:** we checked gym-contract law in all 50 states and DC. In 13 states and DC, the law only guarantees certified or registered mail, or delivering it in person, as a way to cancel during the cooling-off window ([see the state-by-state table](/gym-cancellation-laws-by-state)).",
         ],
       },
       {
         id: "receipt",
         h: "Do you need a return receipt?",
         ps: [
-          "A [return receipt](https://www.usps.com/ship/insurance-extra-services.htm) gives you a delivery record with the recipient's signature, either as a green card mailed back to you or electronically. (Which kind comes with a Sendpaper order? Email support@sendmypaper.com and we'll tell you.)",
+          "A [return receipt](https://www.usps.com/ship/insurance-extra-services.htm) gives you a delivery record with the recipient's signature, either as a green card mailed back to you or electronically. **You can't add one to a regular stamped letter:** USPS sells it only together with another service, and for an everyday letter that service is Certified Mail ([DMM 503, Exhibit 1.4.1](https://pe.usps.com/text/dmm300/503.htm)).",
           "**Get one when the signature itself matters:** the contract, notice or rule says \"return receipt requested\", or you want proof of who received it, not just that it arrived. **Skip it when** a delivery date from tracking is enough, such as when you just want to know a reply is on its way.",
           "More on choosing: [certified mail vs. return receipt](/certified-mail-vs-return-receipt). If you're not sure what a rule requires, check the notice, contract or rule itself, or ask a professional. We print and mail letters; we don't give legal advice.",
         ],
@@ -111,7 +105,6 @@ export const ARTICLES: Article[] = [
     ],
     cta: {
       title: "Send a certified letter without the post office",
-      body: `Type it or upload a PDF. ${CERT} with tracking, or ${RR} with a return receipt. Printing, envelope and postage included.`,
       primary: ["Send a certified letter", "/send?product=letter_certified"],
       secondary: ["Ask your AI agent to send it", docsUrl("/quickstart")],
     },
@@ -122,7 +115,7 @@ export const ARTICLES: Article[] = [
       [`Can I send certified mail online with ${BRAND}?`, `Yes. Type a letter or [upload a PDF](/send/letter?source=pdf), choose Certified, and we print it and mail it by USPS Certified Mail. A person reviews it first, and the tracking number appears on your order page once it's assigned. You can also have an AI agent like Claude send it for you. See [ready-made prompts](/use-cases).`],
     ],
     sources: [
-      ["USPS Domestic Mail Manual 503: Certified Mail and Return Receipt", "https://pe.usps.com/text/dmm300/503.htm"],
+      ["USPS Domestic Mail Manual 503: Certified Mail, Return Receipt and extra-service eligibility (Exhibit 1.4.1)", "https://pe.usps.com/text/dmm300/503.htm"],
       ["USPS: insurance and extra services (Certified Mail, Return Receipt, Registered Mail)", "https://www.usps.com/ship/insurance-extra-services.htm"],
       ["USPS Domestic Mail Manual 508: recipient signatures and unclaimed mail", "https://pe.usps.com/text/dmm300/508.htm"],
       ["USPS: adding extra services", "https://pe.usps.com/text/dmm100/extra-services.htm"],
@@ -136,20 +129,20 @@ export const ARTICLES: Article[] = [
     metaTitle: "Certified Mail vs. Return Receipt: What's the Difference?",
     description: "Certified Mail tracks delivery; a return receipt sends you the signature. See what each one gives you, green card vs. electronic, and when to add one.",
     lede: "Certified Mail tracks delivery. A return receipt sends you the signature.",
-    checked: "October 8, 2026",
+    checked: "November 24, 2026",
     published: "2026-10-08",
-    modified: "2026-10-08",
-    card: { cat: "proof", date: "2026-10-08", art: "track", label: "Return Receipt", blurb: "What each one gives you, and when the signature is worth adding." },
+    modified: "2026-11-24",
+    card: { cat: "proof", date: "2026-11-24", art: "track", label: "Return Receipt", blurb: "What each one gives you, and when the signature is worth adding." },
     answer: [
       "Certified Mail and a return receipt aren't alternatives: **a return receipt is an add-on** to a service like Certified Mail, not a separate way to send. Certified Mail gives you a tracking number and a USPS record of delivery.",
-      "Adding a return receipt sends you **a record of who signed for it:** their signature, the delivery date and the address where it was actually delivered.",
+      "Adding a return receipt sends you **a record of who signed for it:** their signature, the delivery date and the address where it was actually delivered. You can't get one on a regular stamped letter, which is one of the reasons to send it certified.",
     ],
     sections: [
       {
         id: "side",
         h: "What each one gives you",
         ps: [
-          "[Certified Mail](/what-is-certified-mail) is the service; the return receipt is added to it. You can't buy a return receipt for a regular First-Class letter on its own.",
+          "[Certified Mail](/what-is-certified-mail) is the service; the return receipt is added to it.",
         ],
         table: {
           head: ["", "Certified Mail", "Certified + return receipt"],
@@ -167,36 +160,42 @@ export const ARTICLES: Article[] = [
         ],
       },
       {
+        id: "needs-certified",
+        h: "Want a return receipt on a letter? Send it certified",
+        ps: [
+          "**This is the part people miss: you can't add a return receipt to a regular stamped letter.** USPS sells it only together with another service ([DMM 503, Exhibit 1.4.1](https://pe.usps.com/text/dmm300/503.htm)), and for an everyday letter that service is Certified Mail. Others, such as Registered Mail, insurance over $500 or Priority Mail Express, can carry one too, but they cost more and are built for valuables or speed.",
+          "So if you might want the signature, send the letter certified with a return receipt from the start: USPS sells a return receipt only at the time of mailing ([DMM 503, 6.1.1](https://pe.usps.com/text/dmm300/503.htm)).",
+        ],
+      },
+      {
         id: "kinds",
         h: "Green card or electronic",
         ps: [
           "USPS offers [two kinds of return receipt](https://pe.usps.com/text/dmm300/503.htm). The **green card** (PS Form 3811) is attached to the envelope, signed at delivery and mailed back to the address on the card. The **electronic** version arrives by email. Both give you the signature, the delivery date and the delivery address.",
           "The electronic version isn't available for mail to APO/FPO/DPO addresses or US territories.",
-          `Which kind comes with a ${BRAND} order, or a receipt that hasn't arrived? Email support@sendmypaper.com and we'll sort it out.`,
         ],
       },
       {
         id: "when",
         h: "When to add a return receipt",
-        ps: ["**Add one when the signature itself matters:**"],
+        ps: ["A rule of thumb, with the letters people most often send each way:"],
+        table: {
+          head: ["", "Certified Mail alone", "Certified + return receipt"],
+          rows: [
+            ["Choose it when", "You need proof you sent it and when it was delivered", "The signature matters: you may need to show who received it, or the lease, contract or rule says \"return receipt requested\""],
+            ["What you'll have", "The tracking record: when USPS accepted it and when it was delivered or delivery was attempted. USPS can email a proof of delivery letter with the signature, when one is available", "All of that, plus a return receipt with the signature, delivery date and address"],
+            ["Common uses", "Payment demands, public records requests, complaints to a company, signed documents to a government office", "Landlord notices, security deposit and debt validation letters, cancelling a gym membership or contract, replies to the IRS"],
+            [`Price with ${BRAND}`, CERT, RR],
+          ],
+        },
         after: [
-          "The contract, lease, notice or rule you're following says **\"return receipt requested\".**",
-          "You may need to show **who** received it, not just that it arrived.",
-          "You want a delivery record you hold yourself, without looking it up later.",
-        ],
-      },
-      {
-        id: "skip",
-        h: "When Certified Mail alone is enough",
-        ps: [
-          "Skip the return receipt when a delivery date is all you need: confirming a reply is on its way, or a rule that asks only for certified mail. Tracking shows when it was delivered or attempted, and USPS keeps the signature on file; it can email a [proof of delivery letter](https://pe.usps.com/text/dmm300/503.htm) that includes the signature when one is available.",
-          "That letter isn't the same thing as a return receipt, so if a rule specifically asks for one, buy the return receipt. If you're not sure what a rule requires, check it or ask a professional; we print and mail letters and don't give legal advice.",
+          "**From our research:** in 7 states, gym-contract law calls for a return receipt if you cancel by certified or registered mail during the cooling-off days after you sign ([see the state-by-state table](/gym-cancellation-laws-by-state)). Rules like that are why it's worth checking before you send.",
+          "USPS's [proof of delivery letter](https://pe.usps.com/text/dmm300/503.htm) isn't the same thing as a return receipt, so if a rule asks for a return receipt, buy one. These are common choices, not rules: if you're not sure what a lease, contract or notice requires, check it or ask a professional. We print and mail letters and don't give legal advice. See [ready-made prompts for each](/use-cases).",
         ],
       },
     ],
     cta: {
       title: "Send a certified letter with a return receipt",
-      body: `Type it or upload a PDF. ${RR} with a return receipt, or ${CERT} for Certified Mail alone. Printing, envelope and postage included.`,
       primary: ["Send with a return receipt", "/send?product=letter_certified_rr"],
       secondary: ["Ask your AI agent to send it", docsUrl("/quickstart")],
     },
@@ -207,7 +206,7 @@ export const ARTICLES: Article[] = [
       ["What if no one signs for it?", `USPS leaves a notice, and the recipient can pick it up or request redelivery. If it isn't claimed within 15 days, it goes back to the sender, and there's no signature to report. See [what certified mail is](/what-is-certified-mail) for more.`],
     ],
     sources: [
-      ["USPS Domestic Mail Manual 503: Return Receipt (6.0), delivery records (1.8), Certified Mail (3.0)", "https://pe.usps.com/text/dmm300/503.htm"],
+      ["USPS Domestic Mail Manual 503: extra-service eligibility (Exhibit 1.4.1), Return Receipt (6.0), delivery records (1.8), Certified Mail (3.0)", "https://pe.usps.com/text/dmm300/503.htm"],
       ["USPS Domestic Mail Manual 508: recipient signatures and unclaimed mail", "https://pe.usps.com/text/dmm300/508.htm"],
       ["USPS: insurance and extra services (Return Receipt, Restricted Delivery)", "https://www.usps.com/ship/insurance-extra-services.htm"],
     ],
@@ -295,7 +294,6 @@ export const ARTICLES: Article[] = [
     ],
     cta: {
       title: "Send your demand letter by certified mail",
-      body: `Type it or upload a PDF. ${CERT} with tracking, or ${RR} with a return receipt. Printing, envelope and postage included.`,
       primary: ["Send a certified letter", "/send?product=letter_certified"],
       secondary: ["Ask your AI agent to send it", docsUrl("/quickstart")],
     },
@@ -379,7 +377,6 @@ export const ARTICLES: Article[] = [
     ],
     cta: {
       title: "Send a letter to the US from anywhere",
-      body: `${LETTER} for a letter, ${CERT} with Certified Mail tracking. Type it or upload a PDF; black-and-white printing, envelope and US postage included.`,
       primary: ["Send a letter", "/send/letter"],
       secondary: ["Send it by Certified Mail", "/send/certified"],
     },
@@ -515,7 +512,6 @@ Sincerely,
     ],
     cta: {
       title: "Send your cancellation letter by Certified Mail",
-      body: `${CERT} with USPS tracking, ${RR} with a return receipt. Type it or upload a signed PDF; printing, envelope and postage included.`,
       primary: ["Send a certified letter", "/send/certified"],
       secondary: ["Send a regular letter", "/send/letter"],
     },
@@ -625,7 +621,6 @@ Sincerely,
     ],
     cta: {
       title: "Cancel by Certified Mail without a post office trip",
-      body: `${CERT} with USPS tracking, ${RR} with a return receipt. Reviewed and printed before it's mailed, so not for a deadline that's a day or two away.`,
       primary: ["Send a certified letter", "/send/certified"],
       secondary: ["Get the letter template", "/cancellation-letter-by-mail"],
     },
@@ -716,7 +711,6 @@ Sincerely,
     ],
     cta: {
       title: "Let your assistant send real mail",
-      body: `Postcards from ${usd(PRODUCTS.postcard_4x6.cents)}, letters from ${LETTER}, US postage included. No account or API key, and nothing prints until you've paid.`,
       primary: ["Connect your assistant", docsUrl("/quickstart")],
       secondary: ["Send from the web instead", "/send"],
     },
@@ -740,55 +734,121 @@ Sincerely,
     slug: "certified-mail-labels",
     navLabel: "Certified mail labels",
     kicker: "Certified mail",
-    title: "Certified mail labels: how to print one at home",
-    metaTitle: "USPS Certified Mail Labels: How to Print One at Home",
-    description: "You can print a USPS Certified Mail label at home with an approved postage service, or skip it. Where the label goes, how to mail it and what proof you keep.",
-    lede: "Print the label yourself, or have the whole letter printed and mailed for you.",
+    title: "Certified mail labels: what they are and how to print one at home",
+    metaTitle: "USPS Certified Mail Labels: What They Are, How to Print One",
+    description: "What a USPS Certified Mail label is, with the parts of PS Form 3800 labeled, how it differs from Label 3800-N, and how to print one at home or skip it.",
+    lede: "What the green label is, where it comes from, and how to print one yourself or skip it.",
     checked: "November 24, 2026",
     published: "2026-11-24",
     modified: "2026-11-24",
-    card: { cat: "proof", date: "2026-11-24", art: "track", label: "Certified Labels", blurb: "How to print a Certified Mail label at home, where it goes, and when it's easier to skip it." },
+    card: { cat: "proof", date: "2026-11-24", art: "track", label: "Certified Labels", blurb: "What a Certified Mail label is, its parts labeled, and how to print one at home or skip it." },
     answer: [
-      "Yes, you can **print a USPS Certified Mail label at home.** An online postage service that supports Certified Mail, such as Stamps.com or SimpleCertifiedMail, prints a USPS-approved Certified Mail form or cover sheet with the barcode and postage. Attach it above the address, or slip the cover sheet into a window envelope, then drop the letter in a mailbox or give it to your carrier.",
-      `If you mail it from a box, you won't have a receipt postmarked by a clerk: your proof is the service's online record and the USPS tracking history. No printer? A print-and-mail service like ${BRAND} prints the letter and mails it by Certified Mail for you.`,
+      "**Certified Mail** is a USPS add-on for a letter that gives you proof you mailed it and a record of its delivery. Its **label** is the green sticker with a barcode: that barcode is the letter's tracking number.",
+      `You can't download a label and print it, because the barcode has to be a unique number from USPS or a USPS-approved postage service. To print one at home, use an online postage service that sells Certified Mail, such as Stamps.com or SimpleCertifiedMail. Or use the green PS Form 3800 from the post office, or have the whole letter printed and mailed for you by a service like ${BRAND}.`,
     ],
     sections: [
       {
-        id: "what",
-        h: "What a certified mail label is",
+        id: "certified",
+        h: "First, what certified mail is",
         ps: [
-          "Certified Mail is marked with a green Certified Mail label placed **above the delivery address and to the right of the return address** ([USPS DMM 503, 3.2.1](https://pe.usps.com/text/dmm300/503.htm)). On the post-office form and on most printed versions, that label carries the barcode. The long number under it is the Certified Mail number you track the letter with.",
-          "At the post office, the label is the sticker half of **PS Form 3800**, the green-and-white form with a tear-off receipt. Online services that support Certified Mail print a USPS-approved version instead: Stamps.com prints onto its own Certified Mail forms, and SimpleCertifiedMail prints a cover sheet that shows through a window envelope.",
-          "You may also see **Label 3800-N**, a plain green label with no barcode. It's only for pieces whose barcode is on a prepaid shipping label, mostly parcels; you don't need it for a letter printed on a Certified Mail form. And you can't print a label from a template: USPS allows privately printed Certified Mail forms only once it has reviewed and approved them ([DMM 503, 1.7](https://pe.usps.com/text/dmm300/503.htm)).",
-          "Certified Mail works only with First-Class Mail or Priority Mail, and only to US addresses, including US territories and APO/FPO/DPO addresses.",
+          "Certified Mail is an extra service you add to a First-Class or Priority Mail letter. USPS sums it up as \"prove you sent it\" ([USPS](https://www.usps.com/ship/insurance-extra-services.htm)). You get a mailing receipt. You get a tracking number that shows when the letter was delivered, or when delivery was attempted. And USPS keeps a delivery record with the signature of the person who accepted it ([DMM 503, 3.1.1](https://pe.usps.com/text/dmm300/503.htm)). Add a **return receipt** if you want a copy of that signature yourself.",
+          "People use it when they may later need to show that they sent something, and when it arrived: cancelling a contract or membership, a notice to a landlord or tenant, a letter to the IRS or another agency, or a demand for money owed. For an everyday letter, a stamp is enough.",
+        ],
+        table: {
+          head: ["", "Regular letter", "Certified Mail"],
+          rows: [
+            ["What you pay", "Postage (a stamp)", "Postage plus the Certified Mail fee"],
+            ["Proof you mailed it", "None", "A mailing receipt, postmarked if you mail it at the counter"],
+            ["Tracking", "None", "A tracking number that shows delivery or an attempt"],
+            ["Signature", "None", "USPS records the signature; a return receipt gets you a copy"],
+            ["Good for", "Everyday letters and cards", "Letters you may need to prove you sent"],
+          ],
+        },
+        after: ["More on [what certified mail proves](/what-is-certified-mail) and [when a return receipt is worth adding](/certified-mail-vs-return-receipt)."],
+      },
+      {
+        id: "what",
+        h: "What a certified mail label looks like",
+        ps: [
+          "The label is the green sticker that goes on the envelope. At the post office it comes as part of **PS Form 3800**, the Certified Mail Receipt: a barcoded sticker for the envelope, joined to a receipt you keep. Here's the form with each part numbered:",
+        ],
+        figure: {
+          svg: PS3800_SVG,
+          alt: "Drawing of PS Form 3800. On the left, a tall green sticker reading CERTIFIED MAIL with a barcode beside it, and a perforated line where the receipt tears off. On the right, the Certified Mail Receipt: lines for the Certified Mail fee, extra services such as a return receipt, postage and the total, a Postmark Here box, and lines for the recipient's name and address.",
+          caption: "Our simplified drawing of PS Form 3800 (the January 2023 version). It's an illustration, not a usable form.",
+        },
+        numbered: true,
+        after: [
+          "**The sticker.** This is what people mean by a \"certified mail label.\" It goes at the top of the envelope, to the right of your return address and above the recipient's address ([DMM 503, 3.2.1](https://pe.usps.com/text/dmm300/503.htm)).",
+          "**The barcode and Certified Mail number.** That long number is the letter's tracking number. The same number is printed on the receipt half, so you can look the letter up later.",
+          "**The receipt.** Tear it off along the perforation and keep it. Once a clerk postmarks it, it's your proof of the date you mailed the letter ([DMM 503, 1.10](https://pe.usps.com/text/dmm300/503.htm)).",
+          "**Fees and extra services.** The Certified Mail fee, boxes for a return receipt (a mailed green card or an electronic copy), restricted delivery and adult signature, then the postage and the total.",
+          "**Postmark Here.** Where the clerk stamps the date when you hand the letter in at the counter. Mail it from a box instead and the receipt has no postmark: USPS says to write the date on it yourself ([DMM 503, 3.2.1](https://pe.usps.com/text/dmm300/503.htm)).",
+          "**Sent To.** The recipient's name and full address. USPS asks you to fill this in before you mail it ([DMM 503, 3.2.1](https://pe.usps.com/text/dmm300/503.htm)).",
+        ],
+        endFigure: {
+          svg: ENVELOPE_SVG,
+          alt: "Drawing of a letter envelope: the return address at top left, the green CERTIFIED MAIL sticker with its barcode at the top to the right of it, postage in the top-right corner, and the recipient's address in the middle, below the sticker.",
+          caption: "Where the sticker goes: at the top, right of your return address and above the recipient's address ([USPS DMM 503, 3.2.1](https://pe.usps.com/text/dmm300/503.htm)).",
+        },
+      },
+      {
+        id: "forms",
+        h: "PS Form 3800, Label 3800-N or a printed label?",
+        ps: [
+          "Three different things get called a certified mail label. **For a letter you need just one:** PS Form 3800 if you mail it at the post office, or a printed label from an online postage service if you print at home.",
+        ],
+        table: {
+          head: ["", "PS Form 3800", "Label 3800-N", "Printed label or form"],
+          rows: [
+            ["What it is", "Green-and-white form: a barcoded sticker plus a receipt", "A plain green \"Certified Mail\" sticker with no barcode", "A label, form or cover sheet from an online postage service"],
+            ["Has the barcode?", "Yes", "No", "Yes"],
+            ["Postage included?", "No: pay at the counter or add stamps", "No", "Yes, paid when you print it"],
+            ["Who it's for", "Anyone: hand it in at the counter, or add stamps and mail it", "Shippers whose prepaid shipping label already has the barcode, mostly packages", "Anyone printing postage at home"],
+            ["Where to get it", "Post offices, or the USPS Postal Store at no charge (packs of 10)", "The USPS Postal Store at no charge (rolls of 600)", "The postage service's website or app"],
+            ["Use it for a letter?", "Yes", "No", "Yes"],
+          ],
+        },
+        after: [
+          "**Label 3800-N in one line:** it's only used on a piece that also carries a prepaid shipping label whose barcode already includes Certified Mail ([DMM 503, 3.2.1](https://pe.usps.com/text/dmm300/503.htm)), so you can ignore it for a letter.",
         ],
       },
       {
         id: "ways",
         h: "Three ways to get a certified mail label",
-        ps: ["Which one fits depends on whether you have a printer and what proof you want in hand."],
+        ps: ["Which one fits depends on whether you have a printer and how you want to send the letter."],
         table: {
           head: ["", "At the post office", "Print at home", "Print-and-mail service"],
           rows: [
-            ["What you do", "Fill out PS Form 3800, attach it and pay at the counter", "Enter the addresses online, print the form or cover sheet, and mail it", "Type or upload the letter; the service prints it and mails it by Certified Mail"],
-            ["Printer needed", "No", "Yes", "No"],
+            ["What you use", "PS Form 3800", "A label or form from an online postage service", "Nothing: the service prints your letter and mails it by Certified Mail"],
+            ["What you do", "Fill out the form, stick on the label, pay at the counter", "Sign up, enter the addresses, pay, then print and attach", "Type or upload the letter and pay"],
+            ["Where you print", "Nothing to print", "Your own printer: plain paper, labels or the service's forms", "Nothing to print"],
             ["Account needed", "No", "Yes", `Not with ${BRAND}`],
-            ["Your mailing proof", "Postmarked receipt from the clerk", "The service's online record and USPS tracking", "Tracking number and the service's order record"],
-            ["Return receipt", "Green card or electronic", "Green card or electronic, depending on the service", "Depends on the service"],
+            ["What you keep", "Receipt postmarked by the clerk", "The service's online record and USPS tracking", "USPS tracking and the service's order record"],
             ["Best for", "A letter you're taking in anyway", "Regular senders with a printer", "One-off letters, no printer, or sending from an AI agent"],
           ],
         },
+        after: ["Printing at home? There's no USPS form to download: [the steps below](/certified-mail-labels#print) show how it works and two services that do it."],
+      },
+      {
+        id: "why",
+        h: "Why you can't just print a label yourself",
+        ps: [
+          "It looks like a sticker with a barcode, so why not print one? Because the barcode isn't decoration. It's a **unique tracking number that has to come from USPS**, printed on its own form, or from a USPS-approved postage service that reports it to USPS. Every label carries its own number, so a copy of someone else's label, a photo or scan of a form, or a template you find online won't work.",
+          "USPS's rules say that when you buy an extra service like Certified Mail, you use USPS's own forms and labels or privately printed ones that USPS has approved. A company that prints its own has to send samples to USPS for approval and send USPS an electronic file for the barcodes it prints ([DMM 503, 1.7.1–1.7.2](https://pe.usps.com/text/dmm300/503.htm)).",
+          "Online postage services are set up to do that part for you. When you buy Certified Mail through one, it **creates the tracking number, charges the postage and fee, and gives you the label to print** on your own printer ([SimpleCertifiedMail](https://www.simplecertifiedmail.com/), [Stamps.com](https://www.stamps.com/mail/certified-mail/)). That's what printing a certified mail label at home means in practice.",
+        ],
       },
       {
         id: "print",
         h: "How to print a certified mail label at home",
-        ps: ["The steps are about the same with any service that supports Certified Mail:"],
+        ps: ["Step by step, with any service that sells Certified Mail:"],
         after: [
-          "**Pick a service that does Certified Mail.** [Stamps.com](https://www.stamps.com/usps/certified-mail/) prints postage onto Certified Mail forms and offers a green-card or electronic return receipt; it needs a monthly plan, and Certified Mail starts on its Professional plan. [SimpleCertifiedMail](https://www.simplecertifiedmail.com/) charges per letter and prints a cover sheet for a window envelope. Not every postage service does it: [Pirate Ship](https://support.pirateship.com/en/articles/5261628-how-to-ship-government-documents) says Certified Mail isn't a service it offers.",
-          "**Enter both addresses** and choose Certified Mail, plus a return receipt if you want a signature record.",
-          "**Print and attach it** above the delivery address and to the right of the return address, or put the cover sheet behind a window envelope.",
-          "**Check the postage.** The Certified Mail fee is added to regular postage, and a larger or heavier envelope costs more than a standard letter.",
-          "**Mail it.** With postage and fees paid, you can put it in (not on) a mailbox or a street collection box, or give it to your carrier ([DMM 503, 1.5.1](https://pe.usps.com/text/dmm300/503.htm)).",
+          "**Pick an online postage service that sells Certified Mail.** [Stamps.com](https://www.stamps.com/mail/certified-mail/) prints postage onto Certified Mail forms from its [supply store](https://supplies.stamps.com/), or a label on any standard printer; you need its Professional plan or higher. [SimpleCertifiedMail](https://www.simplecertifiedmail.com/how-it-works/) charges per letter and prints a label or cover sheet on plain paper or adhesive labels, with free envelopes. Not every postage service does it: [Pirate Ship](https://support.pirateship.com/en/articles/5261628-how-to-ship-government-documents) doesn't offer Certified Mail.",
+          "**Make an account and enter both addresses.** Choose Certified Mail, and add a return receipt if you want a copy of the signature.",
+          "**Pay, then print.** The service charges the postage and the Certified Mail fee (a bigger or heavier envelope costs more than a standard letter) and gives you the label, form or cover sheet to print.",
+          "**Attach it.** Stick the label at the top of the envelope, right of your return address and above the recipient's address, or put the cover sheet in a window envelope so the addresses and barcode show through.",
+          "**Mail it.** With postage and fees paid, you can put it in (not on) a mailbox or street collection box, or give it to your carrier ([DMM 503, 1.5.1](https://pe.usps.com/text/dmm300/503.htm)). Take it to the counter instead if you want a postmarked receipt.",
           "**Keep the record.** Save the online receipt and the tracking number, and keep a copy of exactly what you sent.",
         ],
       },
@@ -798,7 +858,7 @@ Sincerely,
         ps: [
           "At the counter you leave with a **postmarked receipt.** When you print at home and mail from a box, your receipt is the service's online record: the Certified Mail number, the postage paid, both ZIP Codes and the mailing date you declared, which is not a USPS scan ([DMM 503, 1.10](https://pe.usps.com/text/dmm300/503.htm)). Tracking shows USPS's scans, usually including when it was accepted, and when it was delivered or delivery was attempted.",
           "**If a deadline matters,** dropping the letter in a box doesn't create a USPS record: the first scan comes after pickup, sometimes a day or more later. Hand it to a clerk instead and ask for a receipt or a manual postmark, which is free at the counter ([DMM 608, 11.4](https://pe.usps.com/text/dmm300/608.htm)), then check tracking for the first scan.",
-          "Certified Mail doesn't prove what was inside the envelope, so keep a copy. More on [what certified mail proves](/what-is-certified-mail) and [when a return receipt is worth adding](/certified-mail-vs-return-receipt).",
+          "Certified Mail doesn't prove what was inside the envelope, so keep a copy.",
         ],
       },
       {
@@ -811,26 +871,29 @@ Sincerely,
     ],
     cta: {
       title: "Skip the label and the trip to the post office",
-      body: `Type it or upload a PDF. ${CERT} with tracking, or ${RR} with a return receipt. Printing, envelope and postage included.`,
       primary: ["Send a certified letter", "/send/certified"],
       secondary: ["Ask your AI agent to send it", docsUrl("/quickstart")],
     },
     faqs: [
-      ["Do I need a special printer or labels?", "You don't need a label printer. SimpleCertifiedMail prints on plain paper or adhesive labels from your own printer and supplies window envelopes; Stamps.com prints onto Certified Mail forms it sells."],
+      ["Can I download PS Form 3800 and print it myself?", "No. A Certified Mail label only works with a unique number from USPS or an approved postage service, so a printout or photo of a form won't do. Pick up PS Form 3800 at a post office or order it from the USPS Postal Store at no charge, or print a label through an online postage service."],
+      ["Do I need Label 3800-N for a letter?", "No. Label 3800-N has no barcode and is only used with a prepaid shipping label that already carries the Certified Mail barcode, mostly on packages. A letter needs PS Form 3800 or a printed Certified Mail label, not both."],
+      ["Do I need a special printer or labels?", "You don't need a label printer. SimpleCertifiedMail prints on plain paper or adhesive labels from your own printer and supplies envelopes; Stamps.com prints onto Certified Mail forms it sells, or a label on any standard printer."],
       ["Is a printed label as good as PS Form 3800?", "As Certified Mail, yes: USPS accepts the approved forms and labels that online postage services print. The proof is different: you get the service's online record instead of a receipt postmarked by a clerk, unless you hand the letter in at a counter. A label you design yourself or copy from a template isn't allowed."],
-      ["How much does a certified mail label cost?", `USPS charges the Certified Mail fee on top of postage; see USPS's [current price list](https://pe.usps.com/text/dmm300/Notice123.htm). Stamps.com adds a monthly plan, and SimpleCertifiedMail charges one price per letter. With ${BRAND}, ${CERT} covers printing, the envelope, postage and the Certified Mail fee.`],
+      ["How much does a certified mail label cost?", `PS Form 3800 is free at post offices and from the USPS Postal Store; USPS charges the Certified Mail fee on top of postage (see its [current price list](https://pe.usps.com/text/dmm300/Notice123.htm)). Online services charge for their part: Stamps.com adds a monthly plan and sells its Certified Mail forms, and SimpleCertifiedMail charges one price per letter. With ${BRAND}, ${CERT} covers printing, the envelope, postage and the Certified Mail fee.`],
     ],
     sources: [
-      ["USPS Domestic Mail Manual 503: Certified Mail (3.0), where to mail (1.5.1), privately printed forms (1.7), receipts (1.10)", "https://pe.usps.com/text/dmm300/503.htm"],
+      ["USPS Domestic Mail Manual 503: Certified Mail (3.0), where to mail (1.5.1), forms and privately printed labels (1.7), receipts (1.10)", "https://pe.usps.com/text/dmm300/503.htm"],
       ["USPS Domestic Mail Manual 608, 11.0: postmarks and the free manual postmark", "https://pe.usps.com/text/dmm300/608.htm"],
-      ["USPS: insurance and extra services", "https://www.usps.com/ship/insurance-extra-services.htm"],
+      ["USPS: insurance and extra services (Certified Mail, Return Receipt)", "https://www.usps.com/ship/insurance-extra-services.htm"],
+      ["USPS Postal Store: Certified Mail Receipt Forms (PS Form 3800)", "https://www.usps.com/store/product/certified-mail-receipt-forms-P_FORM_3800"],
+      ["USPS Postal Store: Certified Mail Labels (Label 3800-N)", "https://www.usps.com/store/product/certified-mail-labels-P_FORM3800N"],
       ["USPS Notice 123: price list", "https://pe.usps.com/text/dmm300/Notice123.htm"],
-      ["Stamps.com: USPS Certified Mail", "https://www.stamps.com/usps/certified-mail/"],
+      ["Stamps.com: USPS Certified Mail", "https://www.stamps.com/mail/certified-mail/"],
       ["Stamps.com: plans and pricing", "https://www.stamps.com/pricing/"],
-      ["SimpleCertifiedMail", "https://www.simplecertifiedmail.com/"],
+      ["SimpleCertifiedMail: how it works", "https://www.simplecertifiedmail.com/how-it-works/"],
       ["Pirate Ship Support: How to ship government documents", "https://support.pirateship.com/en/articles/5261628-how-to-ship-government-documents"],
     ],
-    sourceNote: "USPS rules checked November 24, 2026. Postage services change their features and prices; check each one's own page before you buy.",
+    sourceNote: "USPS rules checked November 24, 2026. The form drawings are our own simplified illustrations. Postage services change their features and prices; check each one's own page before you buy.",
   },
 ];
 
@@ -853,6 +916,10 @@ const CSS = `
 .srcbox[open] summary::after { transform: rotate(-135deg); margin-top: 4px; }
 .prose .note { font-size: .88rem; color: var(--faint); }
 .prose pre.tpl { white-space: pre-wrap; overflow-wrap: anywhere; font: .88rem/1.6 var(--f-mono); background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 18px 20px; margin: 8px 0 18px; }
+.prose figure.afig { margin: 18px 0 18px; } .prose figure.afig svg { width: 100%; height: auto; display: block; }
+.prose ol.parts { padding-left: 0; margin: 4px 0 16px; list-style: none; counter-reset: part; }
+.prose ol.parts li { counter-increment: part; position: relative; padding-left: 36px; margin-bottom: 10px; }
+.prose ol.parts li::before { content: counter(part); position: absolute; left: 0; top: 1px; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--paper); font: 700 .8rem/24px var(--f-ui); text-align: center; }
 `;
 
 export function articlePage(slug: string) {
@@ -872,6 +939,7 @@ export function articlePage(slug: string) {
   const table = (t: NonNullable<Section["table"]>) =>
     `<div class="atbl-wrap"><table class="atbl"><thead><tr>${t.head.map((h) => `<th scope="col">${esc(h)}</th>`).join("")}</tr></thead>
       <tbody>${t.rows.map(([k, ...vs]) => `<tr><th scope="row">${esc(k)}</th>${vs.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  const fig = (f: Figure) => `<figure class="afig" data-alt="${esc(f.alt)}">${f.svg}<figcaption>${rich(f.caption)}</figcaption></figure>`;
   const toc = [["answer", "Short answer"], ...a.sections.map((s) => [s.id, s.h]), ["questions", "Common questions"]];
   return page(
     a.metaTitle,
@@ -883,11 +951,11 @@ export function articlePage(slug: string) {
         <div class="prose">
           <h2 id="answer">Short answer</h2>
           <div class="short">${ps(a.answer)}</div>
-          ${a.sections.map((s) => `<h2 id="${s.id}">${esc(s.h)}</h2>${ps(s.ps)}${s.template ? `<pre class="tpl">${esc(s.template)}</pre>` : ""}${s.table ? table(s.table) : ""}${s.after ? (s.table ? ps(s.after) : `<ul class="pts">${s.after.map((x) => `<li>${rich(x)}</li>`).join("")}</ul>`) : ""}`).join("")}
-          <div class="cta-box"><div><b>${esc(a.cta.title)}</b> <span>${esc(a.cta.body)}</span></div>
+          ${a.sections.map((s) => `<h2 id="${s.id}">${esc(s.h)}</h2>${ps(s.ps)}${s.figure ? fig(s.figure) : ""}${s.template ? `<pre class="tpl">${esc(s.template)}</pre>` : ""}${s.table ? table(s.table) : ""}${s.after ? (s.table ? ps(s.after) : s.numbered ? `<ol class="parts">${s.after.map((x) => `<li>${rich(x)}</li>`).join("")}</ol>` : `<ul class="pts">${s.after.map((x) => `<li>${rich(x)}</li>`).join("")}</ul>`) : ""}${s.endFigure ? fig(s.endFigure) : ""}`).join("")}
+          <div class="cta-box"><div><b>${esc(a.cta.title)}</b></div>
             <div class="ctas"><a class="btn green" href="${esc(a.cta.primary[1])}">${esc(a.cta.primary[0])}</a>${a.cta.secondary ? `<a class="btn alt" href="${esc(a.cta.secondary[1])}">${esc(a.cta.secondary[0])}</a>` : ""}</div></div>
           <h2 id="questions">Common questions</h2>
-          ${a.faqs.map(([q, ans]) => `<h3>${esc(q)}</h3><p>${rich(ans)}</p>`).join("")}
+          ${a.faqs.map(([q, ans]) => `<details class="faq"><summary><h3>${esc(q)}</h3></summary><p>${rich(ans)}</p></details>`).join("")}
           <details class="srcbox" id="sources"><summary><h2>Sources</h2><span class="note">${a.sources.length} links</span></summary>
           <ul class="srcs">${a.sources.map(([t, u]) => `<li><a href="${esc(u)}" rel="noopener">${esc(t)}</a></li>`).join("")}</ul>
           <p class="note">Accessed ${esc(a.checked)}. ${esc(a.sourceNote ?? "USPS rules and fees change; check USPS before relying on a detail.")}</p></details>

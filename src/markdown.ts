@@ -31,6 +31,11 @@ td.addRule("meta", {
   filter: (n) => n.nodeName === "DIV" && /\bmeta\b/.test(n.getAttribute("class") ?? ""),
   replacement: (_c, n) => `\n\n${Array.from(n.childNodes).map((c) => (c.textContent ?? "").trim()).filter(Boolean).join(" · ")}\n\n`,
 });
+// Article figures are inline SVG drawings, which are dropped above; keep what they show as a line of text.
+td.addRule("afig", {
+  filter: (n) => n.nodeName === "FIGURE" && /\bafig\b/.test(n.getAttribute("class") ?? ""),
+  replacement: (content, n) => `\n\n_Figure: ${(n as unknown as { getAttribute(k: string): string }).getAttribute("data-alt")}_\n\n${content.trim()}\n\n`,
+});
 // Absolute links, so the markdown still works when an agent passes it along.
 td.addRule("abs", {
   filter: (n) => n.nodeName === "A" && !!n.getAttribute("href") && !/\bgcard\b/.test(n.getAttribute("class") ?? ""), // turndown checks later rules first, so exclude cards here
